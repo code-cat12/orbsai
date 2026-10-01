@@ -466,7 +466,7 @@ function syncSel(){
   const p = pf(active), m0 = MODELS[p.m];
   $("modelBtn").textContent = m0.n + " " + m0.v + " ▾";
   const menu = $("modelMenu"); menu.innerHTML = "";
-  MODELS.forEach((m, i) => menu.appendChild(menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", m.d.charAt(0).toUpperCase() + m.d.slice(1) + ". Built on " + m.base + ".", i === p.m,
+  MODELS.forEach((m, i) => menu.appendChild(menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", m.d.charAt(0).toUpperCase() + m.d.slice(1) + ". Built on the latest " + m.base.replace(/ [\d.]+$/, "") + " model (" + m.base.replace(/^Claude /, "") + ").", i === p.m,
     () => { pf(active).m = i; savePrefs(); closeMenus(); syncSel(); })));
   $("effWrap").hidden = !hasEffort(p.m);
   $("effBtn").textContent = EFFORTS[p.e].n + " ▾";
