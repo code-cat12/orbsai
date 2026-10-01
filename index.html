@@ -241,6 +241,38 @@ button{font:inherit;color:inherit}
 .tail{display:flex;margin-top:-14px}
 .tail .av.has-orb{width:40px;height:40px;margin:0}
 .bot-row .msg:empty{display:none}
+.gate{overflow-y:auto;align-items:safe center}
+.landing{width:min(100%,880px);display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center;padding-block:24px}
+.lhero{display:flex;flex-direction:column;align-items:center;gap:10px}
+.lg.lbig{width:84px;height:84px;overflow:visible}
+.ltitle{font:400 clamp(3rem,10vw,4.6rem)/1 var(--display);margin:0;letter-spacing:-.02em}
+.ltag{margin:0;color:var(--muted);font-size:1.2rem;max-width:30ch;text-wrap:balance}
+.lbtns{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px}
+.gbtn.lgo{padding:14px 34px;border-radius:999px;font-size:1.2rem;background:var(--ink);color:var(--bg)}
+.gbtn.lgo:hover{transform:translateY(-1px)}
+.lineup{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:16px 8px;width:100%}
+.lo{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.lo .has-orb{width:62px;height:62px}
+.lo b{font-weight:400;font-size:1.02rem}
+.lo small{color:var(--muted);font-size:.8rem;line-height:1.2}
+.lfeat{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;width:100%;text-align:left}
+.lfeat li{background:var(--field);border:1px solid var(--line);border-radius:14px;padding:14px 16px;line-height:1.4;color:var(--muted);font-size:.92rem}
+.lfeat b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
+.aback{align-self:flex-start}
+.legal-modal{z-index:60}
+.card.legal{width:min(100%,620px);max-height:min(82vh,760px);display:flex;flex-direction:column}
+.lbody{overflow-y:auto;min-height:0;padding-right:4px;line-height:1.5}
+.lbody h3{font:500 1.1rem var(--display);margin:18px 0 6px}
+.lbody p,.lbody ul{margin:0 0 8px}
+.lbody ul{padding-left:1.2em}
+.lbody a{color:var(--accent)}
+.lupd{color:var(--muted);font-size:.85rem}
+.agree{display:flex;gap:8px;align-items:flex-start;font-size:.92rem;color:var(--muted);text-align:left;line-height:1.4}
+.agree input{width:auto;margin-top:4px;accent-color:var(--accent)}
+.agree .linkbtn,.legalnote .linkbtn{font-size:inherit;padding:0}
+.legalnote{margin:0;color:var(--muted);font-size:.82rem;line-height:1.45}
+.ainote{text-align:center;color:var(--muted);font-size:.78rem;margin-top:2px}
+.setlinks{display:flex;gap:16px;justify-content:center}
 .sec{font-size:.78rem;color:var(--muted);padding:12px 10px 2px}
 .pin-empty{font-size:.82rem;color:var(--muted);padding:2px 10px 6px;line-height:1.4}
 .nav.on{background:var(--me)}
@@ -404,6 +436,7 @@ textarea:disabled{pointer-events:none}
     <div class="hint" id="hint"></div>
     </form>
     <div class="status" id="status"></div>
+    <div class="ainote">Orbs is AI and can make mistakes. Please double-check important info.</div>
   </div>
 
   <div class="picker" id="picker">
@@ -431,11 +464,103 @@ textarea:disabled{pointer-events:none}
     <div class="setrow"><button class="outline" id="outBtn" type="button">Sign out</button></div>
     <button class="danger" id="wipeBtn" type="button">Delete all chats</button>
     <button class="danger" id="killBtn" type="button">Delete my account</button>
+    <div class="setlinks"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button><button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button></div>
     <small class="fine" id="setMsg" role="status"></small>
   </div>
 </div>
+<div class="modal legal-modal" id="tosModal" hidden>
+  <div class="card legal" role="dialog" aria-modal="true" aria-labelledby="tosTitle">
+    <div class="mh"><h2 id="tosTitle">Terms of Service</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="lbody">
+      <p class="lupd">Last updated October 1, 2026</p>
+      <h3>1. What Orbs is</h3>
+      <p>Orbs is a chat website where AI helpers ("orbs") answer your messages. By making an account or using Orbs, you agree to these terms. If you don't agree, please don't use Orbs.</p>
+      <h3>2. Orbs is AI and can make mistakes</h3>
+      <p>Every orb is an AI, not a person. Answers can be wrong, out of date, or incomplete. Double-check anything important, and don't rely on Orbs for medical, legal, money, or safety decisions. Ask a qualified person for those.</p>
+      <h3>3. Who can use Orbs</h3>
+      <p>You must be at least 18 years old to make an account and use Orbs.</p>
+      <h3>4. Your account</h3>
+      <p>Keep your password private. You're responsible for what happens on your account. One account per person.</p>
+      <h3>5. Rules</h3>
+      <p>Orbs is powered by Anthropic's Claude, so you must follow <a href="https://www.anthropic.com/legal/aup" target="_blank" rel="noopener">Anthropic's Usage Policy</a>. You also agree not to:</p>
+      <ul>
+        <li>use Orbs to hurt, threaten, harass, or scam anyone</li>
+        <li>do anything illegal with it</li>
+        <li>try to hack, overload, or break the site, or get around its limits</li>
+        <li>use bots or scripts to send messages, or resell access to Orbs</li>
+      </ul>
+      <p>We can suspend or delete accounts that break these rules.</p>
+      <h3>6. Powered by Claude</h3>
+      <p>Replies come from Anthropic's Claude models through Anthropic's API. Orbs is an independent project. It isn't made, run, or endorsed by Anthropic. Anthropic's own terms for the API are <a href="https://www.anthropic.com/legal/commercial-terms" target="_blank" rel="noopener">Anthropic's Commercial Terms</a>.</p>
+      <h3>7. Your messages</h3>
+      <p>What you write stays yours. You let Orbs store it in your account and send it to Claude so the orbs can reply. Please don't share passwords, ID numbers, bank details, or other very private information in chats.</p>
+      <h3>8. Changes and availability</h3>
+      <p>Orbs is free and may change, slow down, set limits, or stop at any time, including when its budget for Claude runs out. We may update these terms. If we make big changes, we'll show them on the site, and using Orbs afterward means you accept them.</p>
+      <h3>9. No guarantees</h3>
+      <p>Orbs is provided "as is", without warranties of any kind. As far as the law allows, Orbs and its owner aren't responsible for losses caused by using it or by mistakes in its answers.</p>
+      <h3>10. Questions</h3>
+      <p>Reach out to the person who runs Orbs if you have questions about these terms.</p>
+    </div>
+  </div>
+</div>
+<div class="modal legal-modal" id="privModal" hidden>
+  <div class="card legal" role="dialog" aria-modal="true" aria-labelledby="privTitle">
+    <div class="mh"><h2 id="privTitle">Privacy Policy</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="lbody">
+      <p class="lupd">Last updated October 1, 2026</p>
+      <h3>What we collect</h3>
+      <ul>
+        <li><b>Account info:</b> your email, and your name and profile picture if you sign in with Google or add a name.</li>
+        <li><b>Your chats and settings:</b> your messages, the orbs' replies, pinned orbs, and model picks, so they can follow you to any device.</li>
+        <li><b>A daily message counter</b>, only if the site has message limits turned on.</li>
+      </ul>
+      <p>We don't run ads, we don't sell your information, and we don't use tracking or analytics tools.</p>
+      <h3>How it's used</h3>
+      <ul>
+        <li>To sign you in and keep you signed in.</li>
+        <li>To save your chats and settings to your account.</li>
+        <li>To send your messages to Claude so the orbs can reply. Messages go to Claude with an anonymous ID, not your email.</li>
+      </ul>
+      <h3>Services that help run Orbs</h3>
+      <ul>
+        <li><b>Google Firebase</b> handles sign-in and stores your account and chats. See <a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase's privacy information</a> and <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google's Privacy Policy</a>.</li>
+        <li><b>Anthropic</b> runs the Claude models that write the replies. See <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">Anthropic's Privacy Policy</a> and <a href="https://www.anthropic.com/legal/aup" target="_blank" rel="noopener">Anthropic's Usage Policy</a>.</li>
+        <li><b>Vercel</b> hosts the website. See <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Vercel's Privacy Policy</a>.</li>
+      </ul>
+      <h3>Who can see your chats</h3>
+      <p>Inside Orbs, only you can see your chats. Other users can't. The person who runs Orbs can technically open the stored data in Firebase, but only looks at it to fix problems or when the law requires it.</p>
+      <h3>Keeping and deleting</h3>
+      <p>Your chats stay until you delete them. In Settings you can delete all your chats or your whole account at any time.</p>
+      <h3>On your device</h3>
+      <p>Orbs remembers your theme and sidebar choice on your device, and Firebase keeps you signed in. That's it.</p>
+      <h3>Kids</h3>
+      <p>Orbs is for people 18 and older and isn't meant for children.</p>
+      <h3>Changes</h3>
+      <p>If this policy changes, we'll update the date at the top. Big changes will be shown on the site.</p>
+    </div>
+  </div>
+</div>
 <div class="gate" id="gate">
-  <div class="gcard auth">
+  <div class="landing" id="landing" hidden>
+    <div class="lhero">
+      <svg class="lg lbig" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgL)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgL)" stroke-width="2.2" stroke-linecap="round"/><circle r="2" fill="#ff5fb8"><animateMotion dur="5s" repeatCount="indefinite" path="M30 16A14 5 0 0 1 2 16A14 5 0 0 1 30 16"/><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.49;.53;.97;1" dur="5s" repeatCount="indefinite"/></circle></g></svg>
+      <h1 class="ltitle">Orbs</h1>
+      <p class="ltag">Nine little AI helpers in one chat. Pick an orb and ask away.</p>
+      <div class="lbtns">
+        <button class="gbtn lgo" id="goBtn" type="button">Get started</button>
+        <button class="linkbtn" id="goSignin" type="button">I already have an account</button>
+      </div>
+    </div>
+    <div class="lineup" id="lineup" aria-label="The orbs"></div>
+    <ul class="lfeat">
+      <li><b>A helper for everything.</b> Tech, cooking, games, websites, stories, homework, music, languages, and Nebula for the rest.</li>
+      <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
+      <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
+    </ul>
+    <p class="legalnote"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button> · <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button> · Orbs is AI and can make mistakes.</p>
+  </div>
+  <div class="gcard auth" id="authCard">
+    <button class="linkbtn aback" id="aBack" type="button" hidden>‹ Back</button>
     <span class="logo"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lg2)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lg2)" stroke-width="2.2" stroke-linecap="round"/><circle r="2" fill="#ff5fb8"><animateMotion dur="5s" repeatCount="indefinite" path="M30 16A14 5 0 0 1 2 16A14 5 0 0 1 30 16"/><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.49;.53;.97;1" dur="5s" repeatCount="indefinite"/></circle></g></svg>Orbs</span>
     <h2 id="aTitle">Welcome to Orbs</h2>
     <p id="aText">Sign in to chat with your orbs. Your chats save to your account.</p>
@@ -446,6 +571,7 @@ textarea:disabled{pointer-events:none}
         <label for="aName" hidden>Name</label><input id="aName" type="text" placeholder="Your name" autocomplete="nickname" maxlength="40" hidden>
         <label for="aEmail" hidden>Email</label><input id="aEmail" type="email" placeholder="Email" autocomplete="email" required>
         <label for="aPass" hidden>Password</label><input id="aPass" type="password" placeholder="Password" autocomplete="current-password" required minlength="8">
+        <label class="agree" id="aAgreeRow" hidden><input type="checkbox" id="aAgree"> <span>I agree to the <button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button> and <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button></span></label>
         <button class="gbtn" id="aSubmit" type="submit">Sign in</button>
       </form>
       <div class="alinks"><button class="linkbtn" id="aSwitch" type="button">New here? Create an account</button><button class="linkbtn" id="aForgot" type="button">Forgot password?</button></div>
@@ -456,6 +582,7 @@ textarea:disabled{pointer-events:none}
       <button class="linkbtn" id="vOut" type="button">Use a different account</button>
     </div>
     <p class="aerr" id="aErr" role="alert"></p>
+    <p class="legalnote">By continuing, you agree to the <button class="linkbtn" type="button" data-open="tosModal">Terms</button> and <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button>. Orbs is AI and can make mistakes.</p>
   </div>
 </div>
 </body>

@@ -656,6 +656,9 @@ function authErr(e){ const c = e && e.code; if (c === "auth/popup-closed-by-user
 function say(msg, ok){ const el = $("aErr"); el.textContent = msg || ""; el.classList.toggle("aok", !!ok); }
 function showGate(mode, email){
   gate.hidden = false; say("");
+  $("landing").hidden = mode !== "home"; $("authCard").hidden = mode === "home";
+  $("aBack").hidden = mode !== "signin";
+  if (mode === "home") { gate.scrollTop = 0; return; }
   $("aMain").hidden = mode !== "signin"; $("aVerify").hidden = mode !== "verify";
   if (mode === "loading") { $("aTitle").textContent = "Orbs"; $("aText").textContent = "Loading…"; }
   else if (mode === "setup") { $("aTitle").textContent = "Almost ready"; $("aText").textContent = "Orbs isn't connected to Firebase yet. Paste your Firebase settings into firebase-config.js, then upload it again."; }
@@ -669,10 +672,16 @@ function setAuthMode(m){
   $("aPass").setAttribute("autocomplete", m === "up" ? "new-password" : "current-password");
   $("aSwitch").textContent = m === "up" ? "Have an account? Sign in" : "New here? Create an account";
   $("aForgot").hidden = m === "up";
+  $("aAgreeRow").hidden = m !== "up"; $("aAgree").checked = false;
   showGate("signin");
 }
 async function busyBtn(btn, fn){ btn.disabled = true; try { await fn(); } finally { btn.disabled = false; } }
 $("aSwitch").onclick = () => setAuthMode(authMode === "up" ? "in" : "up");
+$("goBtn").onclick = () => setAuthMode("up");
+$("goSignin").onclick = () => setAuthMode("in");
+$("aBack").onclick = () => showGate("home");
+$("lineup").innerHTML = ORDER.map(k => `<div class="lo"><div class="has-orb">${orbSVG(k)}</div><b></b><small></small></div>`).join("");
+$("lineup").querySelectorAll(".lo").forEach((el, i) => { el.querySelector("b").textContent = BOTS[ORDER[i]].name; el.querySelector("small").textContent = BOTS[ORDER[i]].role; });
 $("gGoogle").onclick = () => busyBtn($("gGoogle"), async () => {
   say("");
   try { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt:"select_account" }); await A.signInWithPopup(auth, p); }
@@ -682,6 +691,7 @@ $("aForm").addEventListener("submit", e => { e.preventDefault(); busyBtn($("aSub
   const email = $("aEmail").value.trim(), pass = $("aPass").value, name = $("aName").value.trim();
   if (!email) return say("Type your email.");
   if (authMode === "up" && pass.length < 8) return say("Use a password with at least 8 characters.");
+  if (authMode === "up" && !$("aAgree").checked) return say("Please agree to the Terms of Service and Privacy Policy first.");
   if (!pass) return say("Type your password.");
   try {
     if (authMode === "up") {
@@ -746,6 +756,16 @@ $("killBtn").onclick = () => busyBtn($("killBtn"), async () => {
   }
 });
 
+// ---------- Terms and Privacy pop-ups ----------
+let legalBack = null;
+function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
+function closeLegal(){ for (const id of ["tosModal","privModal"]) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
+document.addEventListener("click", e => {
+  const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
+  if (e.target.closest("[data-close]") || e.target.classList.contains("legal-modal")) closeLegal();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && (!$("tosModal").hidden || !$("privModal").hidden)) { e.stopImmediatePropagation(); closeLegal(); } }, true);
+
 // ---------- Newest models ----------
 // The server always uses the newest Claude model in each family; this shows its name and Orbs version.
 async function loadModels(){
@@ -777,7 +797,7 @@ loadModels();
   } catch (e) { $("aTitle").textContent = "Orbs couldn't start"; $("aText").textContent = "Couldn't load the sign-in tools. Check your connection and refresh."; return; }
   setAuthMode("in"); showGate("loading");
   A.onAuthStateChanged(auth, async u => {
-    if (!u) { clearTimeout(cloudT); loaded = false; user = null; resetState(); renderProfile(); closeSet(); renderHome(); showGate("signin"); return; }
+    if (!u) { clearTimeout(cloudT); loaded = false; user = null; resetState(); renderProfile(); closeSet(); renderHome(); showGate("home"); return; }
     const usesPassword = u.providerData.some(p => p.providerId === "password");
     if (usesPassword && !u.emailVerified) { user = null; showGate("verify", u.email); return; }
     await enter(u);
