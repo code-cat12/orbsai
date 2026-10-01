@@ -1,18 +1,7 @@
 // POST /api/chat — the only place your Claude API key is ever used.
 // It runs on Vercel's servers, so the key never reaches anyone's browser.
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { admin, getKids, flag } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
-
-function admin() {
-  if (!getApps().length) {
-    const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    if (sa.private_key) sa.private_key = sa.private_key.replace(/\\n/g, "\n");
-    initializeApp({ credential: cert(sa) });
-  }
-  return { auth: getAuth(), db: getFirestore() };
-}
 
 // Daily credits live in Firestore under usage/{uid}. Browsers can read their own, but only this server can change them.
 async function charge(uid, cost, limits, day) {
@@ -45,4 +34,6 @@ export const POST = makeChatHandler({
   verifyToken: (token) => admin().auth.verifyIdToken(token),
   charge,
   refund,
+  getKids,
+  flag,
 });

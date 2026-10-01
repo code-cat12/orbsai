@@ -260,6 +260,10 @@ button{font:inherit;color:inherit}
 .lfeat b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
 .aback{align-self:flex-start}
 .legal-modal{z-index:60}
+.kidsform{display:flex;flex-direction:column;gap:8px}
+.kidsform input{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px}
+.reparea{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:80px;resize:vertical}
+.kidsbadge{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted)}
 .card.legal{width:min(100%,620px);max-height:min(82vh,760px);display:flex;flex-direction:column}
 .lbody{overflow-y:auto;min-height:0;padding-right:4px;line-height:1.5}
 .lbody h3{font:500 1.1rem var(--display);margin:18px 0 6px}
@@ -438,7 +442,7 @@ textarea:disabled{pointer-events:none}
     <div class="hint" id="hint"></div>
     </form>
     <div class="status" id="status"></div>
-    <div class="ainote">Orbs is AI and can make mistakes. Please double-check important info.</div>
+    <div class="ainote" id="aiNote">Orbs is AI and can make mistakes. Please double-check important info.</div>
   </div>
 
   <div class="picker" id="picker">
@@ -463,6 +467,16 @@ textarea:disabled{pointer-events:none}
       <div class="acct"><span class="dot2" id="useDot"></span><span id="useState"></span></div>
       <small class="fine">Everyone gets free credits each day, and they refill at midnight (New York time). Koa uses 1 credit per message, Lumina 3, Chrysalis 6, and Mythos 10.</small>
     </div>
+    <div class="set-label">Kids Mode</div>
+    <div class="acct"><span class="dot2" id="kidsDot"></span><span id="kidsTxt">Off</span></div>
+    <small class="fine" id="kidsHelp">Extra safety for kids and teens: kid-safe answers, an AI safety check on every message and reply, and a block on sharing personal info.</small>
+    <form class="kidsform" id="kidsForm" hidden>
+      <label for="kidsPin" hidden>Parent PIN</label><input id="kidsPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Parent PIN (4 to 8 numbers)">
+      <label for="kidsPin2" hidden>Confirm PIN</label><input id="kidsPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Type the PIN again">
+      <button class="outline" id="kidsGo" type="submit">Turn on Kids Mode</button>
+    </form>
+    <div class="setrow"><button class="outline" id="kidsBtn" type="button" hidden>Turn on Kids Mode</button><button class="outline" type="button" data-open="safetyModal">Safety tips</button></div>
+    <small class="fine" id="kidsMsg" role="status"></small>
     <div class="setrow"><button class="outline" id="outBtn" type="button">Sign out</button></div>
     <button class="danger" id="wipeBtn" type="button">Delete all chats</button>
     <button class="danger" id="killBtn" type="button">Delete my account</button>
@@ -480,7 +494,9 @@ textarea:disabled{pointer-events:none}
       <h3>2. Orbs is AI and can make mistakes</h3>
       <p>Every orb is an AI, not a person. Answers can be wrong, out of date, or incomplete. Double-check anything important, and don't rely on Orbs for medical, legal, money, or safety decisions. Ask a qualified person for those.</p>
       <h3>3. Who can use Orbs</h3>
-      <p>You must be at least 18 years old to make an account and use Orbs.</p>
+      <p>You must be at least 13 years old to use Orbs. If you're 13 to 17, you need a parent or guardian's permission, and Kids Mode stays on for your account. Orbs isn't for children under 13.</p>
+      <h3>Kids Mode</h3>
+      <p>Kids Mode gives kid-safe answers, runs an AI safety check on every message and reply before showing it, and blocks sharing personal info like phone numbers and addresses. Adults can turn it on for an account with a parent PIN. No filter is perfect, so parents should stay involved.</p>
       <h3>4. Your account</h3>
       <p>Keep your password private. You're responsible for what happens on your account. One account per person.</p>
       <h3>5. Rules</h3>
@@ -515,6 +531,9 @@ textarea:disabled{pointer-events:none}
         <li><b>Account info:</b> your email, and your name and profile picture if you sign in with Google or add a name.</li>
         <li><b>Your chats and settings:</b> your messages, the orbs' replies, pinned orbs, and model picks, so they can follow you to any device.</li>
         <li><b>A daily message counter</b>, only if the site has message limits turned on.</li>
+        <li><b>Your age group</b> (under 13, 13 to 17, or 18+) and whether Kids Mode is on. A parent PIN is saved only in a scrambled form that can't be turned back into the PIN.</li>
+        <li><b>A safety log:</b> when Kids Mode blocks something, we save the type of problem (like "personal info"), which orb, and when. Not the message itself.</li>
+        <li><b>Reports:</b> if you report a reply, we save that reply and your reason so it can be checked.</li>
       </ul>
       <p>We don't run ads, we don't sell your information, and we don't use tracking or analytics tools.</p>
       <h3>How it's used</h3>
@@ -535,11 +554,41 @@ textarea:disabled{pointer-events:none}
       <p>Your chats stay until you delete them. In Settings you can delete all your chats or your whole account at any time.</p>
       <h3>On your device</h3>
       <p>Orbs remembers your theme and sidebar choice on your device, and Firebase keeps you signed in. That's it.</p>
-      <h3>Kids</h3>
-      <p>Orbs is for people 18 and older and isn't meant for children.</p>
+      <h3>Kids and teens</h3>
+      <p>Orbs is not for children under 13, and we don't knowingly collect information from them, as required by the US Children's Online Privacy Protection Act (COPPA). If someone says they're under 13 when signing up, they can't use Orbs. If you're a parent and think your child under 13 made an account, contact the person who runs Orbs and the account will be deleted.</p>
+      <p>Teens 13 to 17 need a parent or guardian's permission, and their accounts always use Kids Mode.</p>
       <h3>Changes</h3>
       <p>If this policy changes, we'll update the date at the top. Big changes will be shown on the site.</p>
     </div>
+  </div>
+</div>
+<div class="modal legal-modal" id="safetyModal" hidden>
+  <div class="card legal" role="dialog" aria-modal="true" aria-labelledby="safeTitle">
+    <div class="mh"><h2 id="safeTitle">Staying safe with Orbs</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="lbody">
+      <h3>Orbs is AI, not a person</h3>
+      <p>The orbs are computer programs. They can sound friendly, but they aren't your friends, and they can be wrong. Double-check important things with a trusted adult or a reliable source.</p>
+      <h3>Keep your info private</h3>
+      <p>Never share your full name, address, school, phone number, email, passwords, or photos. Kids Mode blocks messages that look like personal info.</p>
+      <h3>If something feels wrong</h3>
+      <p>If a reply is upsetting, weird, or not okay, stop and tell a parent, teacher, or another adult you trust. Tap the flag under any reply to report it.</p>
+      <h3>If you're having a hard time</h3>
+      <p>Talk to a trusted adult. In the US you can call or text <b>988</b> any time to reach someone who can help. In an emergency, call <b>911</b>.</p>
+      <h3>Use it to learn</h3>
+      <p>Orbs is great for explaining things, but do your own homework. It's how you actually get better at stuff.</p>
+      <h3>For parents</h3>
+      <p>Kids Mode adds kid-safe instructions to every orb, checks each message and reply with an AI safety check before showing it, blocks personal info like phone numbers and addresses, and keeps a log of blocked topics (without the messages) for the site owner. No filter is perfect, so please stay involved in how your kid uses Orbs.</p>
+    </div>
+  </div>
+</div>
+<div class="modal legal-modal" id="reportModal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="repTitle">
+    <div class="mh"><h2 id="repTitle">Report this reply</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <small class="fine">This sends the reply to the person who runs Orbs so they can check it. Your other chats aren't sent.</small>
+    <label for="repReason" hidden>What's wrong?</label>
+    <textarea id="repReason" class="reparea" maxlength="300" placeholder="What's wrong with it? (optional)"></textarea>
+    <button class="gbtn" id="repSend" type="button">Send report</button>
+    <small class="fine" id="repMsg" role="status"></small>
   </div>
 </div>
 <div class="gate" id="gate">
@@ -582,6 +631,15 @@ textarea:disabled{pointer-events:none}
       <button class="gbtn" id="vDone" type="button">I clicked the link</button>
       <button class="outline" id="vResend" type="button">Send the email again</button>
       <button class="linkbtn" id="vOut" type="button">Use a different account</button>
+    </div>
+    <div class="vbox" id="aAge" hidden>
+      <button class="gbtn" type="button" data-age="adult">18 or older</button>
+      <button class="gbtn" type="button" data-age="teen">13 to 17</button>
+      <button class="outline" type="button" data-age="under13">Under 13</button>
+      <small class="fine">If you're 13 to 17, Kids Mode stays on to keep things safe, and you need a parent or guardian's permission to use Orbs.</small>
+    </div>
+    <div class="vbox" id="aBlocked" hidden>
+      <button class="outline" id="bOut" type="button">Sign out</button>
     </div>
     <p class="aerr" id="aErr" role="alert"></p>
     <p class="legalnote">By continuing, you agree to the <button class="linkbtn" type="button" data-open="tosModal">Terms</button> and <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button>. Orbs is AI and can make mistakes.</p>

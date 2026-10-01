@@ -62,6 +62,14 @@ When your Claude money runs out, people see a "ran out of Claude money" message.
 
 Also set a monthly spending limit in the Claude Console. That's your final safety net.
 
+## Kids Mode
+- After signing up, everyone answers "How old are you?" once. Under 13 can't use Orbs. 13 to 17 always have Kids Mode on. 18+ can turn it on with a parent PIN (Settings).
+- Kids Mode adds kid-safe rules to every orb, checks each message and each reply with a quick Claude Haiku safety check, blocks phone numbers / emails / addresses, and logs what was blocked (type only, no message text) in the Firestore `flags` collection.
+- Want it on for everyone? Add `KIDS_MODE` = `all` in Vercel and redeploy.
+- Reported replies show up in the Firestore `reports` collection. Check `flags` and `reports` now and then.
+- The age question is self-reported, not real ID checking. Anthropic's rules for apps used by minors also ask for age verification, monitoring and following laws like COPPA, so read their guidelines before inviting teens.
+- **After this update, paste the new `firestore.rules` into Firebase again and Publish.**
+
 ## Privacy, honestly
 - Each person can only read and change their own chats (enforced by `firestore.rules`, not just the page).
 - Your API key never reaches anyone's browser.

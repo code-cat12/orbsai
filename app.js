@@ -175,7 +175,7 @@ function renderPicker(){
 }
 
 function renderHome(){
-  app.dataset.view = "home";
+  app.dataset.view = "home"; log.innerHTML = "";
   const mark = $("mark");
   $("greet").textContent = greeting();
   if (active) {
@@ -219,6 +219,9 @@ function addCodeCopy(root){
     pre.appendChild(b);
   }
 }
+const FLAG_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>';
+let reportText = "";
+function openReport(text){ reportText = String(text || "").slice(0, 4000); $("repReason").value = ""; $("repMsg").textContent = ""; $("repSend").disabled = false; openLegal("reportModal"); }
 function actBtn(svg, label, fn){ const b = document.createElement("button"); b.type = "button"; b.className = "act"; b.innerHTML = svg; b.title = label; b.setAttribute("aria-label", label); b.onclick = () => fn(b); return b; }
 // One message row. User: bubble on the right. Orb: plain text, full width, with actions underneath.
 function bubble(role, html, raw, turn, isLast){
@@ -236,6 +239,7 @@ function bubble(role, html, raw, turn, isLast){
     if (role === "user") { meta.append(ts, actBtn(COPY_SVG, "Copy message", btn => copyText(turn.content, btn))); }
     else {
       meta.append(actBtn(COPY_SVG, "Copy reply", btn => copyText(turn.content, btn)));
+      meta.append(actBtn(FLAG_SVG, "Report this reply", () => openReport(turn.content)));
       if (isLast) meta.append(actBtn(RETRY_SVG, "Try again", () => retry()));
       meta.append(ts);
     }
@@ -363,10 +367,21 @@ async function send(text, regen){
     if (code === "cancelled") status.textContent = "Stopped.";
     else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
+    else if (code === "kids_personal_info" || code === "kids_blocked") {
+      // Take the blocked message back out of the chat (and don't save it)
+      const t = chats[key], lastTurn = t[t.length - 1];
+      if (lastTurn && lastTurn.role === "user") { t.pop(); save(); if (code === "kids_personal_info") { box.value = lastTurn.content; autosize(); } }
+      status.textContent = code === "kids_personal_info"
+        ? "🛡️ Kids Mode: please don't share personal info like phone numbers, emails, or addresses. Take it out and try again."
+        : "🛡️ Kids Mode: that topic isn't allowed. Try asking about something else!";
+    }
+    else if (code === "kids_reply_blocked") status.textContent = "🛡️ Kids Mode hid that reply because it wasn't kid-safe. Try asking a different way.";
+    else if (code === "safety_unavailable") status.textContent = "The safety check couldn't finish. Try again in a moment.";
+    else if (code === "age_required" || code === "blocked_age") { const u = user; user = null; enter(u); }
     else status.textContent = ERR[code] || ERR.upstream_error;
   } finally {
     busy = false; ctl = null;
-    if (active === key) renderChat(); else updateSend();
+    if (active === key) { if (chats[key].length) renderChat(); else renderHome(); } else updateSend();
   }
 }
 
@@ -405,7 +420,7 @@ $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
 $("sideNew").onclick = () => { if (busy) return; active = null; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); }
+function openSet(){ $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); }
 $("setBtn").onclick = openSet;
 function closeSet(){ $("settings").hidden = true; $("setBtn").setAttribute("aria-expanded", "false"); wipeArmed(false); }
 $("setClose").onclick = closeSet;
@@ -660,6 +675,9 @@ function showGate(mode, email){
   $("aBack").hidden = mode !== "signin";
   if (mode === "home") { gate.scrollTop = 0; return; }
   $("aMain").hidden = mode !== "signin"; $("aVerify").hidden = mode !== "verify";
+  $("aAge").hidden = mode !== "age"; $("aBlocked").hidden = mode !== "blocked";
+  if (mode === "age") { $("aTitle").textContent = "How old are you?"; $("aText").textContent = "Orbs uses this to keep everyone safe. You can't change it later, so please be honest."; return; }
+  if (mode === "blocked") { $("aTitle").textContent = "Sorry!"; $("aText").textContent = "Orbs is only for people 13 and older. Come back when you're older!"; return; }
   if (mode === "loading") { $("aTitle").textContent = "Orbs"; $("aText").textContent = "Loading…"; }
   else if (mode === "setup") { $("aTitle").textContent = "Almost ready"; $("aText").textContent = "Orbs isn't connected to Firebase yet. Paste your Firebase settings into firebase-config.js, then upload it again."; }
   else if (mode === "verify") { $("aTitle").textContent = "Check your email"; $("aText").textContent = "We sent a link to " + (email || "your email") + ". Click it to confirm it's really you, then come back here."; }
@@ -725,11 +743,55 @@ $("vResend").onclick = () => busyBtn($("vResend"), async () => {
 });
 $("vOut").onclick = () => A.signOut(auth);
 
+// ---------- Age + Kids Mode (the server decides; the page just shows it) ----------
+let kids = { age:null, on:false, locked:false, blocked:false, forcedForAll:false }, pending = null;
+async function kidsApi(u, body){
+  const r = await fetch("/api/kids", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
+  let j = {}; try { j = await r.json(); } catch(_) {}
+  if (typeof j.age !== "undefined") kids = { ...kids, ...j };
+  return { ok: r.ok, ...j };
+}
+function renderKids(){
+  const t = $("kidsTxt"), help = $("kidsHelp");
+  $("kidsDot").className = "dot2 " + (kids.on ? "ok" : "");
+  $("kidsForm").hidden = true; $("kidsMsg").textContent = "";
+  if (kids.forcedForAll) { t.textContent = "On for everyone on this site"; $("kidsBtn").hidden = true; }
+  else if (kids.locked) { t.textContent = "On (always on for ages 13 to 17)"; $("kidsBtn").hidden = true; }
+  else { t.textContent = kids.on ? "On" : "Off"; $("kidsBtn").hidden = false; $("kidsBtn").textContent = kids.on ? "Turn off Kids Mode" : "Turn on Kids Mode"; }
+  help.textContent = kids.on
+    ? "Orbs gives kid-safe answers, checks every message and reply with an AI safety check, and blocks personal info."
+    : "Extra safety for kids and teens: kid-safe answers, an AI safety check on every message and reply, and a block on sharing personal info.";
+  $("kidsPin2").hidden = kids.on; $("kidsGo").textContent = kids.on ? "Turn off with PIN" : "Turn on Kids Mode";
+  $("aiNote").textContent = (kids.on ? "🛡️ Kids Mode is on. " : "") + "Orbs is AI and can make mistakes. Please double-check important info.";
+}
+$("kidsBtn").onclick = () => { $("kidsForm").hidden = false; $("kidsBtn").hidden = true; $("kidsPin").value = ""; $("kidsPin2").value = ""; $("kidsPin").focus(); };
+$("kidsForm").addEventListener("submit", e => { e.preventDefault(); busyBtn($("kidsGo"), async () => {
+  const pin = $("kidsPin").value.trim(), msg = $("kidsMsg");
+  if (!/^\d{4,8}$/.test(pin)) { msg.textContent = "The PIN has to be 4 to 8 numbers."; return; }
+  if (!kids.on && pin !== $("kidsPin2").value.trim()) { msg.textContent = "The two PINs don't match."; return; }
+  try {
+    const r = await kidsApi(user, { action: kids.on ? "off" : "on", pin });
+    if (r.ok) { renderKids(); msg.textContent = kids.on ? "Kids Mode is on. Keep the PIN somewhere the kid can't find it." : "Kids Mode is off."; return; }
+    msg.textContent = r.error === "wrong_pin" ? `Wrong PIN. ${r.triesLeft} tries left.` : r.error === "too_many_tries" ? "Too many wrong PINs. Try again in 15 minutes." : "Couldn't change Kids Mode. Try again.";
+  } catch (_) { msg.textContent = "Couldn't reach Orbs. Check your connection."; }
+}); });
+for (const b of document.querySelectorAll("[data-age]")) b.onclick = () => busyBtn(b, async () => {
+  const u = pending || auth.currentUser; if (!u) return showGate("signin");
+  try {
+    const r = await kidsApi(u, { action:"age", age: b.dataset.age });
+    if (!r.ok && r.error !== "age_already_set") return say("Couldn't save that. Try again.");
+    await enter(u);
+  } catch (_) { say("Couldn't reach Orbs. Check your connection."); }
+});
+$("bOut").onclick = () => A.signOut(auth);
+
 async function enter(u){
-  showGate("loading");
-  try { await loadAccount(u); }
-  catch (e) { user = null; showGate("signin"); say("Couldn't load your chats. Check your connection and try again."); return; }
-  user = u; renderProfile(); renderUsage(); gate.hidden = true; renderHome();
+  showGate("loading"); pending = u;
+  try { await loadAccount(u); await kidsApi(u, { action:"status" }); }
+  catch (e) { user = null; showGate("signin"); say("Couldn't load your account. Check your connection and try again."); return; }
+  if (!kids.age) { showGate("age"); return; }
+  if (kids.blocked) { showGate("blocked"); return; }
+  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); gate.hidden = true; renderHome();
 }
 
 // ---------- Settings: sign out, delete ----------
@@ -759,12 +821,22 @@ $("killBtn").onclick = () => busyBtn($("killBtn"), async () => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-function closeLegal(){ for (const id of ["tosModal","privModal"]) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal"];
+function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
   if (e.target.closest("[data-close]") || e.target.classList.contains("legal-modal")) closeLegal();
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && (!$("tosModal").hidden || !$("privModal").hidden)) { e.stopImmediatePropagation(); closeLegal(); } }, true);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && POPUPS.some(id => !$(id).hidden)) { e.stopImmediatePropagation(); closeLegal(); } }, true);
+
+$("repSend").onclick = () => busyBtn($("repSend"), async () => {
+  if (!user) return;
+  try {
+    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)).replace(/-/g, "");
+    await F.setDoc(F.doc(db, "reports", id), { uid: user.uid, orb: active || "", reply: reportText, reason: $("repReason").value.trim().slice(0, 300), kids: !!kids.on, at: Date.now() });
+    $("repMsg").textContent = "Thanks! Your report was sent."; $("repSend").disabled = true; setTimeout(closeLegal, 1200);
+  } catch (e) { $("repMsg").textContent = "Couldn't send the report. Try again."; }
+});
 
 // ---------- Newest models ----------
 // The server always uses the newest Claude model in each family; this shows its name and Orbs version.

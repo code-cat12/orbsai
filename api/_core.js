@@ -3,6 +3,8 @@
 import { createHash } from "node:crypto";
 import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT } from "./_orbs.js";
 import { latestModels } from "./_models.js";
+import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
+import { publicState } from "./_kids.js";
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -62,8 +64,8 @@ export function systemPrompt(orb, model) {
 }
 
 // deps: verifyToken(idToken) -> decoded token, charge(uid, cost, limits, day) -> {ok, left, reason},
-//       refund(uid, cost, day), fetchImpl (for tests), env
-export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch, env = process.env }) {
+//       refund(uid, cost, day), getKids(uid) -> kids settings, flag(uid, info) -> safety log, fetchImpl (for tests), env
+export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = async () => {}, fetchImpl = fetch, env = process.env }) {
   return async function POST(request) {
     if (!env.ANTHROPIC_API_KEY || !env.FIREBASE_SERVICE_ACCOUNT) return json(500, { error: "not_configured" });
 
@@ -79,8 +81,28 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
     const req = cleanRequest(body);
     if (req.error) return json(400, { error: req.error });
 
+    // Age check and Kids Mode, decided on the server so nobody can switch it off from the page
+    let kids;
+    try { kids = publicState(await getKids(user.uid), env); } catch { return json(503, { error: "upstream_error" }); }
+    if (!kids.age) return json(403, { error: "age_required" });
+    if (kids.blocked) return json(403, { error: "blocked_age" });
+    const kidsOn = kids.on;
+
     const model = MODELS[req.model];
-    const live = (await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl }))[req.model];
+    const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
+    const live = allModels[req.model];
+    const checkerId = allModels[0].id; // the Haiku model does the quick safety checks
+    const logFlag = (info) => flag(user.uid, { orb: req.orb, ...info }).catch(() => {});
+    let extraRules = "";
+    if (kidsOn) {
+      const last = req.turns[req.turns.length - 1].content;
+      if (hasPersonalInfo(last)) { logFlag({ type: "personal_info" }); return json(400, { error: "kids_personal_info" }); }
+      let label;
+      try { label = await classify({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: last, kind: "message" }); }
+      catch { return json(503, { error: "safety_unavailable" }); }
+      if (BLOCKED.has(label)) { logFlag({ type: "message_blocked", category: label }); return json(400, { error: "kids_blocked" }); }
+      if (label === "SELFHARM") { logFlag({ type: "self_harm_support", category: label }); extraRules = SELF_HARM_NOTE; }
+    }
     const effort = live.effort ? EFFORTS[req.effort] : null;
     const cost = model.cost * (effort ? effort.mult : 1);
     const day = dayKey();
@@ -108,7 +130,7 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
           model: live.id,
           max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
           ...(effort ? { output_config: { effort: effort.id } } : {}),
-          system: systemPrompt(req.orb, req.model),
+          system: [systemPrompt(req.orb, req.model), kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
           messages: req.turns,
           stream: true,
           // An anonymous id (not the email) so Anthropic can spot abuse from one person
@@ -129,7 +151,8 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
 
     // Re-send Claude's reply to the browser as one small JSON object per line.
     const enc = new TextEncoder(), dec = new TextDecoder();
-    let wroteText = false, stop = null, failed = null;
+    // In Kids Mode the reply is held back until the safety check has read the whole thing.
+    let wroteText = false, stop = null, failed = null, held = "";
     const stream = new ReadableStream({
       async start(controller) {
         const send = (o) => controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
@@ -146,7 +169,8 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
               if (!line.startsWith("data:")) continue;
               let ev; try { ev = JSON.parse(line.slice(5)); } catch { continue; }
               if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta" && ev.delta.text) {
-                wroteText = true; send({ d: ev.delta.text });
+                wroteText = true;
+                if (kidsOn) held += ev.delta.text; else send({ d: ev.delta.text });
               } else if (ev.type === "message_delta" && ev.delta?.stop_reason) {
                 stop = ev.delta.stop_reason;
               } else if (ev.type === "error") {
@@ -157,8 +181,15 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
         } catch { failed = failed || "upstream_error"; }
         let left = paid.left;
         if (failed && !wroteText) { await giveBack(); left = leftAfterRefund(); }
+        if (!failed && kidsOn && held) {
+          let label = null;
+          try { label = await classify({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: held, kind: "reply" }); } catch {}
+          if (!label) failed = "safety_unavailable";
+          else if (BLOCKED.has(label)) { failed = "kids_reply_blocked"; logFlag({ type: "reply_blocked", category: label }); }
+          else send({ d: held });
+        }
         if (failed) send({ error: failed, left });
-        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left });
+        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn });
         controller.close();
       },
     });

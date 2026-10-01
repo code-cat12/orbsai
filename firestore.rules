@@ -13,6 +13,21 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
     }
+    // Age answer and Kids Mode: people can see their own, but only the server can change them.
+    match /kids/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    // "Report this reply": signed-in people can send a report about their own chat, but can't read reports back.
+    match /reports/{id} {
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['uid', 'orb', 'reply', 'reason', 'kids', 'at'])
+                    && request.resource.data.reply is string && request.resource.data.reply.size() <= 4000
+                    && request.resource.data.reason is string && request.resource.data.reason.size() <= 300;
+      allow read, update, delete: if false;
+    }
+    // Safety log (flags) is written by the server only.
     // Everything else is closed.
     match /{document=**} {
       allow read, write: if false;
