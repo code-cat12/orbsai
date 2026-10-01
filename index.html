@@ -215,6 +215,15 @@ button{font:inherit;color:inherit}
 @keyframes o-think{0%,100%{transform:translate(-1.5px,-3px)}50%{transform:translate(1.5px,-3px)}}
 .rrow{display:flex;align-items:center;gap:2px}
 .rrow .nav{flex:1;min-width:0}
+.rrow .rename{flex:1;margin:2px 4px}
+.rrow{position:relative}
+.rrow .nav .tx{flex:1;min-width:0}
+.rrow .nav .tx b,.rrow .nav .tx small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrow .delb{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;background:var(--panel)}
+.rrow .delb:not(.renb){right:2px}
+.rrow .renb{right:32px}
+.rrow:hover .nav .tx,.rrow:focus-within .nav .tx{padding-right:60px}
+@media (hover:none){.rrow .nav .tx{padding-right:60px}}
 .delb{color:var(--muted)}
 .rrow .delb{opacity:0;transition:opacity .15s}
 .rrow:hover .delb,.rrow .delb:focus-visible,.delb.armed{opacity:1}
@@ -626,7 +635,7 @@ textarea:disabled{pointer-events:none}
       <h3>Voice typing</h3>
       <p>Tap the mic and talk. Tap it again to stop. It works in Chrome, Edge, and Safari.</p>
       <h3>Saving and syncing</h3>
-      <p>Your chats save to your account, so they show up on any device you sign in on. Pin your favorite orbs with the star.</p>
+      <p>Your chats save to your account, so they show up on any device you sign in on. Each orb can have as many chats as you want: tap an orb (or <b>New</b>) to start a fresh one, and find old ones in Recent chats. Tap the pencil to rename a chat. Pin your favorite orbs with the star.</p>
       <h3>When an orb asks a question</h3>
       <p>If your question is unclear, the orb might ask what you mean first. Tap one of the buttons or just type your answer.</p>
     </div>
@@ -638,6 +647,7 @@ textarea:disabled{pointer-events:none}
     <div class="lbody">
       <p class="lupd">October 2026</p>
       <ul>
+        <li><b>Lots of chats per orb:</b> start as many as you want, then rename or delete them.</li>
         <li><b>Voice typing:</b> tap the mic and talk.</li>
         <li><b>Files and folders:</b> send pictures, PDFs, code, or a whole folder.</li>
         <li><b>Orbs ask first:</b> unclear questions get a quick follow-up with tap-to-answer buttons.</li>

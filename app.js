@@ -53,8 +53,13 @@ const $ = id => document.getElementById(id);
 const app = $("app"), log = $("log"), box = $("box"), sendBtn = $("send"), status = $("status"), form = $("form");
 let active = null, busy = false, ctl = null, user = null;
 // Chats live in your Firebase account; this is just the copy on screen.
-let chats = {};
-for (const k of ORDER) chats[k] = [];
+// Conversations: each orb can have as many chats as you want.
+let convs = {};          // id -> { id, orb, title, turns, created, updated }
+let cur = null;          // the chat that's open right now
+const deletedIds = new Set(), legacyDel = new Set();
+const curConv = () => (cur && convs[cur]) || null;
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const titleFrom = text => { const t = String(text || "").replace(/\s+/g, " ").trim(); return !t ? "New chat" : t.length > 48 ? t.slice(0, 47) + "…" : t; };
 function save(){ cloudSave(); }
 
 // Greeting that follows the time on your device and uses your name.
@@ -300,15 +305,17 @@ function tailOrb(thinking){
 }
 
 function renderChat(){
+  const c = curConv(); if (!c) { renderHome(); return; }
+  active = c.orb;
   app.dataset.view = "chat";
   const b = BOTS[active];
-  orbInto($("topGlyph"), active); $("topName").textContent = b.name; $("topRole").textContent = b.role;
+  orbInto($("topGlyph"), active); $("topName").textContent = b.name; $("topRole").textContent = c.title || b.role;
   box.disabled = false; form.classList.remove("locked");
   box.placeholder = `Reply to ${b.name}…`;
   $("whoText").textContent = b.name;
   setAccent();
   log.innerHTML = "";
-  const turns = chats[active];
+  const turns = c.turns;
   turns.forEach((t, i) => { const last = i === turns.length - 1; t.role === "user" ? bubble("user", null, t.content, t, last) : bubble("assistant", md(splitOptions(t.content).body), null, t, last); });
   if (turns.length && turns[turns.length - 1].role === "assistant" && !busy) tailOrb(false);
   log.scrollTop = log.scrollHeight;
@@ -317,13 +324,15 @@ function renderChat(){
 
 function pick(k){
   if (busy) return;
-  active = k; status.textContent = "";
-  if (chats[k].length) { renderChat(); }
-  else {
-    renderHome();
-    const mark = $("mark"); mark.classList.remove("pop"); void mark.offsetWidth; mark.classList.add("pop"); setTimeout(() => mark.classList.remove("pop"), 600);
-  }
+  active = k; cur = null; status.textContent = "";
+  renderHome();
+  const mark = $("mark"); mark.classList.remove("pop"); void mark.offsetWidth; mark.classList.add("pop"); setTimeout(() => mark.classList.remove("pop"), 600);
   box.focus();
+}
+function openConv(id){
+  if (busy || !convs[id]) return;
+  cur = id; active = convs[id].orb; status.textContent = ""; box.value = ""; autosize();
+  renderChat(); if (mobile()) setSide(false);
 }
 
 function updateSend(){
@@ -354,16 +363,20 @@ async function send(text, regen){
   if (!user) return;
   const key = active, b = BOTS[key], model = MODELS[pf(key).m];
   if (credits && credits.left < msgCost(pf(key))) { creditShort(model); return; }
+  // Start a new chat if none is open for this orb
+  if (!curConv() || curConv().orb !== key) { const id = newId(), now = Date.now(); convs[id] = { id, orb:key, title:"", turns:[], created:now, updated:now }; cur = id; }
+  const cid = cur, conv = convs[cid];
   let files = [];
   if (!regen) {
     files = pendingFiles; pendingFiles = []; renderAtts();
     if (!text) text = "Here are my files.";
     const turn = { role:"user", content:text, t:Date.now() };
     if (files.length) turn.files = files.map(f => ({ name:f.name, kind:f.kind }));
-    chats[key].push(turn); lastFiles[key] = files;
-  } else files = (chats[key][chats[key].length - 1] || {}).files ? (lastFiles[key] || []) : [];
+    conv.turns.push(turn); lastFiles[cid] = files;
+    if (!conv.title) conv.title = titleFrom(text);
+  } else files = (conv.turns[conv.turns.length - 1] || {}).files ? (lastFiles[cid] || []) : [];
+  conv.updated = Date.now();
   save();
-  recent = [key, ...recent.filter(x => x !== key)]; save();
   box.value = ""; autosize();
   renderChat();
   const out = bubble("assistant", "");
@@ -371,7 +384,7 @@ async function send(text, regen){
   log.scrollTop = log.scrollHeight;
   busy = true; status.textContent = ""; updateSend();
   ctl = new AbortController();
-  const ctx = chats[key].slice(-30).map(t => ({ role:t.role, content:t.content }));
+  const ctx = conv.turns.slice(-30).map(t => ({ role:t.role, content:t.content }));
   while (ctx.length && ctx[0].role !== "user") ctx.shift();
   let reply = "";
   try {
@@ -409,19 +422,19 @@ async function send(text, regen){
     if (end.error) throw { code:end.error, left:end.left, text: reply };
     setCredits(end.left);
     if (end.refused && !reply.trim()) throw { code:"refused" };
-    chats[key].push({ role:"assistant", content:reply, t:Date.now() }); save(); limitHit = false; renderUsage();
+    conv.turns.push({ role:"assistant", content:reply, t:Date.now() }); conv.updated = Date.now(); save(); limitHit = false; renderUsage();
     if (end.truncated) status.textContent = "That answer got cut off. Ask for a shorter one.";
     else if (end.refused) status.textContent = "The orb stopped there. Try asking a different way.";
   } catch (e) {
     const code = e && e.code || "upstream_error";
     if (typeof (e && e.left) === "number") setCredits(e.left);
-    if (e && e.text) { chats[key].push({ role:"assistant", content:e.text, t:Date.now() }); save(); }
+    if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
     else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
     else if (code === "kids_personal_info" || code === "kids_blocked" || code === "kids_no_media" || code === "files_too_big") {
       // Take the message back out of the chat (and don't save it)
-      const t = chats[key], lastTurn = t[t.length - 1];
+      const t = conv.turns, lastTurn = t[t.length - 1];
       if (lastTurn && lastTurn.role === "user" && !regen) {
         t.pop(); save();
         if (code !== "kids_blocked") { box.value = lastTurn.content === "Here are my files." ? "" : lastTurn.content; autosize(); pendingFiles = code === "kids_no_media" ? files.filter(f => f.kind === "text") : files; renderAtts(); }
@@ -437,7 +450,8 @@ async function send(text, regen){
     else status.textContent = ERR[code] || ERR.upstream_error;
   } finally {
     busy = false; ctl = null;
-    if (active === key) { if (chats[key].length) renderChat(); else renderHome(); } else updateSend();
+    if (!conv.turns.length) { delete convs[cid]; if (cur === cid) cur = null; }
+    if (cur === cid) renderChat(); else if (!cur && active === key) renderHome(); else { updateSend(); renderSide(); }
   }
 }
 
@@ -448,8 +462,8 @@ function creditShort(model){
 }
 
 function retry(){
-  if (busy || !active) return;
-  const turns = chats[active];
+  if (busy || !curConv()) return;
+  const turns = curConv().turns;
   if (turns.length && turns[turns.length - 1].role === "assistant") turns.pop();
   if (!turns.length || turns[turns.length - 1].role !== "user") return;
   save(); send("", true);
@@ -466,7 +480,7 @@ box.addEventListener("input", () => { autosize(); updateSend(); });
 box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(box.value); } });
 form.addEventListener("submit", e => { e.preventDefault(); if (busy) { ctl?.abort(); return; } send(box.value); });
 form.addEventListener("click", () => { if (!active) nudge(); });
-$("homeBtn").onclick = () => { if (busy) return; renderHome(); };
+$("homeBtn").onclick = () => { if (busy) return; cur = null; renderHome(); };
 let freshNext = false;
 const shell = $("shell"), mobile = () => matchMedia("(max-width:760px)").matches;
 function setSide(open){ shell.classList.toggle("closed", !open); try { if (!mobile()) localStorage.setItem("orbs-side", open ? "1" : "0"); } catch(e) {} }
@@ -475,7 +489,7 @@ setSide(sideOpen);
 $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
-$("sideNew").onclick = () => { if (busy) return; active = null; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
+$("sideNew").onclick = () => { if (busy) return; active = null; cur = null; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
 function openSet(){ $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); }
 $("setBtn").onclick = openSet;
 function closeSet(){ $("settings").hidden = true; $("setBtn").setAttribute("aria-expanded", "false"); wipeArmed(false); }
@@ -495,11 +509,12 @@ function wipeArmed(on){ const w = $("wipeBtn"); w.classList.toggle("armed", on);
 $("wipeBtn").onclick = () => {
   if (busy) return;
   if (!$("wipeBtn").classList.contains("armed")) { wipeArmed(true); return; }
-  for (const k of ORDER) chats[k] = []; save(); wipeArmed(false);
+  for (const id of Object.keys(convs)) deletedIds.add(id);
+  convs = {}; cur = null; save(); wipeArmed(false);
   $("settings").hidden = true; active = null; renderHome(); status.textContent = "All chats deleted.";
 };
 
-let pins = [], recent = [];
+let pins = [];
 function item(k, sub){
   const b = BOTS[k], el = document.createElement("button");
   el.type = "button"; el.className = "nav" + (k === active ? " on" : ""); el.style.setProperty("--c", `var(${b.color})`);
@@ -563,24 +578,52 @@ document.addEventListener("click", closeMenus);
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 let delArm = null, delTimer = null;
 function disarm(){ if (delArm) { delArm.classList.remove("armed"); delArm.innerHTML = TRASH_SVG; } delArm = null; clearTimeout(delTimer); }
-function askDelete(k, btn){
-  if (busy) return;
+function askDelete(id, btn){
+  if (busy || !convs[id]) return;
   if (delArm !== btn) { disarm(); delArm = btn; btn.classList.add("armed"); btn.textContent = "Delete?"; delTimer = setTimeout(disarm, 3500); return; }
   disarm();
-  chats[k] = []; recent = recent.filter(x => x !== k);
-  save();
-  if (active === k && app.dataset.view === "chat") renderHome(); else renderSide();
-  status.textContent = "Chat with " + BOTS[k].name + " deleted.";
+  const name = convs[id].title || "Chat";
+  delete convs[id]; deletedIds.add(id); save();
+  if (cur === id) { cur = null; renderHome(); } else renderSide();
+  status.textContent = `Deleted "${name}".`;
+}
+const PEN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+function startRename(id, row){
+  const c = convs[id]; if (!c) return;
+  const inp = document.createElement("input"); inp.className = "sq rename"; inp.value = c.title || ""; inp.maxLength = 80; inp.setAttribute("aria-label", "Chat name");
+  row.replaceChildren(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = ok => { if (done) return; done = true; if (ok) { const v = inp.value.trim(); if (v) { c.title = v.slice(0, 80); save(); } } renderSide(); if (cur === id) $("topRole").textContent = c.title; };
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); } };
+  inp.onblur = () => finish(true);
+}
+function convItem(c, sub){
+  const b = BOTS[c.orb], el = document.createElement("button");
+  el.type = "button"; el.className = "nav" + (c.id === cur ? " on" : ""); el.style.setProperty("--c", `var(${b.color})`);
+  el.innerHTML = '<span class="g"></span><span class="tx"><b></b><small></small></span>';
+  orbInto(el.querySelector(".g"), c.orb); el.querySelector("b").textContent = c.title || "New chat";
+  el.querySelector("small").textContent = sub || b.name;
+  el.onclick = () => openConv(c.id);
+  el.ondblclick = e => { e.preventDefault(); startRename(c.id, el.parentNode); };
+  return el;
 }
 function renderSide(){
   syncSel();
   const rec = $("recent"); rec.innerHTML = ""; const term = $("q").value.trim().toLowerCase();
-  const shown = [...recent, ...ORDER.filter(k => !recent.includes(k))].filter(k => chats[k].length && (!term || chats[k].some(m => m.content.toLowerCase().includes(term))));
-  for (const k of shown) { const row = document.createElement("div"); row.className = "rrow"; const hit = term ? chats[k].find(m => m.content.toLowerCase().includes(term)) : [...chats[k]].reverse().find(m => m.role === "user"); row.appendChild(item(k, hit ? hit.content.slice(0, 60) : ""));
+  const shown = Object.values(convs).filter(c => c.turns.length && (!term || (c.title || "").toLowerCase().includes(term) || BOTS[c.orb].name.toLowerCase().includes(term) || c.turns.some(m => m.content.toLowerCase().includes(term))))
+    .sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  for (const c of shown) {
+    const row = document.createElement("div"); row.className = "rrow";
+    const hit = term ? c.turns.find(m => m.content.toLowerCase().includes(term)) : null;
+    row.appendChild(convItem(c, hit ? hit.content.slice(0, 60) : ""));
+    const ren = document.createElement("button"); ren.type = "button"; ren.className = "icon-btn delb renb"; ren.innerHTML = PEN_SVG;
+    ren.setAttribute("aria-label", "Rename chat"); ren.title = "Rename";
+    ren.onclick = e => { e.stopPropagation(); startRename(c.id, row); };
     const del = document.createElement("button"); del.type = "button"; del.className = "icon-btn delb"; del.innerHTML = TRASH_SVG;
-    del.setAttribute("aria-label", "Delete chat with " + BOTS[k].name); del.title = "Delete chat";
-    del.onclick = e => { e.stopPropagation(); askDelete(k, del); };
-    row.appendChild(del); rec.appendChild(row); }
+    del.setAttribute("aria-label", "Delete chat"); del.title = "Delete chat";
+    del.onclick = e => { e.stopPropagation(); askDelete(c.id, del); };
+    row.append(ren, del); rec.appendChild(row);
+  }
   if (!shown.length) { const d = document.createElement("div"); d.className = "pin-empty"; d.textContent = term ? "No chats match." : "Your chats will show up here."; rec.appendChild(d); }
   const wrap = $("pins"); wrap.innerHTML = "";
   for (const k of pins) {
@@ -603,21 +646,21 @@ function togglePin(){
 }
 $("q").oninput = renderSide;
 $("pinTop").onclick = togglePin;
-$("delTop").onclick = () => { if (active) askDelete(active, $("delTop")); }; $("pinHome").onclick = togglePin;
+$("delTop").onclick = () => { if (cur) askDelete(cur, $("delTop")); }; $("pinHome").onclick = togglePin;
 
 // Back / forward through the screens you visited
 let hist = [], hi = -1, restoring = false;
 function snap(){
   if (restoring) return;
-  const cur = { active, view: app.dataset.view }, top = hist[hi];
-  if (!top || top.active !== cur.active || top.view !== cur.view) { hist = hist.slice(0, hi + 1); hist.push(cur); hi = hist.length - 1; }
+  const here = { active, cur, view: app.dataset.view }, top = hist[hi];
+  if (!top || top.active !== here.active || top.cur !== here.cur || top.view !== here.view) { hist = hist.slice(0, hi + 1); hist.push(here); hi = hist.length - 1; }
   $("backBtn").disabled = hi <= 0; $("fwdBtn").disabled = hi >= hist.length - 1;
 }
 function travel(d){
   if (busy) return;
   const n = hi + d; if (n < 0 || n >= hist.length) return;
-  hi = n; const s = hist[n]; restoring = true; active = s.active; status.textContent = "";
-  if (s.view === "chat" && active && chats[active].length) renderChat(); else renderHome();
+  hi = n; const s = hist[n]; restoring = true; active = s.active; cur = s.cur && convs[s.cur] ? s.cur : null; status.textContent = "";
+  if (s.view === "chat" && cur) renderChat(); else renderHome();
   restoring = false; $("backBtn").disabled = hi <= 0; $("fwdBtn").disabled = hi >= hist.length - 1; renderSide();
 }
 $("backBtn").onclick = () => travel(-1); $("fwdBtn").onclick = () => travel(1);
@@ -661,8 +704,8 @@ $("prof").onclick = openSet;
 $("prof").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSet(); } };
 
 function resetState(){
-  for (const k of ORDER) chats[k] = [];
-  pins = []; recent = []; prefs = {}; lastSent = {};
+  convs = {}; cur = null; deletedIds.clear(); legacyDel.clear();
+  pins = []; prefs = {}; lastSent = {};
   active = null; hist = []; hi = -1; credits = null; limitHit = false;
   log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts(); stopVoice();
 }
@@ -683,29 +726,54 @@ function cloudSave(){ if (!user || !loaded) return; clearTimeout(cloudT); cloudT
 async function flush(){
   const uid = user && user.uid; if (!uid || !loaded) return;
   try {
-    for (const k of ORDER) {
-      const turns = fitTurns(chats[k]), j = JSON.stringify(turns);
-      if (lastSent["chat_" + k] !== j) { await F.setDoc(F.doc(db, "users", uid, "data", "chat_" + k), { turns }); lastSent["chat_" + k] = j; }
+    for (const c of Object.values(convs)) {
+      if (!c.turns.length) continue;
+      const data = { orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created || Date.now(), updated:c.updated || Date.now() };
+      const js = JSON.stringify(data);
+      if (lastSent["c_" + c.id] !== js) { await F.setDoc(F.doc(db, "users", uid, "chats", c.id), data); lastSent["c_" + c.id] = js; }
     }
-    const meta = { pins, recent, prefs }, mj = JSON.stringify(meta);
+    for (const id of Array.from(deletedIds)) { await F.deleteDoc(F.doc(db, "users", uid, "chats", id)); deletedIds.delete(id); delete lastSent["c_" + id]; }
+    // Old one-chat-per-orb saves are moved into the new chat list above, then removed
+    for (const docId of Array.from(legacyDel)) { await F.deleteDoc(F.doc(db, "users", uid, "data", docId)); legacyDel.delete(docId); }
+    const meta = { pins, prefs }, mj = JSON.stringify(meta);
     if (lastSent.settings !== mj) { await F.setDoc(F.doc(db, "users", uid, "data", "settings"), JSON.parse(mj)); lastSent.settings = mj; }
   } catch (e) { status.textContent = "Couldn't save your chats right now. Check your connection."; }
 }
 async function loadAccount(u){
   loaded = false; resetState();
-  const snap = await F.getDocs(F.collection(db, "users", u.uid, "data"));
+  const [chatSnap, snap] = await Promise.all([F.getDocs(F.collection(db, "users", u.uid, "chats")), F.getDocs(F.collection(db, "users", u.uid, "data"))]);
+  chatSnap.forEach(d => {
+    const v = d.data() || {};
+    if (!Object.hasOwn(BOTS, v.orb)) return;
+    const c = { id:d.id, orb:v.orb, title: typeof v.title === "string" ? v.title.slice(0, 80) : "", turns: cleanTurns(v.turns),
+      created: typeof v.created === "number" ? v.created : Date.now(), updated: typeof v.updated === "number" ? v.updated : Date.now() };
+    if (!c.turns.length) return;
+    convs[c.id] = c;
+    lastSent["c_" + c.id] = JSON.stringify({ orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created, updated:c.updated });
+  });
+  let migrate = false;
   snap.forEach(d => {
     const v = d.data() || {};
-    if (d.id.startsWith("chat_")) { const k = d.id.slice(5); if (Object.hasOwn(BOTS, k)) { chats[k] = cleanTurns(v.turns); lastSent[d.id] = JSON.stringify(chats[k]); } }
+    if (d.id.startsWith("chat_")) {
+      // Older saves had one chat per orb: turn each into its own chat in the new list
+      const k = d.id.slice(5), turns = cleanTurns(v.turns);
+      if (Object.hasOwn(BOTS, k) && turns.length) {
+        const id = "m_" + k;
+        if (!convs[id]) { const firstUser = turns.find(m => m.role === "user");
+          convs[id] = { id, orb:k, title: titleFrom(firstUser ? firstUser.content : ""), turns, created: turns[0].t || Date.now(), updated: turns[turns.length - 1].t || Date.now() }; }
+        migrate = true;
+      }
+      legacyDel.add(d.id);
+    }
     else if (d.id === "settings") {
       pins = Array.isArray(v.pins) ? v.pins.filter(k => Object.hasOwn(BOTS, k)) : [];
-      recent = Array.isArray(v.recent) ? v.recent.filter(k => Object.hasOwn(BOTS, k)) : [];
       prefs = v.prefs && typeof v.prefs === "object" ? JSON.parse(JSON.stringify(v.prefs)) : {};
-      lastSent.settings = JSON.stringify({ pins, recent, prefs });
+      lastSent.settings = JSON.stringify({ pins, prefs });
     }
   });
   try { const us = await F.getDoc(F.doc(db, "usage", u.uid)); creditsFromDoc(us.exists() ? us.data() : null); } catch (e) { credits = null; }
   loaded = true;
+  if (migrate || legacyDel.size) cloudSave();
 }
 
 // ---------- Sign-in screen ----------
@@ -852,6 +920,7 @@ async function enter(u){
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
   pending = null; user = u; renderProfile(); renderUsage(); renderKids(); gate.hidden = true; renderHome();
+  cloudSave(); // finishes moving any old-style chats
 }
 
 // ---------- Settings: sign out, delete ----------
@@ -866,8 +935,10 @@ $("killBtn").onclick = () => busyBtn($("killBtn"), async () => {
   if (Date.now() - signedInAt > 4 * 60 * 1000) { $("setMsg").textContent = "For safety, sign out, sign back in, then delete your account within a few minutes."; return; }
   try {
     loaded = false; clearTimeout(cloudT);
-    const snap = await F.getDocs(F.collection(db, "users", user.uid, "data"));
-    for (const d of snap.docs) await F.deleteDoc(d.ref);
+    for (const col of ["data", "chats"]) {
+      const snap = await F.getDocs(F.collection(db, "users", user.uid, col));
+      for (const d of snap.docs) await F.deleteDoc(d.ref);
+    }
     await A.deleteUser(user);
     closeSet();
   } catch (e) {
@@ -983,7 +1054,7 @@ if (SR) {
 form.addEventListener("submit", stopVoice, true);
 
 // ---------- Sidebar extras: search, what's new, shortcuts ----------
-const NEWS_VERSION = "2026-10-voice";
+const NEWS_VERSION = "2026-10-multichat";
 function focusSearch(){ setSide(true); const q = $("q"); q.focus(); q.select(); }
 $("searchNav").onclick = focusSearch;
 try { $("newDot").hidden = localStorage.getItem("orbs-news") === NEWS_VERSION; } catch(_) { $("newDot").hidden = false; }
