@@ -5,7 +5,7 @@ import { makeKidsHandler } from "./_kids.js";
 const handler = makeKidsHandler({
   verifyToken: async (t) => {
     let a;
-    try { a = admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
+    try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
     return a.auth.verifyIdToken(t);
   },
   getKids,

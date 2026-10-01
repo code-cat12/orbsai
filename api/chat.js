@@ -5,7 +5,7 @@ import { makeChatHandler } from "./_core.js";
 
 // Daily credits live in Firestore under usage/{uid}. Browsers can read their own, but only this server can change them.
 async function charge(uid, cost, limits, day) {
-  const { db } = admin();
+  const { db } = await admin();
   const userRef = db.doc(`usage/${uid}`), siteRef = db.doc("usage/_site");
   return db.runTransaction(async (tx) => {
     const [u, s] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
@@ -21,7 +21,7 @@ async function charge(uid, cost, limits, day) {
 }
 
 async function refund(uid, cost, day) {
-  const { db } = admin();
+  const { db } = await admin();
   const userRef = db.doc(`usage/${uid}`), siteRef = db.doc("usage/_site");
   await db.runTransaction(async (tx) => {
     const [u, s] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
@@ -33,7 +33,7 @@ async function refund(uid, cost, day) {
 const handler = makeChatHandler({
   verifyToken: async (token) => {
     let a;
-    try { a = admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
+    try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
     return a.auth.verifyIdToken(token);
   },
   charge,
