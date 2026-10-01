@@ -306,7 +306,7 @@ async function send(text, regen){
   if ((!text && !regen) || busy) return;
   if (!user) return;
   const key = active, b = BOTS[key], model = MODELS[pf(key).m];
-  if (credits && credits.left < model.cost) { creditShort(model); return; }
+  if (credits && credits.left < msgCost(pf(key))) { creditShort(model); return; }
   if (!regen) chats[key].push({ role:"user", content:text, t:Date.now() }); save();
   recent = [key, ...recent.filter(x => x !== key)]; save();
   box.value = ""; autosize();
@@ -326,7 +326,7 @@ async function send(text, regen){
       res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
-        body: JSON.stringify({ orb:key, model:pf(key).m, messages:ctx }),
+        body: JSON.stringify({ orb:key, model:pf(key).m, effort:pf(key).e, messages:ctx }),
         signal: ctl.signal
       });
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
@@ -441,21 +441,54 @@ function item(k, sub){
 const MODELS = [{n:"Koa",v:"1.01",cost:1,base:"Claude Haiku 4.5",d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,base:"Claude Sonnet 5.5",d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,base:"Claude Opus 5.5",d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,base:"Claude Fable 5.1",d:"the most careful, takes its time"}];
 const creditWord = n => n + (n === 1 ? " credit" : " credits");
 let prefs = {};
-function pf(k){ if (!prefs || typeof prefs !== "object" || Object.isFrozen(prefs)) prefs = Object.assign({}, prefs || {}); let p = prefs[k]; if (!p || typeof p !== "object" || Object.isFrozen(p) || !(p.m >= 0 && p.m < MODELS.length)) { p = { m: (p && p.m >= 0 && p.m < MODELS.length) ? p.m : 1 }; prefs[k] = p; } return p; }
+// Real effort levels (the server maps these to Claude's low/medium/high/xhigh/max). Koa (Haiku) has no effort setting.
+const EFFORTS = [{n:"Low",d:"quickest and cheapest, thinks a little",mult:1},{n:"Medium",d:"good balance for everyday chats",mult:1},{n:"High",d:"thinks things through more carefully",mult:2},{n:"Extra",d:"thinks a lot, slower and pricier",mult:3},{n:"Max",d:"thinks as hard as it can, slowest and most expensive",mult:4}];
+const hasEffort = m => m !== 0;
+const msgCost = p => MODELS[p.m].cost * (hasEffort(p.m) ? EFFORTS[p.e].mult : 1);
+function pf(k){
+  if (!prefs || typeof prefs !== "object" || Object.isFrozen(prefs)) prefs = Object.assign({}, prefs || {});
+  const old = prefs[k] && typeof prefs[k] === "object" ? prefs[k] : {};
+  const okM = Number.isInteger(old.m) && old.m >= 0 && old.m < MODELS.length;
+  const okE = Number.isInteger(old.e) && old.e >= 0 && old.e < EFFORTS.length;
+  if (!okM || !okE || Object.isFrozen(old) || prefs[k] !== old) prefs[k] = { m: okM ? old.m : 1, e: okE ? old.e : 1 };
+  return prefs[k];
+}
 function savePrefs(){ cloudSave(); }
+function menuItem(title, cost, desc, selected, onPick){
+  const it = document.createElement("button"); it.type = "button"; it.className = "mitem"; it.setAttribute("role","option"); it.setAttribute("aria-selected", String(selected));
+  const b = document.createElement("b"), d = document.createElement("span"); b.textContent = title;
+  if (cost) { const c = document.createElement("span"); c.className = "cost"; c.textContent = cost; b.appendChild(c); }
+  d.textContent = desc; it.append(b, d); it.onclick = onPick; return it;
+}
+function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["effMenu","effBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
 function syncSel(){
   $("sels").hidden = !active; if (!active) return;
   const p = pf(active), m0 = MODELS[p.m];
-  $("modelBtn").textContent = m0.n + " " + m0.v + " \u25BE";
+  $("modelBtn").textContent = m0.n + " " + m0.v + " ▾";
   const menu = $("modelMenu"); menu.innerHTML = "";
-  MODELS.forEach((m, i) => { const it = document.createElement("button"); it.type = "button"; it.className = "mitem"; it.setAttribute("role","option"); it.setAttribute("aria-selected", String(i === p.m));
-    const b = document.createElement("b"), d = document.createElement("span"); b.textContent = m.n + " " + m.v; if (credits) { const c = document.createElement("span"); c.className = "cost"; c.textContent = creditWord(m.cost); b.appendChild(c); } d.textContent = m.d.charAt(0).toUpperCase() + m.d.slice(1) + ". Built on " + m.base + ".";
-    it.append(b, d); it.onclick = () => { pf(active).m = i; savePrefs(); menu.hidden = true; $("modelBtn").setAttribute("aria-expanded","false"); syncSel(); }; menu.appendChild(it); });
+  MODELS.forEach((m, i) => menu.appendChild(menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", m.d.charAt(0).toUpperCase() + m.d.slice(1) + ". Built on " + m.base + ".", i === p.m,
+    () => { pf(active).m = i; savePrefs(); closeMenus(); syncSel(); })));
+  $("effWrap").hidden = !hasEffort(p.m);
+  $("effBtn").textContent = EFFORTS[p.e].n + " ▾";
+  const em = $("effMenu"); em.innerHTML = "";
+  EFFORTS.forEach((e, i) => em.appendChild(menuItem(e.n, credits ? "×" + e.mult : "", e.d.charAt(0).toUpperCase() + e.d.slice(1) + ".", i === p.e,
+    () => { pf(active).e = i; savePrefs(); closeMenus(); syncSel(); })));
   hint();
 }
-function hint(){ if (!active) { $("hint").textContent = ""; return; } const m = MODELS[pf(active).m]; $("hint").textContent = m.n + " " + m.v + " (" + m.base + "): " + m.d + "." + (credits ? " Uses " + creditWord(m.cost) + " per message." : ""); }
-$("modelBtn").onclick = e => { e.stopPropagation(); const mm = $("modelMenu"); mm.hidden = !mm.hidden; $("modelBtn").setAttribute("aria-expanded", String(!mm.hidden)); if (!mm.hidden) mm.classList.toggle("down", $("form").getBoundingClientRect().top < mm.offsetHeight + 16); };
-document.addEventListener("click", () => { $("modelMenu").hidden = true; $("modelBtn").setAttribute("aria-expanded","false"); });
+function hint(){
+  if (!active) { $("hint").textContent = ""; return; }
+  const p = pf(active), m = MODELS[p.m];
+  $("hint").textContent = m.n + " " + m.v + " (" + m.base + "): " + m.d + "." +
+    (hasEffort(p.m) ? " " + EFFORTS[p.e].n + " effort: " + EFFORTS[p.e].d + "." : " No effort setting on Koa.") +
+    (credits ? " Uses " + creditWord(msgCost(p)) + " per message." : "");
+}
+function toggleMenu(menuId, btnId){
+  return e => { e.stopPropagation(); const mm = $(menuId), open = mm.hidden; closeMenus(); mm.hidden = !open; $(btnId).setAttribute("aria-expanded", String(open));
+    if (open) mm.classList.toggle("down", $("form").getBoundingClientRect().top < mm.offsetHeight + 16); };
+}
+$("modelBtn").onclick = toggleMenu("modelMenu", "modelBtn");
+$("effBtn").onclick = toggleMenu("effMenu", "effBtn");
+document.addEventListener("click", closeMenus);
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 let delArm = null, delTimer = null;
 function disarm(){ if (delArm) { delArm.classList.remove("armed"); delArm.innerHTML = TRASH_SVG; } delArm = null; clearTimeout(delTimer); }

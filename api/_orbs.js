@@ -24,10 +24,22 @@ export const ORDER = ["neb", "tech", "cook", "game", "web", "write", "study", "m
 
 // Orb model name -> real Claude model. "cost" is how many daily credits one message uses.
 // Bigger models cost you more money per message, so they cost more credits.
+// "effort" = the model supports real effort levels (Haiku 4.5 doesn't).
 export const MODELS = [
-  { name: "Koa 1.01",       id: "claude-haiku-4-5-20251001", cost: 1,  maxTokens: 1500 },
-  { name: "Lumina 1.02",    id: "claude-sonnet-5-5",         cost: 3,  maxTokens: 2000 },
-  { name: "Chrysalis 1.02", id: "claude-opus-5-5",           cost: 6,  maxTokens: 2000 },
-  { name: "Mythos 1.02",    id: "claude-fable-5-1",          cost: 10, maxTokens: 2000,
+  { name: "Koa 1.01",       id: "claude-haiku-4-5-20251001", cost: 1,  maxTokens: 4000, effort: false },
+  { name: "Lumina 1.02",    id: "claude-sonnet-5-5",         cost: 3,  effort: true },
+  { name: "Chrysalis 1.02", id: "claude-opus-5-5",           cost: 6,  effort: true },
+  { name: "Mythos 1.02",    id: "claude-fable-5-1",          cost: 10, effort: true,
     extra: "Go all out: think very carefully, check your work, and give the best answer you can." },
 ];
+
+// Real effort levels. Thinking counts toward maxTokens, so higher effort gets more room.
+// "mult" multiplies the credit cost (only matters if you turn credits on).
+export const EFFORTS = [
+  { name: "Low",    id: "low",    maxTokens: 4000,  mult: 1 },
+  { name: "Medium", id: "medium", maxTokens: 8000,  mult: 1 },
+  { name: "High",   id: "high",   maxTokens: 16000, mult: 2 },
+  { name: "Extra",  id: "xhigh",  maxTokens: 32000, mult: 3 },
+  { name: "Max",    id: "max",    maxTokens: 64000, mult: 4 },
+];
+export const DEFAULT_EFFORT = 1; // Medium

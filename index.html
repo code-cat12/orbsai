@@ -85,7 +85,7 @@ button{font:inherit;color:inherit}
 .nav .tx{display:flex;flex-direction:column;min-width:0;line-height:1.25}
 .nav .tx b{font-weight:500}
 .nav .tx small{color:var(--muted);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sels{display:flex;gap:6px;margin-left:auto;min-width:0}
+.sels{display:flex;gap:6px;margin-left:auto;min-width:0;flex-wrap:wrap;justify-content:flex-end}
 .sels select{font:inherit;font-size:.8rem;color:var(--ink);background:var(--me);border:none;border-radius:8px;padding:5px 4px;max-width:118px}
 .sq{margin:4px 4px 6px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--field);color:var(--ink);font:inherit;font-size:.86rem;min-width:0}
 .sq:focus{outline:none;border-color:var(--muted)}
@@ -396,7 +396,7 @@ textarea:disabled{pointer-events:none}
       <textarea id="box" rows="2" placeholder="Pick an orb below to start…" disabled></textarea>
       <div class="bar">
         <span class="who"><span class="dot"></span><span id="whoText">No orb picked</span><button class="icon-btn star" id="pinHome" type="button" aria-label="Pin this orb" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button></span>
-        <span class="sels" id="sels" hidden><span class="msel"><button type="button" class="mbtn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false"></button><div class="mmenu" id="modelMenu" role="listbox" aria-label="Model" hidden></div></span></span>
+        <span class="sels" id="sels" hidden><span class="msel"><button type="button" class="mbtn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false"></button><div class="mmenu" id="modelMenu" role="listbox" aria-label="Model" hidden></div></span><span class="msel" id="effWrap"><button type="button" class="mbtn" id="effBtn" aria-haspopup="listbox" aria-expanded="false" title="Effort"></button><div class="mmenu" id="effMenu" role="listbox" aria-label="Effort" hidden></div></span></span>
         <button class="send" id="send" type="submit" aria-label="Send" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>

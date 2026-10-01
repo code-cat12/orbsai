@@ -1,7 +1,7 @@
 // The chat endpoint's logic, kept apart from Firebase/Vercel so it can be tested on its own.
 // Flow: check who's asking -> clean up their messages -> take credits -> ask Claude -> stream the reply back.
 import { createHash } from "node:crypto";
-import { ORBS, ORDER, MODELS } from "./_orbs.js";
+import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT } from "./_orbs.js";
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -28,6 +28,8 @@ function num(v, fallback) {
 export function cleanRequest(body) {
   if (!body || typeof body !== "object") return { error: "bad_request" };
   const { orb, model, messages } = body;
+  const effort = body.effort === undefined ? DEFAULT_EFFORT : body.effort;
+  if (!Number.isInteger(effort) || effort < 0 || effort >= EFFORTS.length) return { error: "bad_request" };
   if (typeof orb !== "string" || !Object.hasOwn(ORBS, orb)) return { error: "bad_request" };
   if (!Number.isInteger(model) || model < 0 || model >= MODELS.length) return { error: "bad_request" };
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 400) return { error: "bad_request" };
@@ -48,7 +50,7 @@ export function cleanRequest(body) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, turns };
+  return { orb, model, effort, turns };
 }
 
 export function systemPrompt(orb, model) {
@@ -77,17 +79,19 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
     if (req.error) return json(400, { error: req.error });
 
     const model = MODELS[req.model];
+    const effort = model.effort ? EFFORTS[req.effort] : null;
+    const cost = model.cost * (effort ? effort.mult : 1);
     const day = dayKey();
     // No limits unless you set DAILY_CREDITS and/or SITE_DAILY_CREDITS in Vercel.
     const limited = !!(env.DAILY_CREDITS || env.SITE_DAILY_CREDITS);
     const limits = { perUser: num(env.DAILY_CREDITS, 1e9), site: num(env.SITE_DAILY_CREDITS, 1e9) };
     let paid = { ok: true, left: null };
     if (limited) {
-      try { paid = await charge(user.uid, model.cost, limits, day); } catch { return json(503, { error: "upstream_error" }); }
+      try { paid = await charge(user.uid, cost, limits, day); } catch { return json(503, { error: "upstream_error" }); }
       if (!paid.ok) return json(429, { error: paid.reason, left: paid.left });
     }
-    const giveBack = async () => { if (limited) await refund(user.uid, model.cost, day).catch(() => {}); };
-    const leftAfterRefund = () => (limited ? paid.left + model.cost : null);
+    const giveBack = async () => { if (limited) await refund(user.uid, cost, day).catch(() => {}); };
+    const leftAfterRefund = () => (limited ? paid.left + cost : null);
 
     let upstream;
     try {
@@ -100,7 +104,8 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
         },
         body: JSON.stringify({
           model: model.id,
-          max_tokens: model.maxTokens,
+          max_tokens: effort ? effort.maxTokens : model.maxTokens,
+          ...(effort ? { output_config: { effort: effort.id } } : {}),
           system: systemPrompt(req.orb, req.model),
           messages: req.turns,
           stream: true,
