@@ -57,10 +57,30 @@ let chats = {};
 for (const k of ORDER) chats[k] = [];
 function save(){ cloudSave(); }
 
-function greeting(){
-  const h = new Date().getHours();
-  return h < 5 ? "Up late, huh?" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+// Greeting that follows the time on your device and uses your name.
+// A few versions per time of day; it picks one per hour so it doesn't flicker around.
+const GREETS = {
+  late:      ["Up late, {n}?", "Burning the midnight oil, {n}?", "Still awake, {n}?"],
+  morning:   ["Good morning, {n}", "Morning, {n}", "Rise and shine, {n}"],
+  afternoon: ["Good afternoon, {n}", "Hey there, {n}", "Afternoon, {n}"],
+  evening:   ["Good evening, {n}", "Evening, {n}", "Welcome back, {n}"],
+  night:     ["Good night, {n}", "Winding down, {n}?", "Night owl mode, {n}?"],
+};
+function firstName(){
+  if (!user) return "";
+  const raw = (user.displayName || (user.email || "").split("@")[0] || "").trim();
+  const first = raw.split(/\s+/)[0] || "";
+  return first ? first.charAt(0).toUpperCase() + first.slice(1) : "";
 }
+function greeting(){
+  const now = new Date(), h = now.getHours();
+  const part = h < 5 ? "late" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 22 ? "evening" : "night";
+  const list = GREETS[part], pick = list[(now.getDate() * 24 + h) % list.length];
+  const n = firstName();
+  return n ? pick.replace("{n}", n) : pick.replace(/,? \{n\}/, "").replace("{n}", "");
+}
+// Keep it up to date if the page stays open across the hour
+setInterval(() => { if (app.dataset.view === "home" && $("greet")) $("greet").textContent = greeting(); }, 60000);
 
 // Tiny safe markdown: escape first, then code fences, inline code, bold, lists, headings, paragraphs
 function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
