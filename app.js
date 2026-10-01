@@ -513,7 +513,7 @@ function menuItem(title, cost, desc, selected, onPick){
 }
 function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["effMenu","effBtn"],["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
 function syncSel(){
-  $("sels").hidden = !active; if (!active) return;
+  $("sels").hidden = !active; if (!active) { $("hint").textContent = ""; return; }
   const p = pf(active), m0 = MODELS[p.m];
   $("modelBtn").textContent = m0.n + " " + m0.v + " ▾";
   const menu = $("modelMenu"); menu.innerHTML = "";
@@ -801,6 +801,7 @@ function renderKids(){
     ? "Orbs gives kid-safe answers, checks every message and reply with an AI safety check, and blocks personal info."
     : "Extra safety for kids and teens: kid-safe answers, an AI safety check on every message and reply, and a block on sharing personal info.";
   $("kidsPin2").hidden = kids.on; $("kidsGo").textContent = kids.on ? "Turn off with PIN" : "Turn on Kids Mode";
+  $("kidsPill").hidden = !kids.on;
   $("aiNote").textContent = (kids.on ? "🛡️ Kids Mode is on. " : "") + "Orbs is AI and can make mistakes. Please double-check important info.";
 }
 $("kidsBtn").onclick = () => { $("kidsForm").hidden = false; $("kidsBtn").hidden = true; $("kidsPin").value = ""; $("kidsPin2").value = ""; $("kidsPin").focus(); };
@@ -961,10 +962,28 @@ if (SR) {
 }
 form.addEventListener("submit", stopVoice, true);
 
+// ---------- Sidebar extras: search, what's new, shortcuts ----------
+const NEWS_VERSION = "2026-10-voice";
+function focusSearch(){ setSide(true); const q = $("q"); q.focus(); q.select(); }
+$("searchNav").onclick = focusSearch;
+try { $("newDot").hidden = localStorage.getItem("orbs-news") === NEWS_VERSION; } catch(_) { $("newDot").hidden = false; }
+document.addEventListener("click", e => { if (e.target.closest('[data-open="newsModal"]')) { $("newDot").hidden = true; try { localStorage.setItem("orbs-news", NEWS_VERSION); } catch(_) {} } }, true);
+document.addEventListener("keydown", e => {
+  if (!user || !gate.hidden) return;
+  const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  const typing = /^(input|textarea|select)$/i.test((document.activeElement || {}).tagName || "");
+  if (mod && k === "k") { e.preventDefault(); focusSearch(); }
+  else if (mod && e.shiftKey && k === "o") { e.preventDefault(); $("sideNew").click(); }
+  else if (mod && k === "b") { e.preventDefault(); setSide(shell.classList.contains("closed")); }
+  else if (mod && k === ",") { e.preventDefault(); openSet(); }
+  else if (!mod && k === "/" && !typing) { e.preventDefault(); box.focus(); }
+  else if (k === "escape" && busy && POPUPS.every(id => $(id).hidden) && $("settings").hidden) { ctl?.abort(); }
+});
+
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal"];
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal"];
 function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
