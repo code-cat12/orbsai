@@ -22,14 +22,14 @@ export const ORBS = {
 };
 export const ORDER = ["neb", "tech", "cook", "game", "web", "write", "study", "music", "lang"];
 
-// Orb model name -> real Claude model. "cost" is how many daily credits one message uses.
-// Bigger models cost you more money per message, so they cost more credits.
-// "effort" = the model supports real effort levels (Haiku 4.5 doesn't).
+// Orbs models, in the same order as FAMILIES in _models.js (Koa, Lumina, Chrysalis, Mythos).
+// Which real Claude model each one uses is picked automatically (always the newest in its family).
+// "cost" is how many daily credits one message uses (only matters if credits are on).
 export const MODELS = [
-  { name: "Koa 1.01",       id: "claude-haiku-4-5-20251001", cost: 1,  maxTokens: 4000, effort: false },
-  { name: "Lumina 1.02",    id: "claude-sonnet-5-5",         cost: 3,  effort: true },
-  { name: "Chrysalis 1.02", id: "claude-opus-5-5",           cost: 6,  effort: true },
-  { name: "Mythos 1.02",    id: "claude-fable-5-1",          cost: 10, effort: true,
+  { name: "Koa",       cost: 1,  maxTokens: 4000 },
+  { name: "Lumina",    cost: 3 },
+  { name: "Chrysalis", cost: 6 },
+  { name: "Mythos",    cost: 10,
     extra: "Go all out: think very carefully, check your work, and give the best answer you can." },
 ];
 

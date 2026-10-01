@@ -51,12 +51,14 @@ If you ever want limits, add `DAILY_CREDITS` and/or `SITE_DAILY_CREDITS` in Verc
 Koa 1 · Lumina 3 · Chrysalis 6 · Mythos 10, refilling at midnight New York time. The credit display only shows up when limits are on.
 When your Claude money runs out, people see a "ran out of Claude money" message.
 
-| Orb model | Real Claude model |
-|---|---|
-| Koa 1.01 | Claude Haiku 4.5 |
-| Lumina 1.02 | Claude Sonnet 5.5 |
-| Chrysalis 1.02 | Claude Opus 5.5 |
-| Mythos 1.02 | Claude Fable 5.1 |
+| Orb model | Claude family | Started on |
+|---|---|---|
+| Koa | Haiku | Claude Haiku 4.5 (Koa 1.01) |
+| Lumina | Sonnet | Claude Sonnet 5.5 (Lumina 1.02) |
+| Chrysalis | Opus | Claude Opus 5.5 (Chrysalis 1.02) |
+| Mythos | Fable | Claude Fable 5.1 (Mythos 1.02) |
+
+**Auto-updating:** about once an hour the server checks which Claude models exist and switches each orb model to the newest one in its family. Every newer release bumps the Orbs version by .01 (1.02, 1.03 … 1.07), and the one after 1.07 starts a new generation at 2.01. The descriptions update by themselves. If Anthropic's list can't be reached, it keeps using the models above.
 
 Also set a monthly spending limit in the Claude Console. That's your final safety net.
 

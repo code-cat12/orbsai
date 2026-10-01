@@ -2,6 +2,7 @@
 // Flow: check who's asking -> clean up their messages -> take credits -> ask Claude -> stream the reply back.
 import { createHash } from "node:crypto";
 import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT } from "./_orbs.js";
+import { latestModels } from "./_models.js";
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -79,7 +80,8 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
     if (req.error) return json(400, { error: req.error });
 
     const model = MODELS[req.model];
-    const effort = model.effort ? EFFORTS[req.effort] : null;
+    const live = (await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl }))[req.model];
+    const effort = live.effort ? EFFORTS[req.effort] : null;
     const cost = model.cost * (effort ? effort.mult : 1);
     const day = dayKey();
     // No limits unless you set DAILY_CREDITS and/or SITE_DAILY_CREDITS in Vercel.
@@ -103,8 +105,8 @@ export function makeChatHandler({ verifyToken, charge, refund, fetchImpl = fetch
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          model: model.id,
-          max_tokens: effort ? effort.maxTokens : model.maxTokens,
+          model: live.id,
+          max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
           ...(effort ? { output_config: { effort: effort.id } } : {}),
           system: systemPrompt(req.orb, req.model),
           messages: req.turns,

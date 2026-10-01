@@ -438,12 +438,12 @@ function item(k, sub){
   el.onclick = () => { pick(k); if (mobile()) setSide(false); };
   return el;
 }
-const MODELS = [{n:"Koa",v:"1.01",cost:1,base:"Claude Haiku 4.5",d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,base:"Claude Sonnet 5.5",d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,base:"Claude Opus 5.5",d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,base:"Claude Fable 5.1",d:"the most careful, takes its time"}];
+const MODELS = [{n:"Koa",v:"1.01",cost:1,effort:false,base:"Claude Haiku 4.5",d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,effort:true,base:"Claude Sonnet 5.5",d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,effort:true,base:"Claude Opus 5.5",d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,effort:true,base:"Claude Fable 5.1",d:"the most careful, takes its time"}];
 const creditWord = n => n + (n === 1 ? " credit" : " credits");
 let prefs = {};
 // Real effort levels (the server maps these to Claude's low/medium/high/xhigh/max). Koa (Haiku) has no effort setting.
 const EFFORTS = [{n:"Low",d:"quickest and cheapest, thinks a little",mult:1},{n:"Medium",d:"good balance for everyday chats",mult:1},{n:"High",d:"thinks things through more carefully",mult:2},{n:"Extra",d:"thinks a lot, slower and pricier",mult:3},{n:"Max",d:"thinks as hard as it can, slowest and most expensive",mult:4}];
-const hasEffort = m => m !== 0;
+const hasEffort = m => MODELS[m].effort !== false;
 const msgCost = p => MODELS[p.m].cost * (hasEffort(p.m) ? EFFORTS[p.e].mult : 1);
 function pf(k){
   if (!prefs || typeof prefs !== "object" || Object.isFrozen(prefs)) prefs = Object.assign({}, prefs || {});
@@ -479,7 +479,7 @@ function hint(){
   if (!active) { $("hint").textContent = ""; return; }
   const p = pf(active), m = MODELS[p.m];
   $("hint").textContent = m.n + " " + m.v + " (" + m.base + "): " + m.d + "." +
-    (hasEffort(p.m) ? " " + EFFORTS[p.e].n + " effort: " + EFFORTS[p.e].d + "." : " No effort setting on Koa.") +
+    (hasEffort(p.m) ? " " + EFFORTS[p.e].n + " effort: " + EFFORTS[p.e].d + "." : " No effort setting on " + m.n + ".") +
     (credits ? " Uses " + creditWord(msgCost(p)) + " per message." : "");
 }
 function toggleMenu(menuId, btnId){
@@ -746,8 +746,25 @@ $("killBtn").onclick = () => busyBtn($("killBtn"), async () => {
   }
 });
 
+// ---------- Newest models ----------
+// The server always uses the newest Claude model in each family; this shows its name and Orbs version.
+async function loadModels(){
+  try {
+    const r = await fetch("/api/models"); if (!r.ok) return;
+    const j = await r.json();
+    (j.models || []).forEach((m, i) => {
+      if (!MODELS[i] || !m) return;
+      if (typeof m.version === "string" && /^\d+\.\d{2}$/.test(m.version)) MODELS[i].v = m.version;
+      if (typeof m.base === "string" && m.base) MODELS[i].base = m.base;
+      if (typeof m.effort === "boolean") MODELS[i].effort = m.effort;
+    });
+    syncSel();
+  } catch (e) {}
+}
+
 // ---------- Start ----------
 renderUsage();
+loadModels();
 (async () => {
   showGate("loading");
   const ready = firebaseConfig && ["apiKey","authDomain","projectId","appId"].every(k => firebaseConfig[k] && firebaseConfig[k] !== "PASTE_HERE");
