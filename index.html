@@ -2,221 +2,30 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Orbs</title>
-<meta name="description" content="Nine little helpers in one chat. Orbs runs on your own Claude account.">
+<meta http-equiv="refresh" content="0; url=https://claude.ai/artifact/NL4mhT8bD8zoPpbKFowDJq">
+<link rel="canonical" href="https://claude.ai/artifact/NL4mhT8bD8zoPpbKFowDJq">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%220%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%234f7bff%22/%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%239b5cff%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ff5fb8%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg%20transform%3D%22rotate%28-22%2016%2016%29%22%3E%3Cpath%20d%3D%22M30%2016A14%205%200%200%200%202%2016%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.6%22/%3E%3C/g%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%229.5%22%20fill%3D%22%23141416%22/%3E%3Crect%20x%3D%2212.1%22%20y%3D%2212.2%22%20width%3D%222.6%22%20height%3D%227%22%20rx%3D%221.3%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%2217.3%22%20y%3D%2212.2%22%20width%3D%222.6%22%20height%3D%227%22%20rx%3D%221.3%22%20fill%3D%22%23fff%22/%3E%3Cg%20transform%3D%22rotate%28-22%2016%2016%29%22%3E%3Cpath%20d%3D%22M2%2016A14%205%200%200%200%2030%2016%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22/%3E%3C/g%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Source+Serif+4:opsz,wght@8..60,500&display=swap">
 <style>
-/* Layout: one centered column: logo, name, tagline, the orb lineup, one button */
-:root{
-  --bg:#f6f5f2; --panel:#ffffff; --field:#ffffff; --ink:#1c1b19; --muted:#6e6b64; --line:#dedbd4;
-  --me:#e9e7e1; --me-ink:#1c1b19; --bubble:transparent; --code:#1b1b1a; --code-ink:#e6e3dc;
-  --accent:#3b6fd8;
-  --display:"Source Serif 4", Georgia, "Times New Roman", serif;
-  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
-  --body:"Patrick Hand", "Comic Sans MS", "Segoe Print", system-ui, sans-serif;
-  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
-  --c-tech:#1f6fff; --c-cook:#ff6b1a; --c-game:#00b060; --c-web:#8b3dff; --c-write:#ffb300; --c-study:#00b3a4; --c-music:#ff2e88; --c-lang:#ff3b30; --c-neb:#141416; --neb-eye:#ffffff;
-}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#161616; --panel:#1f1f1e; --field:#212120; --ink:#ecebe7; --muted:#9a9891; --line:#3a3936;
-  --me:#2c2c2a; --me-ink:#ecebe7; --code:#0e0e0d; --code-ink:#dcd9d2;
-  --accent:#7aa7f2; --c-tech:#4a8dff; --c-cook:#ff7d33; --c-game:#22d17a; --c-web:#a066ff; --c-write:#ffc233; --c-study:#1fd1c0; --c-music:#ff4f9d; --c-lang:#ff5a50; --c-neb:#f4f4f7; --neb-eye:#111111;
-  color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#161616; --panel:#1f1f1e; --field:#212120; --ink:#ecebe7; --muted:#9a9891; --line:#3a3936;
-  --me:#2c2c2a; --me-ink:#ecebe7; --code:#0e0e0d; --code-ink:#dcd9d2;
-  --accent:#7aa7f2; --c-tech:#4a8dff; --c-cook:#ff7d33; --c-game:#22d17a; --c-web:#a066ff; --c-write:#ffc233; --c-study:#1fd1c0; --c-music:#ff4f9d; --c-lang:#ff5a50; --c-neb:#f4f4f7; --neb-eye:#111111;
-  color-scheme:dark}
-*{box-sizing:border-box}
+:root{--bg:#f6f5f2;--ink:#1c1b19;--muted:#6e6b64}
+@media (prefers-color-scheme:dark){:root{--bg:#161616;--ink:#ecebe7;--muted:#9a9891;color-scheme:dark}}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:19px;line-height:1.45;display:grid;place-items:center;padding:32px 16px}
-main{width:min(100%,860px);display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center}
-.lg{width:96px;height:96px;overflow:visible}
-h1{font:500 clamp(2.6rem,9vw,4rem)/1 var(--display);margin:0;letter-spacing:-.02em}
-.tag{margin:0;color:var(--muted);font-size:1.15rem;max-width:34ch;text-wrap:balance}
-.lineup{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:18px 10px;width:100%;margin-top:10px}
-.o{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
-.o .has-orb{width:64px;height:64px}
-.o b{font-weight:400;font-size:1.05rem}
-.o small{color:var(--muted);font-size:.85rem;line-height:1.2}
-.go{display:inline-flex;align-items:center;gap:10px;margin-top:8px;padding:14px 26px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:1.2rem;text-decoration:none;transition:transform .15s}
-.go:hover{transform:translateY(-2px)}
-.go:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.fine{color:var(--muted);font-size:.95rem;margin:0;max-width:44ch}
-/* Orb characters: flat shapes, dash eyes, idle motion + secondary motion on accessories */
-.has-orb{background:none!important;border:none!important;color:inherit!important;overflow:visible}
-.has-orb .orb{width:130%;height:130%;margin:-15%;display:block;overflow:visible}
-.bot .g.has-orb,.nav .g.has-orb{width:30px;height:30px}
-.av.has-orb{width:36px;height:36px;margin-top:-4px}
-.home-btn .g.has-orb{width:36px;height:36px}
-.mark.has-orb{width:78px;height:78px}
-.orb *{transform-box:view-box}
-.orb .o-dk{filter:drop-shadow(0 0 .8px var(--ink))}
-.orb .o-hop{transform-origin:50px 92px;animation:o-hop 6s cubic-bezier(.3,.7,.4,1) infinite}
-.orb .o-shadow{transform-origin:50px 95px;animation:o-shadow 6s cubic-bezier(.3,.7,.4,1) infinite}
-.orb .o-squish{transform-origin:50px 92px;animation:o-squish 2.6s ease-in-out infinite}
-.orb .o-eyes{animation:o-look 7s ease-in-out infinite}
-.orb .o-lids{transform-box:fill-box;transform-origin:center;animation:o-blink 4.2s infinite}
-.orb-cook .o-hop,.orb-cook .o-shadow{animation-delay:-1.6s}.orb-game .o-hop,.orb-game .o-shadow{animation-delay:-3.1s}.orb-web .o-hop,.orb-web .o-shadow{animation-delay:-4.4s}
-.orb-cook .o-squish{animation-delay:-.7s}.orb-game .o-squish{animation-delay:-1.5s;animation-duration:2.1s}.orb-web .o-squish{animation-delay:-2s}
-.orb-cook .o-lids{animation-delay:-1.3s}.orb-game .o-lids{animation-delay:-2.6s}.orb-web .o-lids{animation-delay:-.4s}
-.orb-cook .o-eyes{animation-delay:-2.2s}.orb-web .o-eyes{animation-delay:-4.8s}
-/* Byte: antenna springs, bulb glows */
-.orb .o-ant{transform-origin:50px 37px;animation:o-sway 2.2s ease-in-out infinite}
-.orb .o-halo{transform-box:fill-box;transform-origin:center;animation:o-pulse 1.4s ease-in-out infinite}
-/* Chef Miso: hat wobbles, steam drifts up */
-.orb .o-hat{transform-origin:50px 44px;animation:o-wobble 3s ease-in-out infinite}
-.orb .o-steam path{opacity:0;animation:o-steam 2.6s ease-out infinite}
-.orb .o-steam .s2{animation-delay:1.3s}
-/* Abyss: eyes dart like watching a match, RGB headset, button-mash shake */
-.orb-game .o-eyes{animation:o-dart 3.2s ease-in-out infinite}
-.orb .o-rgb{animation:o-rgb 3s linear infinite}
-.orb-game .o-extra{animation:o-mash 5s infinite}
-/* Pixel: propeller spins, code tag floats, body sways */
-.orb .o-prop{transform-origin:50px 17px;animation:o-spin .45s linear infinite}
-.orb .o-tag{transform-box:fill-box;transform-origin:center;animation:o-float 2.8s ease-in-out infinite}
-.orb-web .o-extra{transform-origin:50px 92px;animation:o-tilt 4s ease-in-out infinite}
-/* Reactions: hop on hover, pop when picked, look up while thinking */
-.bot:hover .o-hop,.nav:hover .o-hop,.home-btn:hover .o-hop{animation:o-hophover .6s cubic-bezier(.3,.7,.4,1)}
-.mark.pop .o-hop{animation:o-popin .55s cubic-bezier(.3,1.6,.5,1)}
-.think .o-eyes{animation:o-think 1.1s ease-in-out infinite}
-.think .o-squish{animation-duration:.9s}
-/* Byte: signal bars pulse */
-.orb .o-wifi path{animation:o-sig 1.8s ease-in-out infinite}
-.orb .o-wifi .w2{animation-delay:.25s}.orb .o-wifi .w3{animation-delay:.5s}
-/* Quill writes, Nova's pencil taps + sparkle, Beat bops with notes, Lingo's bubbles pop */
-.orb-music .o-squish{animation:o-bop .62s ease-in-out infinite}
-.orb .o-note{opacity:0;animation:o-noteup 2.4s ease-out infinite}.orb .o-note.n2{animation-delay:1.2s}
-.orb .o-say{transform-box:fill-box;transform-origin:50% 100%;opacity:0;animation:o-say 3.2s ease-out infinite}.orb .o-say.b2{animation-delay:1.6s}
-.orb-write .o-hop{animation-delay:-2.3s}.orb-study .o-hop{animation-delay:-3.7s}.orb-music .o-hop{animation-delay:-.9s}.orb-lang .o-hop{animation-delay:-5.2s}
-.orb-write .o-lids{animation-delay:-3.1s}.orb-study .o-lids{animation-delay:-1.9s}.orb-music .o-lids{animation-delay:-.8s}.orb-lang .o-lids{animation-delay:-3.6s}
-.orb-write .o-eyes{animation-delay:-1.2s}.orb-study .o-eyes{animation-delay:-3.4s}.orb-lang .o-eyes{animation-delay:-5.9s}
-@keyframes o-sig{0%,100%{opacity:.25}40%{opacity:1}}
-@keyframes o-bop{0%,100%{transform:scale(1,1)}50%{transform:scale(1.06,.94)}}
-@keyframes o-noteup{0%{transform:translateY(8px);opacity:0}25%{opacity:1}100%{transform:translateY(-14px) rotate(8deg);opacity:0}}
-@keyframes o-say{0%{transform:scale(.3);opacity:0}10%{transform:scale(1.08);opacity:1}16%{transform:scale(1)}42%{opacity:1}50%{opacity:0;transform:scale(1)}100%{opacity:0}}
-/* Quill writes a line, Nova has "aha" moments, Beat's speakers thump, Lingo's lantern sways, Nebula swirls */
-.orb .o-ink{stroke-dasharray:40;animation:o-ink 2.8s ease-in-out infinite}
-.orb .o-pen{animation:o-pen 2.8s ease-in-out infinite}
-.orb .o-glow{transform-box:fill-box;transform-origin:center;animation:o-aha 3.6s ease-in-out infinite}
-.orb .o-rays{transform-origin:50px 51px;animation:o-rays 3.6s ease-in-out infinite}
-.orb .o-spk{transform-box:fill-box;transform-origin:center;animation:o-thump .62s ease-out infinite}
-.orb .o-eq rect{transform-box:fill-box;transform-origin:50% 100%;animation:o-eq .42s ease-in-out infinite alternate}
-.orb .o-eq rect:nth-child(2){animation-delay:-.2s}.orb .o-eq rect:nth-child(3){animation-delay:-.33s}.orb .o-eq rect:nth-child(4){animation-delay:-.1s}
-.orb-lang .o-extra{transform-origin:50px 17px;animation:o-tilt 3.2s ease-in-out infinite}
-.orb .o-tassel{transform-origin:50px 91px;animation:o-sway 1.6s ease-in-out infinite}
-.orb .o-swirl{transform-origin:50px 56px;animation:o-rot 3.2s linear infinite}
-.orb .o-swirl2{transform-origin:50px 56px;animation:o-rot 6.5s linear infinite reverse}
-.orb .o-stars circle{transform-box:fill-box;transform-origin:center;animation:o-star 2.2s ease-in-out infinite}
-.orb .o-stars circle:nth-child(2){animation-delay:-.8s}.orb .o-stars circle:nth-child(3){animation-delay:-1.5s}
-.orb-neb .o-hop{animation-delay:-1s}.orb-neb .o-lids{animation-delay:-2.2s}.orb-neb .o-eyes{animation-delay:-3s}
-@keyframes o-ink{0%{stroke-dashoffset:40;opacity:1}70%{stroke-dashoffset:0;opacity:1}90%,100%{stroke-dashoffset:0;opacity:0}}
-@keyframes o-pen{0%{transform:translate(0,0)}17%{transform:translate(6px,-2px)}35%{transform:translate(12px,0)}52%{transform:translate(18px,-2px)}70%{transform:translate(24px,0)}85%{transform:translate(12px,-6px)}100%{transform:translate(0,0)}}
-@keyframes o-aha{0%,55%,100%{opacity:0;transform:scale(.85)}68%{opacity:.55;transform:scale(1.05)}85%{opacity:0;transform:scale(1)}}
-@keyframes o-rays{0%,55%,100%{opacity:0;transform:scale(.8)}66%{opacity:1;transform:scale(1.08)}82%{opacity:0;transform:scale(1)}}
-@keyframes o-thump{0%{transform:scale(1.14)}60%,100%{transform:scale(1)}}
-@keyframes o-eq{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
-@keyframes o-rot{to{transform:rotate(360deg)}}
-@keyframes o-star{0%,100%{opacity:.2;transform:scale(.6)}50%{opacity:1;transform:scale(1.2)}}
-@keyframes o-hop{0%,76%,100%{transform:translateY(0)}80%{transform:translateY(-10px)}84%{transform:translateY(0)}87%{transform:translateY(-3px)}90%{transform:translateY(0)}}
-@keyframes o-shadow{0%,76%,100%{transform:scale(1);opacity:1}80%{transform:scale(.62);opacity:.45}84%{transform:scale(1);opacity:1}87%{transform:scale(.88)}90%{transform:scale(1)}}
-@keyframes o-squish{0%,100%{transform:scale(1,1)}25%{transform:scale(1.045,.955)}55%{transform:scale(.97,1.035)}80%{transform:scale(1.015,.985)}}
-@keyframes o-look{0%,18%{transform:translate(0,0)}22%,40%{transform:translate(-3px,0)}44%,62%{transform:translate(3px,-1px)}66%,100%{transform:translate(0,0)}}
-@keyframes o-blink{0%,90%,96%,100%{transform:scaleY(1)}93%{transform:scaleY(.08)}}
-@keyframes o-sway{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
-@keyframes o-pulse{0%,100%{opacity:.12;transform:scale(.75)}50%{opacity:.5;transform:scale(1.2)}}
-@keyframes o-wobble{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
-@keyframes o-steam{0%{transform:translateY(6px);opacity:0}30%{opacity:.7}100%{transform:translateY(-12px);opacity:0}}
-@keyframes o-dart{0%,30%{transform:translate(-3px,0)}35%,65%{transform:translate(3px,0)}70%,100%{transform:translate(-3px,0)}}
-@keyframes o-rgb{0%,100%{fill:#ff4d6d}33%{fill:#4dd2ff}66%{fill:#8dff5a}}
-@keyframes o-mash{0%,70%,82%,100%{transform:translateX(0)}72%,76%{transform:translateX(-2px)}74%,78%{transform:translateX(2px)}}
-@keyframes o-spin{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}100%{transform:scaleX(1)}}
-@keyframes o-float{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-4px) rotate(8deg)}}
-@keyframes o-tilt{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
-@keyframes o-hophover{0%,100%{transform:translateY(0)}40%{transform:translateY(-10px) scale(1.04)}70%{transform:translateY(0) scale(1.06,.94)}85%{transform:translateY(-2px)}}
-@keyframes o-popin{0%{transform:scale(.3) translateY(12px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
-@keyframes o-think{0%,100%{transform:translate(-1.5px,-3px)}50%{transform:translate(1.5px,-3px)}}
-
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+body{background:var(--bg);color:var(--ink);font:19px/1.45 "Patrick Hand","Comic Sans MS",system-ui,sans-serif;display:grid;place-items:center;padding:24px;box-sizing:border-box;text-align:center}
+.lg{width:88px;height:88px;overflow:visible}
+h1{font:500 2.6rem/1 "Source Serif 4",Georgia,serif;margin:14px 0 6px}
+p{margin:0 0 18px;color:var(--muted)}
+a{display:inline-block;padding:12px 24px;border-radius:999px;background:var(--ink);color:var(--bg);text-decoration:none}
 </style>
 </head>
 <body>
 <main>
   <svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgA" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgA)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgA)" stroke-width="2.2" stroke-linecap="round"/><circle r="2" fill="#ff5fb8"><animateMotion dur="5s" repeatCount="indefinite" path="M30 16A14 5 0 0 1 2 16A14 5 0 0 1 30 16"/><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.49;.53;.97;1" dur="5s" repeatCount="indefinite"/></circle></g></svg>
   <h1>Orbs</h1>
-  <p class="tag">Nine little helpers in one chat. Pick an orb and ask away.</p>
-  <div class="lineup" id="lineup"></div>
-  <a class="go" href="https://claude.ai/artifact/MYXFyqHzgy71RM9VhdhHM2" target="_blank" rel="noopener">Open Orbs &rarr;</a>
-  <p class="fine">Orbs runs inside Claude on your own account, so you'll need to sign in to Claude (a free account works). Your chats use your own Claude plan.</p>
+  <p>Taking you to Orbs…</p>
+  <a href="https://claude.ai/artifact/NL4mhT8bD8zoPpbKFowDJq">Open Orbs</a>
 </main>
-<script>
-const BOTS = {neb:{name:"Nebula",role:"Everything Else",color:"--c-neb"},tech:{name:"Byte",role:"Tech Savvy",color:"--c-tech"},cook:{name:"Chef Miso",role:"Cooking",color:"--c-cook"},game:{name:"Abyss",role:"Pro Gamer",color:"--c-game"},web:{name:"Pixel",role:"Website Dev",color:"--c-web"},write:{name:"Quill",role:"Story Writer",color:"--c-write"},study:{name:"Nova",role:"Homework Help",color:"--c-study"},music:{name:"Beat",role:"Music",color:"--c-music"},lang:{name:"Lingo",role:"Language Tutor",color:"--c-lang"}};
-const ORDER = ["neb","tech","cook","game","web","write","study","music","lang"];
-const INK = "#1d1c1a";
-const ORB = {
-  tech: { shape:`<rect x="19" y="36" width="62" height="55" rx="27"/>`, ey:60, tilt:0,
-    acc:`<g class="o-wifi" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"><path class="w1" d="M44 25.5a8 8 0 0 1 12 0"/><path class="w2" d="M38 19.5a16 16 0 0 1 24 0"/><path class="w3" d="M32 13.5a24 24 0 0 1 36 0"/></g><circle cx="50" cy="31" r="3.2" fill="currentColor"/>` },
-  cook: { shape:`<path d="M14 76C14 52 30 40 50 40S86 52 86 76C86 88 74 92 50 92S14 88 14 76Z"/>`, ey:66, tilt:16,
-    acc:`<g class="o-hat o-dk"><circle cx="38" cy="27" r="10" fill="#fff"/><circle cx="62" cy="27" r="10" fill="#fff"/><circle cx="50" cy="20" r="13" fill="#fff"/>
-      <rect x="33" y="29" width="34" height="15" rx="4" fill="#fff"/></g>
-      <g class="o-steam" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M86 44c-4-4 4-7 0-12"/><path class="s2" d="M93 54c-3-3 3-6 0-10"/></g>` },
-  game: { shape:`<path d="M50 38C70 38 80 42 81 54C82 64 88 72 86 82C84 91 72 93 66 86C62 81 58 79 50 79S38 81 34 86C28 93 16 91 14 82C12 72 18 64 19 54C20 42 30 38 50 38Z"/>`, ey:57, tilt:-18,
-    acc:`<g class="o-dk"><path d="M24 50C24 27 76 27 76 50" fill="none" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>
-      <rect x="14" y="41" width="13" height="21" rx="5.5" fill="${INK}"/><rect x="73" y="41" width="13" height="21" rx="5.5" fill="${INK}"/>
-      <rect class="o-rgb" x="17" y="45" width="4" height="13" rx="2"/><rect class="o-rgb" x="79" y="45" width="4" height="13" rx="2"/>
-      <path d="M20 62Q21 75 33 75" fill="none" stroke="${INK}" stroke-width="3" stroke-linecap="round"/><circle class="o-rgb" cx="35" cy="75" r="3.6"/></g>` },
-  web: { shape:`<path d="M50 34C69 34 82 46 82 62S69 90 50 90C45 90 40 89 36 87C31 90 25 92 21 91C19.5 90.5 19.8 89 21 88C23 86 24.5 83 25 80C20.5 75 18 69 18 62C18 46 31 34 50 34Z"/>`, ey:61, tilt:12,
-    acc:`<g><path d="M29 44C29 32 38 28 50 28V44Z" fill="#ff5a5f"/><path d="M50 28C62 28 71 32 71 44H50Z" fill="#3fb5ff"/>
-      <rect class="o-dk" x="26" y="42" width="48" height="5.5" rx="2.75" fill="${INK}"/><rect x="48.8" y="17" width="2.4" height="12" fill="${INK}"/>
-      <g class="o-prop"><path d="M50 17C44 13.5 36 14.5 36 17S44 20.5 50 17Z" fill="#ffd23f"/><path d="M50 17C56 13.5 64 14.5 64 17S56 20.5 50 17Z" fill="#ff8a3d"/></g>
-      <circle cx="50" cy="17" r="2.6" fill="${INK}"/></g>
-      <text class="o-tag" x="73" y="31" font-family="ui-monospace,Menlo,monospace" font-size="13" font-weight="800" fill="currentColor">&lt;/&gt;</text>` },
-  write: { shape:`<path d="M47.5 27.5C49 25 51 25 52.5 27.5C61 41 76 51 76 67C76 81 64 92 50 92S24 81 24 67C24 51 39 41 47.5 27.5Z"/>`, ey:66, tilt:-10,
-    acc:`<path class="o-ink" d="M62 91q3-5 6 0t6 0t6 0t6 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
-      <g transform="translate(62 90)"><g class="o-pen"><path class="o-dk" d="M0 0L15-31C24-28 26-12 5-3Z" fill="#fff"/><path d="M0 0L17-35" stroke="${INK}" stroke-width="2" stroke-linecap="round"/></g></g>` },
-  study: { shape:`<path d="M50 26C65 26 76 37 76 51C76 61 70 67 66 72C63.5 75 63 77 63 80H37C37 77 36.5 75 34 72C30 67 24 61 24 51C24 37 35 26 50 26Z"/>`, ey:52, tilt:0,
-    back:() => `<circle class="o-glow" cx="50" cy="51" r="31" fill="#ffe36b"/>`,
-    acc:`<rect x="36" y="80" width="28" height="5.5" rx="2.75" fill="#9aa3ad"/><rect x="37.5" y="86.5" width="25" height="5" rx="2.5" fill="#7f8994"/><rect x="44" y="92.5" width="12" height="4" rx="2" fill="#5f6873"/>
-      <g class="o-rays" stroke="#ffc400" stroke-width="3.6" stroke-linecap="round"><path d="M50 13v-6"/><path d="M69 19l4-4.5"/><path d="M31 19l-4-4.5"/><path d="M81 34l5.5-2.5"/><path d="M19 34l-5.5-2.5"/></g>` },
-  music: { shape:`<rect x="13" y="44" width="74" height="47" rx="17"/>`, ey:61, tilt:10,
-    acc:`<path d="M31 44V37Q31 31 37 31H63Q69 31 69 37V44" fill="none" stroke="${INK}" stroke-width="4.5" stroke-linecap="round" class="o-dk"/>
-      <g class="o-spk"><circle cx="26" cy="74" r="8.5" fill="${INK}"/><circle cx="26" cy="74" r="3.6" fill="currentColor"/></g>
-      <g class="o-spk"><circle cx="74" cy="74" r="8.5" fill="${INK}"/><circle cx="74" cy="74" r="3.6" fill="currentColor"/></g>
-      <rect x="39" y="75" width="22" height="10" rx="3" fill="${INK}"/>
-      <g class="o-eq" fill="currentColor"><rect x="42" y="77" width="3" height="6" rx="1"/><rect x="47" y="77" width="3" height="6" rx="1"/><rect x="52" y="77" width="3" height="6" rx="1"/><rect x="57" y="77" width="1.5" height="6" rx=".7"/></g>
-      <g class="o-note" fill="currentColor" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M80 34V20l9-2.5v12" fill="none"/><ellipse cx="77" cy="34" rx="3.8" ry="3" stroke="none"/><ellipse cx="86" cy="30" rx="3.8" ry="3" stroke="none"/></g>
-      <g class="o-note n2" fill="currentColor" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M18 34V20q6 2 7 7" fill="none"/><ellipse cx="15" cy="34" rx="3.8" ry="3" stroke="none"/></g>` },
-  lang: { shape:`<path d="M50 36C68 36 79 48 79 61S68 86 50 86 21 74 21 61 32 36 50 36Z"/>`, ey:60, tilt:0,
-    acc:`<path d="M37 40C29 50 29 72 37 83M63 40C71 50 71 72 63 83" fill="none" stroke="#000" stroke-opacity=".16" stroke-width="2.4"/>
-      <path d="M50 30V19" stroke="${INK}" stroke-width="2.4" stroke-linecap="round" class="o-dk"/><circle cx="50" cy="17.5" r="2.6" fill="none" stroke="${INK}" stroke-width="2" class="o-dk"/>
-      <rect x="35" y="30" width="30" height="8" rx="3" fill="#ffc233"/><rect x="37" y="84" width="26" height="7" rx="3" fill="#ffc233"/>
-      <g class="o-tassel" stroke="#ffc233" stroke-width="2.2" stroke-linecap="round"><path d="M50 91v3"/><path d="M47 94l-1 6M50 94v6.5M53 94l1 6"/></g>
-      <g class="o-say"><rect class="o-dk" x="72" y="10" width="23" height="19" rx="8" fill="#fff"/><path d="M76 27l-3 7 9-5z" fill="#fff"/><text x="83.5" y="24.5" text-anchor="middle" font-size="13" font-weight="800" font-family="system-ui,sans-serif" fill="#111">A</text></g>
-      <g class="o-say b2"><rect class="o-dk" x="5" y="10" width="23" height="19" rx="8" fill="#fff"/><path d="M24 27l3 7-9-5z" fill="#fff"/><text x="16.5" y="24.5" text-anchor="middle" font-size="12.5" font-weight="800" font-family="'PingFang SC','Noto Sans SC','Microsoft YaHei',sans-serif" fill="#111">文</text></g>` },
-  neb: { shape:`<circle cx="50" cy="56" r="25"/>`, ey:56, tilt:0,
-    back:() => { const id = "nbg" + (++nebN); return `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs>
-      <g class="o-swirl"><circle cx="50" cy="56" r="34" fill="none" stroke="url(#${id})" stroke-width="13" opacity=".22"/><circle cx="50" cy="56" r="34" fill="none" stroke="url(#${id})" stroke-width="5" stroke-linecap="round" stroke-dasharray="150 64"/></g>
-      <g class="o-swirl2"><circle cx="50" cy="56" r="41" fill="none" stroke="url(#${id})" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="26 18" opacity=".85"/></g>
-      <g class="o-stars" fill="#9b5cff"><circle cx="14" cy="22" r="1.9"/><circle cx="88" cy="28" r="1.5"/><circle cx="86" cy="90" r="1.9"/></g>`; },
-    acc:`` }
-};
-let nebN = 0;
-function orbSVG(k){
-  const o = ORB[k], y = o.ey;
-  const eye = x => `<rect x="${x-3}" y="${y-8.5}" width="6" height="17" rx="3" fill="${k === "neb" ? "var(--neb-eye)" : "#111"}" transform="rotate(${o.tilt} ${x} ${y})"/>`;
-  return `<svg class="orb orb-${k}" viewBox="0 0 100 100" aria-hidden="true" style="color:var(${BOTS[k].color})">
-    <g class="o-hop"><g class="o-extra"><g class="o-squish">
-      ${o.back ? o.back() : ""}<g fill="var(${BOTS[k].color})">${o.shape}</g>
-      <g class="o-eyes"><g class="o-lids">${eye(42)}${eye(58)}</g></g>
-      ${o.acc}
-    </g></g></g></svg>`;
-}
-function orbInto(el, k){ if (!el || !k) return; el.innerHTML = orbSVG(k); el.classList.add("has-orb"); }
-
-document.getElementById("lineup").innerHTML = ORDER.map(k => `<div class="o"><div class="has-orb">${orbSVG(k)}</div><b>${BOTS[k].name}</b><small>${BOTS[k].role}</small></div>`).join("");
-</script>
+<script>location.replace("https://claude.ai/artifact/NL4mhT8bD8zoPpbKFowDJq");</script>
 </body>
 </html>
