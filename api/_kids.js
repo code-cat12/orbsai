@@ -9,6 +9,13 @@ const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 }
+// A safe hint for why a sign-in token was refused (for setup problems)
+function tokenProblem(e) {
+  const c = String((e && (e.code || e.message)) || "");
+  if (/project|aud/i.test(c)) return "the service account is from a different Firebase project";
+  if (/expired/i.test(c)) return "sign-in expired, refresh the page";
+  return "sign-in couldn't be checked";
+}
 const hashPin = (pin, salt) => scryptSync(pin, salt, 32).toString("hex");
 export function publicState(k, env = {}) {
   return {
@@ -25,7 +32,7 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, env = process.e
     const m = (request.headers.get("authorization") || "").match(/^Bearer ([\w.-]+)$/);
     if (!m) return json(401, { error: "unauthenticated" });
     let user;
-    try { user = await verifyToken(m[1]); } catch { return json(401, { error: "unauthenticated" }); }
+    try { user = await verifyToken(m[1]); } catch (e) { if (e && e.setup) throw e; return json(401, { error: "unauthenticated", why: tokenProblem(e) }); }
     if (!user?.uid) return json(401, { error: "unauthenticated" });
     let body;
     try { body = await request.json(); } catch { return json(400, { error: "bad_request" }); }

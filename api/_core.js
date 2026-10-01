@@ -118,7 +118,7 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
     const m = (request.headers.get("authorization") || "").match(/^Bearer ([\w.-]+)$/);
     if (!m) return json(401, { error: "unauthenticated" });
     let user;
-    try { user = await verifyToken(m[1]); } catch { return json(401, { error: "unauthenticated" }); }
+    try { user = await verifyToken(m[1]); } catch (e) { if (e && e.setup) throw e; return json(401, { error: "unauthenticated" }); }
     if (!user || !user.uid) return json(401, { error: "unauthenticated" });
     if (user.email_verified !== true) return json(403, { error: "unverified" });
 

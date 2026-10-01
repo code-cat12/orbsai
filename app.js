@@ -322,6 +322,7 @@ const ERR = {
   overloaded:"Claude is super busy right now. Try again in a minute.",
   upstream_error:"Something went wrong reaching Claude. Try again.",
   not_configured:"The site isn't fully set up yet. The owner needs to add the keys on Vercel.",
+  server_error:"Orbs had a server problem. Try again.",
   out_of_funds:"Orbs ran out of Claude money!! 😤💢 Tell the owner to add more, baka!",
   network:"Can't reach Orbs. Check your internet connection."
 };
@@ -817,7 +818,7 @@ for (const b of document.querySelectorAll("[data-age]")) b.onclick = () => busyB
   const u = pending || auth.currentUser; if (!u) return showGate("signin");
   try {
     const r = await kidsApi(u, { action:"age", age: b.dataset.age });
-    if (!r.ok && r.error !== "age_already_set") return say("Couldn't save that. Try again.");
+    if (!r.ok && r.error !== "age_already_set") return say("Couldn't save that" + (r.why ? " (" + r.why + ")" : "") + ". Try again.");
     await enter(u);
   } catch (_) { say("Couldn't reach Orbs. Check your connection."); }
 });
