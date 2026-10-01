@@ -37,6 +37,8 @@ Nine helper orbs in one chat. People make an account (Google or email + password
 8. In your Vercel project: **Settings → Environment Variables**. Add:
    - `ANTHROPIC_API_KEY`: your Claude API key (you already did this one)
    - `FIREBASE_SERVICE_ACCOUNT`: paste everything from the service account `.json` file
+     - If Vercel complains about line breaks, use three one-line variables instead (copy each value from the `.json` file, without the quotes):
+       `FIREBASE_PROJECT_ID` (project_id), `FIREBASE_CLIENT_EMAIL` (client_email), `FIREBASE_PRIVATE_KEY` (private_key, the long one starting with `-----BEGIN PRIVATE KEY-----`)
    - (optional, leave out for unlimited) `DAILY_CREDITS`: credits each person gets per day, like `40`.
    - (optional, leave out for unlimited) `SITE_DAILY_CREDITS`: total credits for everyone together per day, like `200`.
 9. **Deployments → the newest one → ⋯ → Redeploy**, so Vercel picks up the new variables.

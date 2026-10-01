@@ -113,7 +113,7 @@ export function systemPrompt(orb, model) {
 //       refund(uid, cost, day), getKids(uid) -> kids settings, flag(uid, info) -> safety log, fetchImpl (for tests), env
 export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = async () => {}, fetchImpl = fetch, env = process.env }) {
   return async function POST(request) {
-    if (!env.ANTHROPIC_API_KEY || !env.FIREBASE_SERVICE_ACCOUNT) return json(500, { error: "not_configured" });
+    if (!env.ANTHROPIC_API_KEY || !(env.FIREBASE_SERVICE_ACCOUNT || env.FIREBASE_PRIVATE_KEY)) return json(500, { error: "not_configured" });
 
     const m = (request.headers.get("authorization") || "").match(/^Bearer ([\w.-]+)$/);
     if (!m) return json(401, { error: "unauthenticated" });
