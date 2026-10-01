@@ -69,6 +69,15 @@ function inline(s){
           .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
           .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
 }
+// A clarifying question can end with "[options: A | B | C]"; that line becomes buttons instead of text
+function splitOptions(text){
+  const lines = String(text || "").replace(/\s+$/, "").split("\n");
+  const last = lines[lines.length - 1] || "";
+  const m = /^\s*\[options:\s*([^\]]+)\]\s*$/i.exec(last);
+  if (m) return { body: lines.slice(0, -1).join("\n"), options: m[1].split("|").map(s => s.trim()).filter(Boolean).slice(0, 4) };
+  if (/^\s*\[opt/i.test(last)) return { body: lines.slice(0, -1).join("\n"), options: [] }; // still streaming in
+  return { body: String(text || ""), options: [] };
+}
 function md(src){
   const parts = esc(src).split(/```/);
   let html = "";
@@ -232,13 +241,26 @@ function bubble(role, html, raw, turn, isLast){
   const col = document.createElement("div"); col.className = "col";
   const m = document.createElement("div"); m.className = "msg";
   if (raw != null) m.textContent = raw; else m.innerHTML = html;
+  if (turn && Array.isArray(turn.files) && turn.files.length) {
+    const fl = document.createElement("div"); fl.className = "msgfiles";
+    for (const f of turn.files) { const sp = document.createElement("span"); sp.textContent = (f.kind === "image" ? "🖼️ " : f.kind === "pdf" ? "📄 " : "📎 ") + f.name; fl.appendChild(sp); }
+    col.appendChild(fl);
+  }
   col.appendChild(m);
+  if (turn && role !== "user" && isLast && !busy) {
+    const opts = splitOptions(turn.content).options;
+    if (opts.length) {
+      const o = document.createElement("div"); o.className = "opts";
+      for (const label of opts) { const btn = document.createElement("button"); btn.type = "button"; btn.className = "opt"; btn.textContent = label; btn.onclick = () => send(label); o.appendChild(btn); }
+      col.appendChild(o);
+    }
+  }
   if (turn) {
     const meta = document.createElement("div"); meta.className = "meta" + (isLast ? " show" : "");
     const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = fmtTime(turn.t);
     if (role === "user") { meta.append(ts, actBtn(COPY_SVG, "Copy message", btn => copyText(turn.content, btn))); }
     else {
-      meta.append(actBtn(COPY_SVG, "Copy reply", btn => copyText(turn.content, btn)));
+      meta.append(actBtn(COPY_SVG, "Copy reply", btn => copyText(splitOptions(turn.content).body, btn)));
       meta.append(actBtn(FLAG_SVG, "Report this reply", () => openReport(turn.content)));
       if (isLast) meta.append(actBtn(RETRY_SVG, "Try again", () => retry()));
       meta.append(ts);
@@ -267,7 +289,7 @@ function renderChat(){
   setAccent();
   log.innerHTML = "";
   const turns = chats[active];
-  turns.forEach((t, i) => { const last = i === turns.length - 1; t.role === "user" ? bubble("user", null, t.content, t, last) : bubble("assistant", md(t.content), null, t, last); });
+  turns.forEach((t, i) => { const last = i === turns.length - 1; t.role === "user" ? bubble("user", null, t.content, t, last) : bubble("assistant", md(splitOptions(t.content).body), null, t, last); });
   if (turns.length && turns[turns.length - 1].role === "assistant" && !busy) tailOrb(false);
   log.scrollTop = log.scrollHeight;
   updateSend(); snap(); renderSide();
@@ -289,7 +311,7 @@ function updateSend(){
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>'; return; }
   sendBtn.setAttribute("aria-label","Send");
   sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
-  sendBtn.disabled = !active || !box.value.trim();
+  sendBtn.disabled = !active || (!box.value.trim() && !pendingFiles.length);
 }
 
 const ERR = {
@@ -307,11 +329,19 @@ const ERR = {
 async function send(text, regen){
   text = (text || "").trim();
   if (!active) { nudge(); return; }
-  if ((!text && !regen) || busy) return;
+  if ((!text && !regen && !pendingFiles.length) || busy) return;
   if (!user) return;
   const key = active, b = BOTS[key], model = MODELS[pf(key).m];
   if (credits && credits.left < msgCost(pf(key))) { creditShort(model); return; }
-  if (!regen) chats[key].push({ role:"user", content:text, t:Date.now() }); save();
+  let files = [];
+  if (!regen) {
+    files = pendingFiles; pendingFiles = []; renderAtts();
+    if (!text) text = "Here are my files.";
+    const turn = { role:"user", content:text, t:Date.now() };
+    if (files.length) turn.files = files.map(f => ({ name:f.name, kind:f.kind }));
+    chats[key].push(turn); lastFiles[key] = files;
+  } else files = (chats[key][chats[key].length - 1] || {}).files ? (lastFiles[key] || []) : [];
+  save();
   recent = [key, ...recent.filter(x => x !== key)]; save();
   box.value = ""; autosize();
   renderChat();
@@ -330,11 +360,12 @@ async function send(text, regen){
       res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
-        body: JSON.stringify({ orb:key, model:pf(key).m, effort:pf(key).e, messages:ctx }),
+        body: JSON.stringify({ orb:key, model:pf(key).m, effort:pf(key).e, messages:ctx,
+          ...(files.length ? { attachments: files.map(f => f.kind === "text" ? { kind:"text", name:f.name, text:f.text } : { kind:f.kind, name:f.name, media_type:f.media_type, data:f.data }) } : {}) }),
         signal: ctl.signal
       });
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
-    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: j.error || "upstream_error", left: j.left }; }
+    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), left: j.left }; }
     // The server sends one small JSON object per line: {d:"more text"} ... then {done:true} or {error:"..."}
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "", end = null;
@@ -348,7 +379,7 @@ async function send(text, regen){
           const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
           if (!line) continue;
           let ev; try { ev = JSON.parse(line); } catch(_) { continue; }
-          if (typeof ev.d === "string") { reply += ev.d; tail.classList.remove("think"); out.innerHTML = md(reply); stickBottom(); }
+          if (typeof ev.d === "string") { reply += ev.d; tail.classList.remove("think"); out.innerHTML = md(splitOptions(reply).body); stickBottom(); }
           else end = ev;
         }
       }
@@ -367,13 +398,17 @@ async function send(text, regen){
     if (code === "cancelled") status.textContent = "Stopped.";
     else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
-    else if (code === "kids_personal_info" || code === "kids_blocked") {
-      // Take the blocked message back out of the chat (and don't save it)
+    else if (code === "kids_personal_info" || code === "kids_blocked" || code === "kids_no_media" || code === "files_too_big") {
+      // Take the message back out of the chat (and don't save it)
       const t = chats[key], lastTurn = t[t.length - 1];
-      if (lastTurn && lastTurn.role === "user") { t.pop(); save(); if (code === "kids_personal_info") { box.value = lastTurn.content; autosize(); } }
-      status.textContent = code === "kids_personal_info"
-        ? "🛡️ Kids Mode: please don't share personal info like phone numbers, emails, or addresses. Take it out and try again."
-        : "🛡️ Kids Mode: that topic isn't allowed. Try asking about something else!";
+      if (lastTurn && lastTurn.role === "user" && !regen) {
+        t.pop(); save();
+        if (code !== "kids_blocked") { box.value = lastTurn.content === "Here are my files." ? "" : lastTurn.content; autosize(); pendingFiles = code === "kids_no_media" ? files.filter(f => f.kind === "text") : files; renderAtts(); }
+      }
+      status.textContent = code === "kids_personal_info" ? "🛡️ Kids Mode: please don't share personal info like phone numbers, emails, or addresses. Take it out and try again."
+        : code === "kids_blocked" ? "🛡️ Kids Mode: that topic isn't allowed. Try asking about something else!"
+        : code === "kids_no_media" ? "🛡️ Kids Mode only allows text and code files, not pictures or PDFs."
+        : "Those files are too big to send. Try fewer or smaller files.";
     }
     else if (code === "kids_reply_blocked") status.textContent = "🛡️ Kids Mode hid that reply because it wasn't kid-safe. Try asking a different way.";
     else if (code === "safety_unavailable") status.textContent = "The safety check couldn't finish. Try again in a moment.";
@@ -475,7 +510,7 @@ function menuItem(title, cost, desc, selected, onPick){
   if (cost) { const c = document.createElement("span"); c.className = "cost"; c.textContent = cost; b.appendChild(c); }
   d.textContent = desc; it.append(b, d); it.onclick = onPick; return it;
 }
-function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["effMenu","effBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
+function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["effMenu","effBtn"],["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
 function syncSel(){
   $("sels").hidden = !active; if (!active) return;
   const p = pf(active), m0 = MODELS[p.m];
@@ -608,7 +643,7 @@ function resetState(){
   for (const k of ORDER) chats[k] = [];
   pins = []; recent = []; prefs = {}; lastSent = {};
   active = null; hist = []; hi = -1; credits = null; limitHit = false;
-  log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = "";
+  log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts();
 }
 
 // ---------- Saving to Firebase ----------
@@ -618,7 +653,10 @@ let lastSent = {}, cloudT = null, loaded = false;
 function fitTurns(t){ t = t.slice(); while (t.length > 2 && JSON.stringify(t).length > 200000) t.shift(); return t; }
 function cleanTurns(v){
   return Array.isArray(v) ? v.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .map(m => ({ role:m.role, content:m.content, t: typeof m.t === "number" ? m.t : undefined })).map(m => (m.t === undefined && delete m.t, m)) : [];
+    .map(m => { const o = { role:m.role, content:m.content };
+      if (typeof m.t === "number") o.t = m.t;
+      if (Array.isArray(m.files)) o.files = m.files.filter(f => f && typeof f.name === "string").slice(0, 40).map(f => ({ name: f.name.slice(0, 200), kind: ["image","pdf","text"].includes(f.kind) ? f.kind : "text" }));
+      return o; }) : [];
 }
 function cloudSave(){ if (!user || !loaded) return; clearTimeout(cloudT); cloudT = setTimeout(flush, 800); }
 async function flush(){
@@ -817,6 +855,82 @@ $("killBtn").onclick = () => busyBtn($("killBtn"), async () => {
       : "Couldn't delete your account. Try again.";
   }
 });
+
+// ---------- Files and folders ----------
+// Files ride along with the next message only. Pictures are shrunk first; folders send their text and code files.
+let pendingFiles = [];
+const lastFiles = {};
+const IMG_TYPES = ["image/jpeg","image/png","image/gif","image/webp"];
+const TEXT_EXT = /\.(txt|md|markdown|csv|tsv|json|jsonl|xml|ya?ml|toml|ini|cfg|conf|log|html?|css|scss|sass|less|m?js|cjs|jsx|ts|tsx|vue|svelte|py|rb|php|java|kts?|swift|c|h|cpp|hpp|cc|cs|go|rs|lua|luau|sh|bash|zsh|ps1|bat|sql|r|dart|scala|pl|srt|vtt|tex|rst|gitignore|env\.example)$/i;
+const SKIP_PATH = /(^|\/)(node_modules|\.git|\.next|dist|build|out|__pycache__|\.venv|venv|\.idea|\.vscode|coverage)(\/|$)/;
+const FILE_LIMITS = { count: 40, text: 300000, perText: 200000, bytes: 3500000, pdf: 3000000 };
+const fileBytes = () => pendingFiles.reduce((n, f) => n + (f.data ? f.data.length : f.text.length * 1.1), 0);
+function renderAtts(){
+  const w = $("atts"); w.innerHTML = ""; w.hidden = !pendingFiles.length;
+  pendingFiles.forEach((f, i) => {
+    const c = document.createElement("span"); c.className = "att";
+    const n = document.createElement("span"); n.textContent = (f.kind === "image" ? "🖼️ " : f.kind === "pdf" ? "📄 " : "📎 ") + f.name;
+    const x = document.createElement("button"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", "Remove " + f.name);
+    x.onclick = () => { pendingFiles.splice(i, 1); renderAtts(); };
+    c.append(n, x); w.appendChild(c);
+  });
+  updateSend();
+}
+const readAs = (file, how) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r[how](file); });
+async function shrinkImage(file){
+  const bmp = await createImageBitmap(file);
+  const s = Math.min(1, 1568 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bmp.width * s)); c.height = Math.max(1, Math.round(bmp.height * s));
+  const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.85).split(",")[1];
+}
+async function addFiles(list, fromFolder){
+  if (!active) { nudge(); return; }
+  let skipped = 0, blockedMedia = 0, full = false;
+  let textChars = pendingFiles.reduce((n, f) => n + (f.text ? f.text.length : 0), 0);
+  for (const file of Array.from(list || [])) {
+    const name = (file.webkitRelativePath || file.name || "file").slice(0, 200);
+    if (SKIP_PATH.test(name) || /(^|\/)\.[^/]+\//.test(name)) { skipped++; continue; }
+    if (pendingFiles.length >= FILE_LIMITS.count) { full = true; break; }
+    try {
+      const isImg = IMG_TYPES.includes(file.type), isPdf = file.type === "application/pdf" || /\.pdf$/i.test(name);
+      if ((isImg || isPdf) && kids.on) { blockedMedia++; continue; }
+      if (isImg && !fromFolder) {
+        const data = await shrinkImage(file);
+        if (fileBytes() + data.length > FILE_LIMITS.bytes) { full = true; break; }
+        pendingFiles.push({ kind:"image", name, media_type:"image/jpeg", data });
+      } else if (isPdf && !fromFolder) {
+        if (file.size > FILE_LIMITS.pdf) { skipped++; continue; }
+        const data = String(await readAs(file, "readAsDataURL")).split(",")[1] || "";
+        if (fileBytes() + data.length > FILE_LIMITS.bytes) { full = true; break; }
+        pendingFiles.push({ kind:"pdf", name, data });
+      } else if (file.type.startsWith("text/") || file.type === "application/json" || TEXT_EXT.test(name)) {
+        if (file.size > 2000000) { skipped++; continue; }
+        let text = String(await readAs(file, "readAsText"));
+        if (text.includes("\u0000")) { skipped++; continue; }
+        text = text.slice(0, FILE_LIMITS.perText);
+        if (textChars + text.length > FILE_LIMITS.text || fileBytes() + text.length * 1.1 > FILE_LIMITS.bytes) { full = true; break; }
+        textChars += text.length; pendingFiles.push({ kind:"text", name, text });
+      } else skipped++;
+    } catch (e) { skipped++; }
+  }
+  renderAtts();
+  const notes = [];
+  if (blockedMedia) notes.push("🛡️ Kids Mode only allows text and code files");
+  if (full) notes.push("that's all that fits in one message");
+  if (skipped) notes.push(`skipped ${skipped} file${skipped === 1 ? "" : "s"} Orbs can't read`);
+  status.textContent = notes.length ? notes.join(", ").replace(/^./, c => c.toUpperCase()) + "." : "";
+  box.focus();
+}
+$("addBtn").onclick = e => { e.stopPropagation(); if (!active) { nudge(); return; } const m = $("addMenu"), open = m.hidden; closeMenus(); m.hidden = !open; $("addBtn").setAttribute("aria-expanded", String(open)); if (open) m.classList.toggle("down", $("form").getBoundingClientRect().top < 140); };
+$("addFiles").onclick = () => { closeMenus(); $("fileIn").accept = kids.on ? ".txt,.md,.csv,.json,.html,.css,.js,.ts,.py,.lua,.luau,text/*" : "image/*,.pdf,text/*,.md,.csv,.json,.js,.ts,.py,.lua,.luau,.html,.css,.java,.c,.cpp,.cs,.go,.rs,.rb,.php,.sh,.sql,.xml,.yml,.yaml,.toml"; $("fileIn").click(); };
+$("addFolder").onclick = () => { closeMenus(); $("folderIn").click(); };
+$("fileIn").onchange = async e => { await addFiles(e.target.files, false); e.target.value = ""; };
+$("folderIn").onchange = async e => { await addFiles(e.target.files, true); e.target.value = ""; };
+form.addEventListener("dragover", e => { if (active && e.dataTransfer && Array.from(e.dataTransfer.types || []).includes("Files")) { e.preventDefault(); form.classList.add("drop"); } });
+form.addEventListener("dragleave", () => form.classList.remove("drop"));
+form.addEventListener("drop", e => { form.classList.remove("drop"); if (!active || !e.dataTransfer || !e.dataTransfer.files.length) return; e.preventDefault(); addFiles(e.dataTransfer.files, false); });
+box.addEventListener("paste", e => { const fs = Array.from((e.clipboardData && e.clipboardData.files) || []); if (fs.length) { e.preventDefault(); addFiles(fs, false); } });
 
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;

@@ -9,6 +9,43 @@ import { publicState } from "./_kids.js";
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
 const MAX_TOTAL_CHARS = 60000;
+// Files sent with the newest message (Vercel caps a request at about 4.5 MB in total)
+const MAX_FILES = 40, MAX_FILE_TEXT = 200000, MAX_ALL_FILE_TEXT = 300000, MAX_BASE64 = 4200000;
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const B64 = /^[A-Za-z0-9+/]+={0,2}$/;
+
+function cleanAttachments(list) {
+  if (list === undefined) return { files: [] };
+  if (!Array.isArray(list) || list.length > MAX_FILES) return { error: "bad_request" };
+  const files = []; let text = 0, b64 = 0;
+  for (const a of list) {
+    if (!a || typeof a !== "object") return { error: "bad_request" };
+    const name = String(a.name || "file").replace(/[<>"\n\r]/g, "").slice(0, 200);
+    if (a.kind === "image" && IMAGE_TYPES.has(a.media_type) && typeof a.data === "string" && B64.test(a.data)) {
+      b64 += a.data.length; files.push({ kind: "image", name, media_type: a.media_type, data: a.data });
+    } else if (a.kind === "pdf" && typeof a.data === "string" && B64.test(a.data)) {
+      b64 += a.data.length; files.push({ kind: "pdf", name, data: a.data });
+    } else if (a.kind === "text" && typeof a.text === "string") {
+      const t = a.text.slice(0, MAX_FILE_TEXT); text += t.length; files.push({ kind: "text", name, text: t });
+    } else return { error: "bad_request" };
+  }
+  if (text > MAX_ALL_FILE_TEXT || b64 > MAX_BASE64) return { error: "files_too_big" };
+  return { files };
+}
+
+// The newest message, with any files, in the shape Claude's API expects
+export function withFiles(content, files) {
+  if (!files.length) return content;
+  const blocks = [];
+  for (const f of files) {
+    if (f.kind === "image") blocks.push({ type: "image", source: { type: "base64", media_type: f.media_type, data: f.data } });
+    if (f.kind === "pdf") blocks.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data }, title: f.name });
+  }
+  const texts = files.filter((f) => f.kind === "text");
+  if (texts.length) blocks.push({ type: "text", text: texts.map((f) => `<file name="${f.name}">\n${f.text}\n</file>`).join("\n\n") });
+  blocks.push({ type: "text", text: content });
+  return blocks;
+}
 export const RESET_TZ = "America/New_York"; // daily credits refill at midnight New York time
 
 export function dayKey(now = new Date()) {
@@ -48,18 +85,27 @@ export function cleanRequest(body) {
   }
   while (turns.length && turns[0].role !== "user") turns.shift();
   if (!turns.length || turns[turns.length - 1].role !== "user") return { error: "bad_request" };
+  const att = cleanAttachments(body.attachments);
+  if (att.error) return { error: att.error };
   let total = turns.reduce((n, t) => n + t.content.length, 0);
   while (total > MAX_TOTAL_CHARS && turns.length > 1) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, effort, turns };
+  return { orb, model, effort, turns, files: att.files };
 }
+
+// Ask a quick question first when the request is unclear (the page turns the options line into buttons)
+export const ASK_FIRST =
+  "If a request is unclear or missing details you really need to give a good answer, ask one short clarifying question " +
+  "instead of guessing. When a few choices would help, put them on the last line exactly like this: " +
+  "[options: First choice | Second choice | Third choice] (2 to 4 short options, no other text on that line). " +
+  "Only ask when it truly matters; if the request is clear enough, just answer.";
 
 export function systemPrompt(orb, model) {
   const o = ORBS[orb];
   const others = ORDER.filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
-  return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", `Reply as ${o.name}.`]
+  return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", ASK_FIRST, `Reply as ${o.name}.`]
     .filter(Boolean).join(" ");
 }
 
@@ -95,8 +141,10 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
     const logFlag = (info) => flag(user.uid, { orb: req.orb, ...info }).catch(() => {});
     let extraRules = "";
     if (kidsOn) {
-      const last = req.turns[req.turns.length - 1].content;
-      if (hasPersonalInfo(last)) { logFlag({ type: "personal_info" }); return json(400, { error: "kids_personal_info" }); }
+      if (req.files.some((f) => f.kind !== "text")) return json(400, { error: "kids_no_media" });
+      const fileText = req.files.map((f) => `[${f.name}]\n${f.text}`).join("\n\n");
+      const last = req.turns[req.turns.length - 1].content + (fileText ? "\n\n" + fileText : "");
+      if (hasPersonalInfo(req.turns[req.turns.length - 1].content)) { logFlag({ type: "personal_info" }); return json(400, { error: "kids_personal_info" }); }
       let label;
       try { label = await classify({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: last, kind: "message" }); }
       catch { return json(503, { error: "safety_unavailable" }); }
@@ -131,7 +179,7 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
           max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
           ...(effort ? { output_config: { effort: effort.id } } : {}),
           system: [systemPrompt(req.orb, req.model), kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
-          messages: req.turns,
+          messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content, req.files) } : t)),
           stream: true,
           // An anonymous id (not the email) so Anthropic can spot abuse from one person
           metadata: { user_id: createHash("sha256").update(user.uid).digest("hex").slice(0, 32) },

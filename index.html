@@ -260,6 +260,19 @@ button{font:inherit;color:inherit}
 .lfeat b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
 .aback{align-self:flex-start}
 .legal-modal{z-index:60}
+.addbtn{width:32px;height:32px;border:1px solid var(--line);border-radius:999px}
+.composer.drop{border-color:var(--c-active,var(--accent));border-style:dashed}
+.mmenu.addmenu{left:0;right:auto}
+.atts{display:flex;flex-wrap:wrap;gap:6px}
+.att{display:inline-flex;align-items:center;gap:6px;max-width:100%;background:var(--me);border-radius:10px;padding:4px 6px 4px 8px;font-size:.85rem}
+.att span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.att button{border:none;background:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1;padding:0 2px}
+.att button:hover{color:var(--ink)}
+.msgfiles{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;margin-bottom:4px}
+.msgfiles span{font-size:.8rem;color:var(--muted);background:var(--me);border-radius:8px;padding:2px 8px}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.opt{font:inherit;font-size:.92rem;border:1.5px solid var(--c, var(--accent));color:var(--ink);background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer}
+.opt:hover{background:color-mix(in srgb,var(--c, var(--accent)) 14%,transparent)}
 .kidsform{display:flex;flex-direction:column;gap:8px}
 .kidsform input{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px}
 .reparea{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:80px;resize:vertical}
@@ -431,8 +444,17 @@ textarea:disabled{pointer-events:none}
     <div class="limit" id="limit" hidden>No more usage!! 😤💢 You used up all your credits for today, baka! They refill at midnight. N-not that I'm worried about you or anything!</div>
     <form class="composer locked" id="form">
       <label for="box" hidden>Message</label>
+      <div class="atts" id="atts" hidden></div>
       <textarea id="box" rows="2" placeholder="Pick an orb below to start…" disabled></textarea>
       <div class="bar">
+        <span class="msel" id="addWrap"><button type="button" class="icon-btn addbtn" id="addBtn" aria-haspopup="menu" aria-expanded="false" title="Add files" aria-label="Add files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          <div class="mmenu addmenu" id="addMenu" role="menu" hidden>
+            <button type="button" class="mitem" role="menuitem" id="addFiles"><b>Upload files</b><span>Pictures, PDFs, and text or code files.</span></button>
+            <button type="button" class="mitem" role="menuitem" id="addFolder"><b>Upload a folder</b><span>Sends the text and code files inside it.</span></button>
+          </div>
+        </span>
+        <input type="file" id="fileIn" multiple hidden>
+        <input type="file" id="folderIn" webkitdirectory multiple hidden>
         <span class="who"><span class="dot"></span><span id="whoText">No orb picked</span><button class="icon-btn star" id="pinHome" type="button" aria-label="Pin this orb" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button></span>
         <span class="sels" id="sels" hidden><span class="msel"><button type="button" class="mbtn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false"></button><div class="mmenu" id="modelMenu" role="listbox" aria-label="Model" hidden></div></span><span class="msel" id="effWrap"><button type="button" class="mbtn" id="effBtn" aria-haspopup="listbox" aria-expanded="false" title="Effort"></button><div class="mmenu" id="effMenu" role="listbox" aria-label="Effort" hidden></div></span></span>
         <button class="send" id="send" type="submit" aria-label="Send" disabled>
