@@ -643,7 +643,7 @@ function resetState(){
   for (const k of ORDER) chats[k] = [];
   pins = []; recent = []; prefs = {}; lastSent = {};
   active = null; hist = []; hi = -1; credits = null; limitHit = false;
-  log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts();
+  log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts(); stopVoice();
 }
 
 // ---------- Saving to Firebase ----------
@@ -931,6 +931,34 @@ form.addEventListener("dragover", e => { if (active && e.dataTransfer && Array.f
 form.addEventListener("dragleave", () => form.classList.remove("drop"));
 form.addEventListener("drop", e => { form.classList.remove("drop"); if (!active || !e.dataTransfer || !e.dataTransfer.files.length) return; e.preventDefault(); addFiles(e.dataTransfer.files, false); });
 box.addEventListener("paste", e => { const fs = Array.from((e.clipboardData && e.clipboardData.files) || []); if (fs.length) { e.preventDefault(); addFiles(fs, false); } });
+
+// ---------- Voice typing (free, built into Chrome, Edge and Safari) ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listening = false, voiceBase = "";
+function stopVoice(){ if (rec && listening) { try { rec.stop(); } catch(_) {} } }
+function setMic(on){ listening = on; $("micBtn").setAttribute("aria-pressed", String(on)); $("micBtn").title = on ? "Stop voice typing" : "Voice typing"; box.placeholder = on ? "Listening…" : (active ? (app.dataset.view === "chat" ? `Reply to ${BOTS[active].name}…` : BOTS[active].ask) : box.placeholder); }
+if (SR) {
+  $("micBtn").hidden = false;
+  $("micBtn").onclick = () => {
+    if (!active) { nudge(); return; }
+    if (listening) { stopVoice(); return; }
+    rec = new SR();
+    rec.lang = navigator.language || "en-US"; rec.interimResults = true; rec.continuous = true;
+    voiceBase = box.value ? box.value.replace(/\s*$/, " ") : "";
+    rec.onresult = e => {
+      let finalText = "", interim = "";
+      for (let i = 0; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript; }
+      box.value = voiceBase + finalText + interim; autosize(); updateSend();
+    };
+    rec.onerror = e => {
+      status.textContent = e.error === "not-allowed" || e.error === "service-not-allowed" ? "Allow the microphone for this site to use voice typing."
+        : e.error === "no-speech" ? "Didn't hear anything. Try again." : e.error === "network" ? "Voice typing needs an internet connection." : e.error === "aborted" ? "" : "Voice typing stopped. Try again.";
+    };
+    rec.onend = () => { setMic(false); box.focus(); };
+    try { rec.start(); setMic(true); status.textContent = ""; } catch (_) { setMic(false); }
+  };
+}
+form.addEventListener("submit", stopVoice, true);
 
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;

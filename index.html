@@ -260,6 +260,9 @@ button{font:inherit;color:inherit}
 .lfeat b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
 .aback{align-self:flex-start}
 .legal-modal{z-index:60}
+.micbtn{width:36px;height:36px;border-radius:10px;flex:none}
+.micbtn[aria-pressed="true"]{background:#d93b3b;color:#fff;animation:micpulse 1.2s ease-in-out infinite}
+@keyframes micpulse{0%,100%{box-shadow:0 0 0 0 rgba(217,59,59,.45)}50%{box-shadow:0 0 0 6px rgba(217,59,59,0)}}
 .addbtn{width:32px;height:32px;border:1px solid var(--line);border-radius:999px}
 .composer.drop{border-color:var(--c-active,var(--accent));border-style:dashed}
 .mmenu.addmenu{left:0;right:auto}
@@ -457,6 +460,7 @@ textarea:disabled{pointer-events:none}
         <input type="file" id="folderIn" webkitdirectory multiple hidden>
         <span class="who"><span class="dot"></span><span id="whoText">No orb picked</span><button class="icon-btn star" id="pinHome" type="button" aria-label="Pin this orb" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button></span>
         <span class="sels" id="sels" hidden><span class="msel"><button type="button" class="mbtn" id="modelBtn" aria-haspopup="listbox" aria-expanded="false"></button><div class="mmenu" id="modelMenu" role="listbox" aria-label="Model" hidden></div></span><span class="msel" id="effWrap"><button type="button" class="mbtn" id="effBtn" aria-haspopup="listbox" aria-expanded="false" title="Effort"></button><div class="mmenu" id="effMenu" role="listbox" aria-label="Effort" hidden></div></span></span>
+        <button class="icon-btn micbtn" id="micBtn" type="button" aria-label="Voice typing" aria-pressed="false" title="Voice typing" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
         <button class="send" id="send" type="submit" aria-label="Send" disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>
@@ -574,6 +578,8 @@ textarea:disabled{pointer-events:none}
       <p>Inside Orbs, only you can see your chats. Other users can't. The person who runs Orbs can technically open the stored data in Firebase, but only looks at it to fix problems or when the law requires it.</p>
       <h3>Keeping and deleting</h3>
       <p>Your chats stay until you delete them. In Settings you can delete all your chats or your whole account at any time.</p>
+      <h3>Voice typing</h3>
+      <p>The microphone button uses your browser's own speech-to-text. Orbs only receives the text. Some browsers, like Google Chrome, send your voice to their company's servers to turn it into text, so their privacy rules apply to that part.</p>
       <h3>On your device</h3>
       <p>Orbs remembers your theme and sidebar choice on your device, and Firebase keeps you signed in. That's it.</p>
       <h3>Kids and teens</h3>
