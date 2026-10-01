@@ -438,7 +438,7 @@ function item(k, sub){
   el.onclick = () => { pick(k); if (mobile()) setSide(false); };
   return el;
 }
-const MODELS = [{n:"Koa",v:"1.01",cost:1,d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,d:"the most careful, takes its time"}];
+const MODELS = [{n:"Koa",v:"1.01",cost:1,base:"Claude Haiku 4.5",d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,base:"Claude Sonnet 5.5",d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,base:"Claude Opus 5.5",d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,base:"Claude Fable 5.1",d:"the most careful, takes its time"}];
 const creditWord = n => n + (n === 1 ? " credit" : " credits");
 let prefs = {};
 function pf(k){ if (!prefs || typeof prefs !== "object" || Object.isFrozen(prefs)) prefs = Object.assign({}, prefs || {}); let p = prefs[k]; if (!p || typeof p !== "object" || Object.isFrozen(p) || !(p.m >= 0 && p.m < MODELS.length)) { p = { m: (p && p.m >= 0 && p.m < MODELS.length) ? p.m : 1 }; prefs[k] = p; } return p; }
@@ -449,11 +449,11 @@ function syncSel(){
   $("modelBtn").textContent = m0.n + " " + m0.v + " \u25BE";
   const menu = $("modelMenu"); menu.innerHTML = "";
   MODELS.forEach((m, i) => { const it = document.createElement("button"); it.type = "button"; it.className = "mitem"; it.setAttribute("role","option"); it.setAttribute("aria-selected", String(i === p.m));
-    const b = document.createElement("b"), d = document.createElement("span"); b.textContent = m.n + " " + m.v; if (credits) { const c = document.createElement("span"); c.className = "cost"; c.textContent = creditWord(m.cost); b.appendChild(c); } d.textContent = m.d.charAt(0).toUpperCase() + m.d.slice(1) + ".";
+    const b = document.createElement("b"), d = document.createElement("span"); b.textContent = m.n + " " + m.v; if (credits) { const c = document.createElement("span"); c.className = "cost"; c.textContent = creditWord(m.cost); b.appendChild(c); } d.textContent = m.d.charAt(0).toUpperCase() + m.d.slice(1) + ". Built on " + m.base + ".";
     it.append(b, d); it.onclick = () => { pf(active).m = i; savePrefs(); menu.hidden = true; $("modelBtn").setAttribute("aria-expanded","false"); syncSel(); }; menu.appendChild(it); });
   hint();
 }
-function hint(){ if (!active) { $("hint").textContent = ""; return; } const m = MODELS[pf(active).m]; $("hint").textContent = m.n + " " + m.v + ": " + m.d + "." + (credits ? " Uses " + creditWord(m.cost) + " per message." : ""); }
+function hint(){ if (!active) { $("hint").textContent = ""; return; } const m = MODELS[pf(active).m]; $("hint").textContent = m.n + " " + m.v + " (" + m.base + "): " + m.d + "." + (credits ? " Uses " + creditWord(m.cost) + " per message." : ""); }
 $("modelBtn").onclick = e => { e.stopPropagation(); const mm = $("modelMenu"); mm.hidden = !mm.hidden; $("modelBtn").setAttribute("aria-expanded", String(!mm.hidden)); if (!mm.hidden) mm.classList.toggle("down", $("form").getBoundingClientRect().top < mm.offsetHeight + 16); };
 document.addEventListener("click", () => { $("modelMenu").hidden = true; $("modelBtn").setAttribute("aria-expanded","false"); });
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
