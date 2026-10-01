@@ -268,7 +268,9 @@ button{font:inherit;color:inherit}
 .lbody a{color:var(--accent)}
 .lupd{color:var(--muted);font-size:.85rem}
 .agree{display:flex;gap:8px;align-items:flex-start;font-size:.92rem;color:var(--muted);text-align:left;line-height:1.4}
-.agree input{width:auto;margin-top:4px;accent-color:var(--accent)}
+.auth .agree{width:100%;box-sizing:border-box;cursor:pointer}
+.auth .agree input{flex:none;width:18px;height:18px;margin:3px 0 0;padding:0;border:0;accent-color:var(--accent);cursor:pointer}
+.auth .agree span{flex:1;min-width:0}
 .agree .linkbtn,.legalnote .linkbtn{font-size:inherit;padding:0}
 .legalnote{margin:0;color:var(--muted);font-size:.82rem;line-height:1.45}
 .ainote{text-align:center;color:var(--muted);font-size:.78rem;margin-top:2px}
