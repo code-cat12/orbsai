@@ -21,7 +21,7 @@ export function creditsLeft(usageDoc, perUser, day = dayKey()) {
 }
 
 // The owner (emails in ADMIN_EMAILS) gets a bigger daily allowance when limits are on
-export const ADMIN_CREDITS = 500;
+export const ADMIN_CREDITS = 99999;
 export function isAdmin(user, env) {
   const list = String(env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return !!(user && user.email_verified === true && user.email && list.includes(String(user.email).toLowerCase()));
