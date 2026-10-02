@@ -11,6 +11,8 @@ Nine helper orbs in one chat. People make an account (Google or email + password
 | `firebase-config.js` | Your Firebase web settings (you paste these in) | No, these are meant to be public |
 | `api/chat.js` | The server part. Checks who's signed in, counts credits, talks to Claude | No (the key is in Vercel, not here) |
 | `api/_core.js`, `api/_orbs.js` | Server helpers: message checks and each orb's instructions | No |
+| `api/admin.js`, `api/feedback.js` | The admin panel and thumbs up/down | No |
+| `vendor/` | Free libraries for nicer formatting (Markdown, code colors, math). Licenses in `vendor/LICENSES.txt` | No |
 | `vercel.json` | Security settings for the site | No |
 | `package.json` | Tells Vercel to install Firebase's server tools | No |
 | `firestore.rules` | Who can read what in your database (paste into Firebase) | No |
@@ -41,11 +43,23 @@ Nine helper orbs in one chat. People make an account (Google or email + password
        `FIREBASE_PROJECT_ID` (project_id), `FIREBASE_CLIENT_EMAIL` (client_email), `FIREBASE_PRIVATE_KEY` (private_key, the long one starting with `-----BEGIN PRIVATE KEY-----`)
    - (optional, leave out for unlimited) `DAILY_CREDITS`: credits each person gets per day, like `40`.
    - (optional, leave out for unlimited) `SITE_DAILY_CREDITS`: total credits for everyone together per day, like `200`.
+   - `ADMIN_EMAILS`: your email (the one you sign in to Orbs with). Only these emails see the **Admin** button. Separate several with commas.
 9. **Deployments → the newest one → ⋯ → Redeploy**, so Vercel picks up the new variables.
 10. Delete the service account `.json` from your Downloads (or keep it somewhere private).
 
 ### Test it
 Open your site, make an account, click the link in the email (check spam), and send a message.
+
+## Admin panel
+
+Set `ADMIN_EMAILS` in Vercel, redeploy, then sign in to Orbs. **Admin** shows up at the bottom of the sidebar. It has:
+- **Overview:** about how much Orbs spent today and this month, messages, web searches, people, and a 14-day chart. (Estimates. The Claude Console has your real bill.)
+- **Settings:** emergency pause, web search on/off and daily search limits, daily credit limits, Kids Mode for everyone. These win over the Vercel variables.
+- **Reports**, **Feedback** (thumbs), and **People** (ban or unban accounts).
+
+## Web search
+
+Off unless someone taps the globe. Up to 3 searches per message, 5 per person per day, and 100 per day for the whole site (change these in the admin panel). Each search costs about 1 cent. Never used in Kids Mode.
 
 ## Credits (off by default)
 Right now chatting is **unlimited**. Your only safety net is the monthly spending limit in the Claude Console, so set one.

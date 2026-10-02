@@ -27,7 +27,7 @@ export function publicState(k, env = {}) {
   };
 }
 
-export function makeKidsHandler({ verifyToken, getKids, setKids, env = process.env, now = () => Date.now() }) {
+export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = async () => null, env: baseEnv = process.env, now = () => Date.now() }) {
   return async function POST(request) {
     const m = (request.headers.get("authorization") || "").match(/^Bearer ([\w.-]+)$/);
     if (!m) return json(401, { error: "unauthenticated" });
@@ -38,8 +38,11 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, env = process.e
     try { body = await request.json(); } catch { return json(400, { error: "bad_request" }); }
     const k = (await getKids(user.uid)) || {};
     const { action } = body || {};
+    // "Kids Mode for everyone" can be switched on in the admin panel too
+    let cfg = null; try { cfg = await getConfig(); } catch {}
+    const env = cfg && cfg.kidsForAll === true ? { ...baseEnv, KIDS_MODE: "all" } : baseEnv;
 
-    if (action === "status") return json(200, publicState(k, env));
+    if (action === "status") return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false) });
 
     if (action === "age") {
       if (k.age) return json(409, { error: "age_already_set", ...publicState(k, env) });

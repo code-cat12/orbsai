@@ -1,5 +1,7 @@
 // Orbs website app. Sign-in and saving use Firebase; chatting goes through /api/chat (your server).
 import { firebaseConfig } from "./firebase-config.js";
+import { marked } from "./vendor/marked.esm.js";
+import DOMPurify from "./vendor/purify.es.mjs";
 const BOTS = {
   neb: {
     name:"Nebula", role:"Everything Else", glyph:"N", color:"--c-neb",
@@ -52,6 +54,8 @@ const ORDER = ["neb","tech","cook","game","web","write","study","music","lang"];
 const $ = id => document.getElementById(id);
 const app = $("app"), log = $("log"), box = $("box"), sendBtn = $("send"), status = $("status"), form = $("form");
 let active = null, busy = false, ctl = null, user = null;
+let webOn = false, incogNext = false;      // web search for this chat; next new chat is incognito
+let opts = { think: true };                // your settings that aren't per-orb (saved to your account)
 // Chats live in your Firebase account; this is just the copy on screen.
 // Conversations: each orb can have as many chats as you want.
 let convs = {};          // id -> { id, orb, title, turns, created, updated }
@@ -85,15 +89,11 @@ function greeting(){
   return n ? pick.replace("{n}", n) : pick.replace(/,? \{n\}/, "").replace("{n}", "");
 }
 // Keep it up to date if the page stays open across the hour
-setInterval(() => { if (app.dataset.view === "home" && $("greet")) $("greet").textContent = greeting(); }, 60000);
+setInterval(() => { if (app.dataset.view === "home" && $("greet") && !incogNext) $("greet").textContent = greeting(); }, 60000);
 
-// Tiny safe markdown: escape first, then code fences, inline code, bold, lists, headings, paragraphs
-function esc(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function inline(s){
-  return s.replace(/`([^`]+)`/g, "<code>$1</code>")
-          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-          .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
-}
+// ---------- Formatting replies ----------
+// Markdown (tables, lists, links, code) -> cleaned HTML. Code gets colors and math gets drawn once a reply is finished.
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 // A clarifying question can end with "[options: A | B | C]"; that line becomes buttons instead of text
 function splitOptions(text){
   const lines = String(text || "").replace(/\s+$/, "").split("\n");
@@ -103,21 +103,52 @@ function splitOptions(text){
   if (/^\s*\[opt/i.test(last)) return { body: lines.slice(0, -1).join("\n"), options: [] }; // still streaming in
   return { body: String(text || ""), options: [] };
 }
+marked.use({ gfm: true, breaks: true });
+DOMPurify.addHook("afterSanitizeAttributes", node => {
+  if (node.tagName === "A") { node.setAttribute("target", "_blank"); node.setAttribute("rel", "noopener noreferrer nofollow"); }
+});
+// Only code blocks keep a class (to know their language); every other class is dropped
+DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
+  if (data.attrName === "class" && !(node.tagName === "CODE" && /^language-[\w+#-]+$/.test(data.attrValue))) data.keepAttr = false;
+});
+const PURIFY = { FORBID_TAGS: ["img","style","form","input","button","textarea","select","iframe","video","audio","svg","math"], FORBID_ATTR: ["style","id"], ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|#)/i };
+// Math is pulled out first so Markdown doesn't mangle it: $$...$$, \[...\] (big) and \(...\) (inline). Code is left alone.
+const MATH_RE = /(```[\s\S]*?(?:```|$)|`[^`\n]*`)|\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)/g;
 function md(src){
-  const parts = esc(src).split(/```/);
-  let html = "";
-  parts.forEach((part, i) => {
-    if (i % 2 === 1) { html += "<pre><code>" + part.replace(/^[\w+-]*\n/, "") + "</code></pre>"; return; }
-    for (let b of part.split(/\n{2,}/)) {
-      b = b.trim(); if (!b) continue;
-      const lines = b.split("\n");
-      if (lines.every(l => /^\s*[-*•]\s+/.test(l))) html += "<ul>" + lines.map(l => "<li>" + inline(l.replace(/^\s*[-*•]\s+/, "")) + "</li>").join("") + "</ul>";
-      else if (lines.every(l => /^\s*\d+[.)]\s+/.test(l))) html += "<ol>" + lines.map(l => "<li>" + inline(l.replace(/^\s*\d+[.)]\s+/, "")) + "</li>").join("") + "</ol>";
-      else if (/^#{1,4}\s/.test(b)) html += "<h3>" + inline(b.replace(/^#{1,4}\s/, "")) + "</h3>";
-      else html += "<p>" + inline(lines.join("<br>")) + "</p>";
-    }
+  const maths = [];
+  const text = String(src || "").replace(MATH_RE, (all, code, d1, d2, i1) => {
+    if (code) return code;
+    const tex = d1 !== undefined ? d1 : d2 !== undefined ? d2 : i1, big = i1 === undefined;
+    maths.push({ tex, big });
+    return "\u0000M" + (maths.length - 1) + "\u0000";
   });
+  let html = DOMPurify.sanitize(marked.parse(text.replace(/\u0000/g, "@@"), { async: false }), PURIFY);
+  html = html.replace(/@@M(\d+)@@/g, (_, i) => { const m = maths[+i]; return m ? `<span class="math${m.big ? " big" : ""}" data-tex="${esc(m.tex)}">${esc(m.tex)}</span>` : ""; });
   return html;
+}
+// Extra polish once a reply is on screen: scrolling tables, code colors and copy buttons, drawn math
+let hljsP = null, katexP = null;
+function loadHljs(){ return hljsP ||= import("./vendor/highlight.min.js").then(m => { const h = m.default; h.configure({ ignoreUnescapedHTML: true }); return h; }); }
+function loadKatex(){
+  return katexP ||= new Promise((ok, no) => {
+    const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "/vendor/katex/katex.min.css"; document.head.appendChild(css);
+    const sc = document.createElement("script"); sc.src = "/vendor/katex/katex.min.js"; sc.onload = () => ok(window.katex); sc.onerror = no; document.head.appendChild(sc);
+  });
+}
+function enhance(root, final){
+  for (const t of root.querySelectorAll("table")) if (!t.parentNode.classList.contains("tablewrap")) { const w = document.createElement("div"); w.className = "tablewrap"; t.replaceWith(w); w.appendChild(t); }
+  for (const pre of root.querySelectorAll("pre")) {
+    const code = pre.querySelector("code"); if (!code) continue;
+    const lang = ((code.className.match(/language-([\w+#-]+)/) || [])[1] || "").toLowerCase();
+    if (lang && !pre.dataset.lang) pre.dataset.lang = lang;
+    if (lang === "luau") code.className = "language-lua";
+  }
+  addCodeCopy(root);
+  if (!final) return;
+  const codes = root.querySelectorAll("pre code:not(.hljs)");
+  if (codes.length) loadHljs().then(h => { for (const c of codes) { if (!c.isConnected) continue; const known = /language-([\w+#-]+)/.exec(c.className); if (known && !h.getLanguage(known[1])) c.className = ""; try { h.highlightElement(c); } catch(_) {} } }).catch(() => {});
+  const maths = root.querySelectorAll(".math:not(.done)");
+  if (maths.length) loadKatex().then(k => { for (const el of maths) { try { k.render(el.dataset.tex, el, { displayMode: el.classList.contains("big"), throwOnError: false, trust: false, strict: "ignore" }); el.classList.add("done"); } catch(_) {} } }).catch(() => {});
 }
 
 // Orb characters: flat shape per orb, slanted dash eyes, no mouth, animated accessory
@@ -224,10 +255,27 @@ function renderHome(){
     box.placeholder = "Pick an orb below to start…";
     $("whoText").textContent = "No orb picked";
   }
-  setAccent(); renderPicker(); updateSend(); snap(); renderSide();
+  stopSpeak(); setAccent(); renderPicker(); updateSend(); snap(); renderSide(); renderIncog();
 }
+// Incognito switch (top right on the home screen)
+function renderIncog(){
+  const home = app.dataset.view === "home", btn = $("incogBtn");
+  btn.hidden = !home || !user; btn.setAttribute("aria-pressed", String(incogNext)); btn.classList.toggle("on", incogNext);
+  btn.title = incogNext ? "Turn off incognito" : "Incognito chat (not saved)";
+  app.classList.toggle("incog", home && incogNext);
+  if (home) {
+    $("greet").textContent = incogNext ? "Incognito chat" : greeting();
+    $("incogNote").hidden = !incogNext;
+  }
+}
+$("incogBtn").onclick = () => { if (busy) return; incogNext = !incogNext; renderIncog(); box.focus(); };
 
 const COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>', RETRY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
+const EDIT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
+const SPEAK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+const STOP_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>';
+const UP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8a2 2 0 0 1-1.9 1.4H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9z"/></svg>';
+const DOWN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3"/><path d="M9 18.1 10 14H4.2a2 2 0 0 1-1.9-2.6l2.3-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.8a2 2 0 0 0-1.8 1.1L12 22a3.1 3.1 0 0 1-3-3.9z"/></svg>';
 function fmtTime(t){
   if (!t) return "";
   const d = new Date(t), now = new Date();
@@ -257,44 +305,89 @@ const FLAG_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 let reportText = "";
 function openReport(text){ reportText = String(text || "").slice(0, 4000); $("repReason").value = ""; $("repMsg").textContent = ""; $("repSend").disabled = false; openLegal("reportModal"); }
 function actBtn(svg, label, fn){ const b = document.createElement("button"); b.type = "button"; b.className = "act"; b.innerHTML = svg; b.title = label; b.setAttribute("aria-label", label); b.onclick = () => fn(b); return b; }
-// One message row. User: bubble on the right. Orb: plain text, full width, with actions underneath.
-function bubble(role, html, raw, turn, isLast){
-  const b = BOTS[active];
-  const row = document.createElement("div");
-  row.className = "row " + (role === "user" ? "me" : "bot-row");
+// A button that needs a second tap before it does something that can't be undone
+function armed(btn, label, fn){
+  if (btn.dataset.armed) { fn(); return; }
+  const old = btn.innerHTML; btn.dataset.armed = "1"; btn.classList.add("done", "warn"); btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.innerHTML = old; btn.classList.remove("done", "warn"); } }, 3500);
+}
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+
+// Thinking, web searches and sources that go with a reply
+function thinkBox(text, secs, live){
+  const d = el("details", "thinkbox"); if (live) d.open = true;
+  const sum = el("summary", null, live ? "Thinking…" : secs ? `Thought for ${secs}s` : "Thought process");
+  const body = el("div", "thinktext"); body.innerHTML = md(text || "");
+  d.append(sum, body); return d;
+}
+function searchedLine(qs){ const d = el("div", "searched"); d.textContent = "🔎 Searched the web: " + qs.map(q => "“" + q + "”").join(", "); return d; }
+function safeUrl(u){ try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x : null; } catch(_) { return null; } }
+function sourcesBox(src){
+  const box = el("div", "sources"); box.appendChild(el("span", "slabel", "Sources"));
+  const seen = new Set();
+  for (const s of src) {
+    const x = safeUrl(s.u); if (!x || seen.has(x.href)) continue; seen.add(x.href);
+    const a = el("a", "src", x.hostname.replace(/^www\./, "")); a.href = x.href; a.target = "_blank"; a.rel = "noopener noreferrer nofollow"; a.title = s.t || x.href;
+    box.appendChild(a);
+  }
+  return box;
+}
+
+// One message row. User: bubble on the right. Orb: formatted text, full width, with actions underneath.
+function bubble(role, turn, idx, isLast){
+  const b = BOTS[active], conv = curConv();
+  const row = el("div", "row " + (role === "user" ? "me" : "bot-row"));
   row.style.setProperty("--c", `var(${b.color})`);
-  const col = document.createElement("div"); col.className = "col";
-  const m = document.createElement("div"); m.className = "msg";
-  if (raw != null) m.textContent = raw; else m.innerHTML = html;
-  if (turn && Array.isArray(turn.files) && turn.files.length) {
-    const fl = document.createElement("div"); fl.className = "msgfiles";
-    for (const f of turn.files) { const sp = document.createElement("span"); sp.textContent = (f.kind === "image" ? "🖼️ " : f.kind === "pdf" ? "📄 " : "📎 ") + f.name; fl.appendChild(sp); }
-    col.appendChild(fl);
-  }
-  col.appendChild(m);
-  if (turn && role !== "user" && isLast && !busy) {
-    const opts = splitOptions(turn.content).options;
-    if (opts.length) {
-      const o = document.createElement("div"); o.className = "opts";
-      for (const label of opts) { const btn = document.createElement("button"); btn.type = "button"; btn.className = "opt"; btn.textContent = label; btn.onclick = () => send(label); o.appendChild(btn); }
-      col.appendChild(o);
+  const col = el("div", "col");
+  const m = el("div", "msg");
+  if (role === "user") {
+    if (Array.isArray(turn.files) && turn.files.length) {
+      const fl = el("div", "msgfiles");
+      for (const f of turn.files) fl.appendChild(el("span", null, (f.kind === "image" ? "🖼️ " : f.kind === "pdf" ? "📄 " : "📎 ") + f.name));
+      col.appendChild(fl);
+    }
+    m.textContent = turn.content; col.appendChild(m);
+  } else {
+    if (turn.th) col.appendChild(thinkBox(turn.th, turn.tm));
+    if (Array.isArray(turn.q) && turn.q.length) col.appendChild(searchedLine(turn.q));
+    m.innerHTML = md(splitOptions(turn.content).body); col.appendChild(m);
+    if (Array.isArray(turn.src) && turn.src.length) col.appendChild(sourcesBox(turn.src));
+    if (isLast && !busy) {
+      const opts = splitOptions(turn.content).options;
+      if (opts.length) {
+        const o = el("div", "opts");
+        for (const label of opts) { const btn = el("button", "opt", label); btn.type = "button"; btn.onclick = () => send(label); o.appendChild(btn); }
+        col.appendChild(o);
+      }
     }
   }
-  if (turn) {
-    const meta = document.createElement("div"); meta.className = "meta" + (isLast ? " show" : "");
-    const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = fmtTime(turn.t);
-    if (role === "user") { meta.append(ts, actBtn(COPY_SVG, "Copy message", btn => copyText(turn.content, btn))); }
-    else {
-      meta.append(actBtn(COPY_SVG, "Copy reply", btn => copyText(splitOptions(turn.content).body, btn)));
-      meta.append(actBtn(FLAG_SVG, "Report this reply", () => openReport(turn.content)));
-      if (isLast) meta.append(actBtn(RETRY_SVG, "Try again", () => retry()));
-      meta.append(ts);
-    }
-    col.appendChild(meta);
-    if (role !== "user") addCodeCopy(m);
+  const meta = el("div", "meta" + (isLast ? " show" : ""));
+  const ts = el("span", "ts", fmtTime(turn.t));
+  if (role === "user") {
+    meta.append(ts, actBtn(EDIT_SVG, "Edit message", () => startEdit(idx, row)), actBtn(COPY_SVG, "Copy message", btn => copyText(turn.content, btn)));
+  } else {
+    meta.append(actBtn(COPY_SVG, "Copy reply", btn => copyText(splitOptions(turn.content).body, btn)));
+    if (TTS) meta.append(actBtn(SPEAK_SVG, "Read aloud", btn => toggleSpeak(splitOptions(turn.content).body, btn)));
+    const up = actBtn(UP_SVG, "Good reply", () => vote(conv, turn, "up", up, down)), down = actBtn(DOWN_SVG, "Bad reply", () => vote(conv, turn, "down", up, down));
+    up.classList.toggle("on", turn.fb === "up"); down.classList.toggle("on", turn.fb === "down");
+    meta.append(up, down);
+    meta.append(actBtn(RETRY_SVG, isLast ? "Try again" : "Redo from here", btn => isLast ? retry(idx) : armed(btn, "Redo? Later messages go away", () => retry(idx))));
+    meta.append(actBtn(FLAG_SVG, "Report this reply", () => openReport(turn.content)));
+    meta.append(ts);
   }
+  col.appendChild(meta);
   row.appendChild(col); log.appendChild(row);
-  return m;
+  if (role !== "user") enhance(m, true);
+  return row;
+}
+// The reply that's being written right now
+function liveReply(){
+  const b = BOTS[active];
+  const row = el("div", "row bot-row"); row.style.setProperty("--c", `var(${b.color})`);
+  const col = el("div", "col"), think = thinkBox("", 0, true), searched = el("div", "searched"), msg = el("div", "msg"), src = el("div");
+  think.hidden = true; searched.hidden = true;
+  col.append(think, searched, msg, src); row.appendChild(col); log.appendChild(row);
+  return { row, think, searched, msg, src };
 }
 // The orb sits under the newest reply (like the Claude app); older replies stay still.
 function tailOrb(thinking){
@@ -306,31 +399,37 @@ function tailOrb(thinking){
 
 function renderChat(){
   const c = curConv(); if (!c) { renderHome(); return; }
-  active = c.orb;
+  active = c.orb; webOn = !!c.web;
   app.dataset.view = "chat";
   const b = BOTS[active];
-  orbInto($("topGlyph"), active); $("topName").textContent = b.name; $("topRole").textContent = c.title || b.role;
+  orbInto($("topGlyph"), active); $("topName").textContent = b.name; $("topRole").textContent = c.incog ? "Incognito chat" : c.title || b.role;
+  $("incogTag").hidden = !c.incog;
   box.disabled = false; form.classList.remove("locked");
   box.placeholder = `Reply to ${b.name}…`;
   $("whoText").textContent = b.name;
   setAccent();
   log.innerHTML = "";
+  if (c.incog) log.appendChild(el("div", "incognote", "🕶️ Incognito chat. It won't be saved, and it disappears when you leave."));
   const turns = c.turns;
-  turns.forEach((t, i) => { const last = i === turns.length - 1; t.role === "user" ? bubble("user", null, t.content, t, last) : bubble("assistant", md(splitOptions(t.content).body), null, t, last); });
+  turns.forEach((t, i) => bubble(t.role === "user" ? "user" : "assistant", t, i, i === turns.length - 1));
   if (turns.length && turns[turns.length - 1].role === "assistant" && !busy) tailOrb(false);
   log.scrollTop = log.scrollHeight;
-  updateSend(); snap(); renderSide();
+  updateSend(); snap(); renderSide(); renderIncog();
 }
 
+// Incognito chats are never saved and vanish when you leave them
+function dropIncog(keep){ for (const id of Object.keys(convs)) if (convs[id].incog && id !== keep) delete convs[id]; }
 function pick(k){
   if (busy) return;
-  active = k; cur = null; status.textContent = "";
+  dropIncog(null);
+  active = k; cur = null; status.textContent = ""; webOn = false;
   renderHome();
   const mark = $("mark"); mark.classList.remove("pop"); void mark.offsetWidth; mark.classList.add("pop"); setTimeout(() => mark.classList.remove("pop"), 600);
   box.focus();
 }
 function openConv(id){
   if (busy || !convs[id]) return;
+  dropIncog(id); stopSpeak();
   cur = id; active = convs[id].orb; status.textContent = ""; box.value = ""; autosize();
   renderChat(); if (mobile()) setSide(false);
 }
@@ -353,40 +452,63 @@ const ERR = {
   not_configured:"The site isn't fully set up yet. The owner needs to add the keys on Vercel.",
   server_error:"Orbs had a server problem. Try again.",
   out_of_funds:"Orbs ran out of Claude money!! 😤💢 Tell the owner to add more, baka!",
+  paused:"Orbs is taking a little break right now. Try again later!",
+  banned:"This account can't chat on Orbs anymore.",
   network:"Can't reach Orbs. Check your internet connection."
 };
+const NOSEARCH = { kids:"Web search is off in Kids Mode, so that answer didn't search the web.", off:"Web search is turned off on Orbs right now, so that answer didn't search the web.", limit:"You've used all your web searches for today, so that answer didn't search the web. They refill at midnight." };
 
-async function send(text, regen){
+// Files sent with each message, kept on this device so "Try again" and edits can send them again
+const fileStore = {};
+async function send(text, regen, filesOverride){
   text = (text || "").trim();
   if (!active) { nudge(); return; }
-  if ((!text && !regen && !pendingFiles.length) || busy) return;
+  if ((!text && !regen && !pendingFiles.length && !filesOverride) || busy) return;
   if (!user) return;
-  const key = active, b = BOTS[key], model = MODELS[pf(key).m];
+  const key = active, b = BOTS[key], mi = pf(key).m, model = MODELS[mi];
   if (credits && credits.left < msgCost(pf(key))) { creditShort(model); return; }
   // Start a new chat if none is open for this orb
-  if (!curConv() || curConv().orb !== key) { const id = newId(), now = Date.now(); convs[id] = { id, orb:key, title:"", turns:[], created:now, updated:now }; cur = id; }
+  if (!curConv() || curConv().orb !== key) {
+    const id = (incogNext ? "x_" : "") + newId(), now = Date.now();
+    convs[id] = { id, orb:key, title:"", turns:[], created:now, updated:now, web:webOn, ...(incogNext ? { incog:true } : {}) };
+    cur = id; incogNext = false;
+  }
   const cid = cur, conv = convs[cid];
   let files = [];
   if (!regen) {
-    files = pendingFiles; pendingFiles = []; renderAtts();
+    if (filesOverride) files = filesOverride; else { files = pendingFiles; pendingFiles = []; renderAtts(); }
     if (!text) text = "Here are my files.";
     const turn = { role:"user", content:text, t:Date.now() };
-    if (files.length) turn.files = files.map(f => ({ name:f.name, kind:f.kind }));
-    conv.turns.push(turn); lastFiles[cid] = files;
+    if (files.length) { turn.files = files.map(f => ({ name:f.name, kind:f.kind })); fileStore[turn.t] = files; }
+    conv.turns.push(turn);
     if (!conv.title) conv.title = titleFrom(text);
-  } else files = (conv.turns[conv.turns.length - 1] || {}).files ? (lastFiles[cid] || []) : [];
+  } else { const lastU = conv.turns[conv.turns.length - 1] || {}; files = lastU.files ? (fileStore[lastU.t] || []) : []; }
   conv.updated = Date.now();
-  save();
+  save(); stopSpeak();
   box.value = ""; autosize();
   renderChat();
-  const out = bubble("assistant", "");
+  const live = liveReply();
   const tail = tailOrb(true);
   log.scrollTop = log.scrollHeight;
   busy = true; status.textContent = ""; updateSend();
   ctl = new AbortController();
   const ctx = conv.turns.slice(-30).map(t => ({ role:t.role, content:t.content }));
   while (ctx.length && ctx[0].role !== "user") ctx.shift();
-  let reply = "";
+  let reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0;
+  const paint = () => {
+    raf = 0;
+    if (thinking) { live.think.hidden = false; live.think.querySelector(".thinktext").innerHTML = md(thinking); }
+    if (reply) { live.msg.innerHTML = md(splitOptions(reply).body); enhance(live.msg, false); }
+    stickBottom();
+  };
+  const later = () => { if (!raf) raf = requestAnimationFrame(paint); };
+  const extras = () => {
+    const o = { m: mi };
+    if (thinking) { o.th = thinking.slice(0, 20000); if (thinkSecs) o.tm = thinkSecs; }
+    if (queries.length) o.q = queries.slice(0, 5);
+    if (sources.length) o.src = sources.slice(0, 10);
+    return o;
+  };
   try {
     const token = await user.getIdToken();
     let res;
@@ -394,13 +516,13 @@ async function send(text, regen){
       res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
-        body: JSON.stringify({ orb:key, model:pf(key).m, effort:pf(key).e, messages:ctx,
+        body: JSON.stringify({ orb:key, model:mi, effort:pf(key).e, messages:ctx, think: opts.think !== false, web: !!webOn,
           ...(files.length ? { attachments: files.map(f => f.kind === "text" ? { kind:"text", name:f.name, text:f.text } : { kind:f.kind, name:f.name, media_type:f.media_type, data:f.data }) } : {}) }),
         signal: ctl.signal
       });
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
-    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), left: j.left }; }
-    // The server sends one small JSON object per line: {d:"more text"} ... then {done:true} or {error:"..."}
+    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), left: j.left, msg: j.msg }; }
+    // The server sends one small JSON object per line: {d:"text"} {t:"thinking"} {q:"search"} {src:[...]} ... then {done:true} or {error:"..."}
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "", end = null;
     try {
@@ -413,7 +535,14 @@ async function send(text, regen){
           const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
           if (!line) continue;
           let ev; try { ev = JSON.parse(line); } catch(_) { continue; }
-          if (typeof ev.d === "string") { reply += ev.d; tail.classList.remove("think"); out.innerHTML = md(splitOptions(reply).body); stickBottom(); }
+          if (typeof ev.d === "string") {
+            if (!reply && thinking && live.think.open) { thinkSecs = Math.max(1, Math.round((Date.now() - thinkStart) / 1000)); live.think.open = false; live.think.querySelector("summary").textContent = `Thought for ${thinkSecs}s`; }
+            reply += ev.d; tail.classList.remove("think"); later();
+          }
+          else if (typeof ev.t === "string") { if (!thinking) thinkStart = Date.now(); thinking += ev.t; later(); }
+          else if (typeof ev.q === "string") { queries.push(ev.q); live.searched.hidden = false; live.searched.textContent = "🔎 Searching the web: " + queries.map(q => "“" + q + "”").join(", "); stickBottom(); }
+          else if (Array.isArray(ev.src)) { for (const x of ev.src) if (x && typeof x.u === "string" && sources.length < 10 && !sources.some(y => y.u === x.u)) sources.push({ u: x.u, t: String(x.t || "") }); live.src.replaceChildren(sourcesBox(sources)); }
+          else if (typeof ev.nosearch === "string") noSearch = ev.nosearch;
           else end = ev;
         }
       }
@@ -422,13 +551,14 @@ async function send(text, regen){
     if (end.error) throw { code:end.error, left:end.left, text: reply };
     setCredits(end.left);
     if (end.refused && !reply.trim()) throw { code:"refused" };
-    conv.turns.push({ role:"assistant", content:reply, t:Date.now() }); conv.updated = Date.now(); save(); limitHit = false; renderUsage();
+    conv.turns.push({ role:"assistant", content:reply, t:Date.now(), ...extras() }); conv.updated = Date.now(); save(); limitHit = false; renderUsage();
     if (end.truncated) status.textContent = "That answer got cut off. Ask for a shorter one.";
     else if (end.refused) status.textContent = "The orb stopped there. Try asking a different way.";
+    else if (noSearch && NOSEARCH[noSearch]) status.textContent = NOSEARCH[noSearch];
   } catch (e) {
     const code = e && e.code || "upstream_error";
     if (typeof (e && e.left) === "number") setCredits(e.left);
-    if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now() }); save(); }
+    if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
     else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
@@ -446,9 +576,11 @@ async function send(text, regen){
     }
     else if (code === "kids_reply_blocked") status.textContent = "🛡️ Kids Mode hid that reply because it wasn't kid-safe. Try asking a different way.";
     else if (code === "safety_unavailable") status.textContent = "The safety check couldn't finish. Try again in a moment.";
-    else if (code === "age_required" || code === "blocked_age") { const u = user; user = null; enter(u); }
+    else if (code === "age_required" || code === "blocked_age" || code === "banned") { const u = user; user = null; enter(u); }
+    else if (code === "paused" && e.msg) status.textContent = "Orbs is taking a break: " + e.msg;
     else status.textContent = ERR[code] || ERR.upstream_error;
   } finally {
+    if (raf) cancelAnimationFrame(raf);
     busy = false; ctl = null;
     if (!conv.turns.length) { delete convs[cid]; if (cur === cid) cur = null; }
     if (cur === cid) renderChat(); else if (!cur && active === key) renderHome(); else { updateSend(); renderSide(); }
@@ -461,13 +593,111 @@ function creditShort(model){
   status.textContent = `Not enough credits left for ${model.n} today. Switch to ${cheaper.n} to keep chatting.`;
 }
 
-function retry(){
+// Redo: drop this reply (and anything after it), then ask again
+function retry(idx){
   if (busy || !curConv()) return;
   const turns = curConv().turns;
-  if (turns.length && turns[turns.length - 1].role === "assistant") turns.pop();
+  if (typeof idx === "number" && idx >= 0 && idx < turns.length) turns.splice(idx);
+  else if (turns.length && turns[turns.length - 1].role === "assistant") turns.pop();
   if (!turns.length || turns[turns.length - 1].role !== "user") return;
   save(); send("", true);
 }
+// Edit a message you sent: everything after it is replaced by a new answer
+function startEdit(idx, row){
+  const c = curConv(); if (busy || !c || !c.turns[idx]) return;
+  const turn = c.turns[idx];
+  const col = row.querySelector(".col"); col.innerHTML = ""; row.classList.add("editing");
+  const ta = el("textarea", "editbox"); ta.value = turn.content; ta.setAttribute("aria-label", "Edit your message");
+  const files = turn.files ? fileStore[turn.t] : null;
+  const note = el("small", "fine editnote", turn.files ? (files ? "Your files will be sent again." : "Files from this message can't be sent again. Attach them again if you need them.") : "Sending this replaces the replies after it.");
+  const bar = el("div", "editbar"), cancel = el("button", "outline", "Cancel"), go = el("button", "gbtn", "Send");
+  cancel.type = go.type = "button";
+  cancel.onclick = () => renderChat();
+  go.onclick = () => {
+    const txt = ta.value.trim(); if (!txt || busy) return;
+    c.turns = c.turns.slice(0, idx); save();
+    send(txt, false, files || []);
+  };
+  ta.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); go.click(); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); renderChat(); } };
+  bar.append(note, cancel, go); col.append(ta, bar);
+  ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 4, 320) + "px";
+  ta.oninput = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 4, 320) + "px"; };
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+// ---------- Thumbs up / down ----------
+let fbTurn = null, fbConv = null;
+async function postFeedback(body){
+  try { const token = await user.getIdToken(); await fetch("/api/feedback", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + token }, body: JSON.stringify(body) }); } catch(_) {}
+}
+function vote(conv, turn, dir, up, down){
+  if (!conv || !user) return;
+  const next = turn.fb === dir ? null : dir;
+  if (next) turn.fb = next; else delete turn.fb;
+  up.classList.toggle("on", next === "up"); down.classList.toggle("on", next === "down");
+  save();
+  postFeedback({ key: conv.id + ":" + turn.t, orb: conv.orb, model: Number.isInteger(turn.m) ? turn.m : pf(conv.orb).m, vote: next });
+  if (next === "up") status.textContent = "Thanks! Glad that helped.";
+  if (next === "down") { fbTurn = turn; fbConv = conv; $("fbReason").value = ""; $("fbShare").checked = false; $("fbMsg").textContent = ""; $("fbSend").disabled = false;
+    for (const b of document.querySelectorAll("#fbTags button")) b.setAttribute("aria-pressed", "false"); openLegal("fbModal"); }
+}
+for (const b of document.querySelectorAll("#fbTags button")) b.onclick = () => { for (const o of document.querySelectorAll("#fbTags button")) o.setAttribute("aria-pressed", String(o === b)); };
+$("fbSend").onclick = () => busyBtn($("fbSend"), async () => {
+  if (!fbTurn || !fbConv) return;
+  const tag = document.querySelector('#fbTags button[aria-pressed="true"]')?.dataset.tag;
+  await postFeedback({ key: fbConv.id + ":" + fbTurn.t, orb: fbConv.orb, model: Number.isInteger(fbTurn.m) ? fbTurn.m : pf(fbConv.orb).m, vote: "down",
+    ...(tag ? { tag } : {}), reason: $("fbReason").value.trim().slice(0, 300), ...($("fbShare").checked ? { reply: String(fbTurn.content).slice(0, 4000) } : {}) });
+  $("fbMsg").textContent = "Thanks! That helps make Orbs better."; $("fbSend").disabled = true; setTimeout(closeLegal, 1100);
+});
+
+// ---------- Read aloud (free, built into the browser) ----------
+const TTS = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+let speakBtn = null;
+function speechText(src){
+  return String(src || "")
+    .replace(/```[\s\S]*?(```|$)/g, " (code block) ")
+    .replace(/\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g, " (math) ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/^\s*\|?[\s:|-]+\|[\s:|-]*$/gm, "")
+    .replace(/\|/g, ", ")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+[.)])\s+/gm, "")
+    .replace(/[*_~]+/g, "")
+    .replace(/\s+/g, " ").trim();
+}
+function chunks(text){
+  const parts = text.match(/[^.!?。！？]+[.!?。！？]*\s*/g) || [text], out = [];
+  let cur = "";
+  for (const p of parts) { if ((cur + p).length > 200 && cur) { out.push(cur); cur = ""; } cur += p; }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+function pickVoice(lang){
+  const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith(lang.slice(0, 2).toLowerCase()));
+  return vs.find(v => /natural|google|premium|enhanced/i.test(v.name)) || vs.find(v => v.default) || vs[0] || null;
+}
+function stopSpeak(){
+  if (!TTS) return;
+  if (speakBtn) { speakBtn.innerHTML = SPEAK_SVG; speakBtn.classList.remove("on"); speakBtn.title = "Read aloud"; speakBtn = null; }
+  speechSynthesis.cancel();
+}
+function toggleSpeak(text, btn){
+  if (speakBtn === btn) { stopSpeak(); return; }
+  stopSpeak();
+  const list = chunks(speechText(text)); if (!list.length) return;
+  speakBtn = btn; btn.innerHTML = STOP_SVG; btn.classList.add("on"); btn.title = "Stop reading";
+  list.forEach((c, i) => {
+    const u = new SpeechSynthesisUtterance(c);
+    const cjk = (c.match(/[㐀-鿿]/g) || []).length;
+    u.lang = cjk > c.length * 0.2 ? "zh-CN" : (navigator.language || "en-US");
+    const v = pickVoice(u.lang); if (v) u.voice = v;
+    if (i === list.length - 1) u.onend = u.onerror = () => { if (speakBtn === btn) stopSpeak(); };
+    speechSynthesis.speak(u);
+  });
+}
+if (TTS) { speechSynthesis.getVoices(); window.addEventListener("pagehide", () => speechSynthesis.cancel()); }
+
 // Keep following the reply while it streams, unless the person scrolled up to read
 function stickBottom(){ if (log.scrollHeight - log.scrollTop - log.clientHeight < 140) log.scrollTop = log.scrollHeight; }
 function nudge(){
@@ -480,7 +710,7 @@ box.addEventListener("input", () => { autosize(); updateSend(); });
 box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(box.value); } });
 form.addEventListener("submit", e => { e.preventDefault(); if (busy) { ctl?.abort(); return; } send(box.value); });
 form.addEventListener("click", () => { if (!active) nudge(); });
-$("homeBtn").onclick = () => { if (busy) return; cur = null; renderHome(); };
+$("homeBtn").onclick = () => { if (busy) return; cur = null; dropIncog(null); webOn = false; renderHome(); };
 let freshNext = false;
 const shell = $("shell"), mobile = () => matchMedia("(max-width:760px)").matches;
 function setSide(open){ shell.classList.toggle("closed", !open); try { if (!mobile()) localStorage.setItem("orbs-side", open ? "1" : "0"); } catch(e) {} }
@@ -489,8 +719,11 @@ setSide(sideOpen);
 $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
-$("sideNew").onclick = () => { if (busy) return; active = null; cur = null; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); }
+$("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
+function openSet(){ $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); }
+// "Show thinking" switch
+function renderThinkSet(){ const on = opts.think !== false; $("thinkSw").setAttribute("aria-checked", String(on)); $("thinkTxt").textContent = on ? "On" : "Off"; }
+$("thinkSw").onclick = () => { opts = { ...opts, think: opts.think === false }; renderThinkSet(); cloudSave(); };
 $("setBtn").onclick = openSet;
 function closeSet(){ $("settings").hidden = true; $("setBtn").setAttribute("aria-expanded", "false"); wipeArmed(false); }
 $("setClose").onclick = closeSet;
@@ -548,6 +781,9 @@ function menuItem(title, cost, desc, selected, onPick){
 }
 function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["effMenu","effBtn"],["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
 function syncSel(){
+  const canWeb = !!active && kids.web !== false && !kids.on;
+  $("webBtn").hidden = !canWeb; if (!canWeb) webOn = false;
+  $("webBtn").setAttribute("aria-pressed", String(webOn)); $("webBtn").classList.toggle("on", webOn);
   $("sels").hidden = !active; if (!active) { $("hint").textContent = ""; return; }
   const p = pf(active), m0 = MODELS[p.m];
   $("modelBtn").textContent = m0.n + " " + m0.v + " ▾";
@@ -564,7 +800,7 @@ function syncSel(){
 function hint(){
   if (!active) { $("hint").textContent = ""; return; }
   const p = pf(active), m = MODELS[p.m];
-  $("hint").textContent = m.n + " " + m.v + " (" + m.base + "): " + m.d + "." +
+  $("hint").textContent = (webOn ? "🌐 Web search is on: the orb can look things up (up to 3 searches per message). " : "") + m.n + " " + m.v + " (" + m.base + "): " + m.d + "." +
     (hasEffort(p.m) ? " " + EFFORTS[p.e].n + " effort: " + EFFORTS[p.e].d + "." : " No effort setting on " + m.n + ".") +
     (credits ? " Uses " + creditWord(msgCost(p)) + " per message." : "");
 }
@@ -573,6 +809,7 @@ function toggleMenu(menuId, btnId){
     if (open) mm.classList.toggle("down", $("form").getBoundingClientRect().top < mm.offsetHeight + 16); };
 }
 $("modelBtn").onclick = toggleMenu("modelMenu", "modelBtn");
+$("webBtn").onclick = e => { e.stopPropagation(); if (!active) { nudge(); return; } webOn = !webOn; const c = curConv(); if (c) c.web = webOn; syncSel(); box.focus(); };
 $("effBtn").onclick = toggleMenu("effMenu", "effBtn");
 document.addEventListener("click", closeMenus);
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
@@ -610,7 +847,7 @@ function convItem(c, sub){
 function renderSide(){
   syncSel();
   const rec = $("recent"); rec.innerHTML = ""; const term = $("q").value.trim().toLowerCase();
-  const shown = Object.values(convs).filter(c => c.turns.length && (!term || (c.title || "").toLowerCase().includes(term) || BOTS[c.orb].name.toLowerCase().includes(term) || c.turns.some(m => m.content.toLowerCase().includes(term))))
+  const shown = Object.values(convs).filter(c => c.turns.length && !c.incog && (!term || (c.title || "").toLowerCase().includes(term) || BOTS[c.orb].name.toLowerCase().includes(term) || c.turns.some(m => m.content.toLowerCase().includes(term))))
     .sort((a, b) => (b.updated || 0) - (a.updated || 0));
   for (const c of shown) {
     const row = document.createElement("div"); row.className = "rrow";
@@ -659,7 +896,7 @@ function snap(){
 function travel(d){
   if (busy) return;
   const n = hi + d; if (n < 0 || n >= hist.length) return;
-  hi = n; const s = hist[n]; restoring = true; active = s.active; cur = s.cur && convs[s.cur] ? s.cur : null; status.textContent = "";
+  hi = n; const s = hist[n]; restoring = true; active = s.active; cur = s.cur && convs[s.cur] ? s.cur : null; status.textContent = ""; dropIncog(cur);
   if (s.view === "chat" && cur) renderChat(); else renderHome();
   restoring = false; $("backBtn").disabled = hi <= 0; $("fwdBtn").disabled = hi >= hist.length - 1; renderSide();
 }
@@ -705,7 +942,7 @@ $("prof").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.prevent
 
 function resetState(){
   convs = {}; cur = null; deletedIds.clear(); legacyDel.clear();
-  pins = []; prefs = {}; lastSent = {};
+  pins = []; prefs = {}; lastSent = {}; opts = { think: true }; webOn = false; incogNext = false; stopSpeak();
   active = null; hist = []; hi = -1; credits = null; limitHit = false;
   log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts(); stopVoice();
 }
@@ -720,6 +957,14 @@ function cleanTurns(v){
     .map(m => { const o = { role:m.role, content:m.content };
       if (typeof m.t === "number") o.t = m.t;
       if (Array.isArray(m.files)) o.files = m.files.filter(f => f && typeof f.name === "string").slice(0, 40).map(f => ({ name: f.name.slice(0, 200), kind: ["image","pdf","text"].includes(f.kind) ? f.kind : "text" }));
+      if (m.role === "assistant") {
+        if (typeof m.th === "string" && m.th) o.th = m.th.slice(0, 20000);
+        if (Number.isInteger(m.tm) && m.tm > 0) o.tm = m.tm;
+        if (Number.isInteger(m.m) && m.m >= 0 && m.m < 4) o.m = m.m;
+        if (m.fb === "up" || m.fb === "down") o.fb = m.fb;
+        if (Array.isArray(m.q)) o.q = m.q.filter(q => typeof q === "string").slice(0, 5).map(q => q.slice(0, 200));
+        if (Array.isArray(m.src)) o.src = m.src.filter(x => x && typeof x.u === "string" && /^https?:\/\//i.test(x.u)).slice(0, 10).map(x => ({ u: x.u.slice(0, 500), t: String(x.t || "").slice(0, 200) }));
+      }
       return o; }) : [];
 }
 function cloudSave(){ if (!user || !loaded) return; clearTimeout(cloudT); cloudT = setTimeout(flush, 800); }
@@ -727,7 +972,7 @@ async function flush(){
   const uid = user && user.uid; if (!uid || !loaded) return;
   try {
     for (const c of Object.values(convs)) {
-      if (!c.turns.length) continue;
+      if (!c.turns.length || c.incog) continue;
       const data = { orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created || Date.now(), updated:c.updated || Date.now() };
       const js = JSON.stringify(data);
       if (lastSent["c_" + c.id] !== js) { await F.setDoc(F.doc(db, "users", uid, "chats", c.id), data); lastSent["c_" + c.id] = js; }
@@ -735,7 +980,7 @@ async function flush(){
     for (const id of Array.from(deletedIds)) { await F.deleteDoc(F.doc(db, "users", uid, "chats", id)); deletedIds.delete(id); delete lastSent["c_" + id]; }
     // Old one-chat-per-orb saves are moved into the new chat list above, then removed
     for (const docId of Array.from(legacyDel)) { await F.deleteDoc(F.doc(db, "users", uid, "data", docId)); legacyDel.delete(docId); }
-    const meta = { pins, prefs }, mj = JSON.stringify(meta);
+    const meta = { pins, prefs, opts }, mj = JSON.stringify(meta);
     if (lastSent.settings !== mj) { await F.setDoc(F.doc(db, "users", uid, "data", "settings"), JSON.parse(mj)); lastSent.settings = mj; }
   } catch (e) { status.textContent = "Couldn't save your chats right now. Check your connection."; }
 }
@@ -768,7 +1013,8 @@ async function loadAccount(u){
     else if (d.id === "settings") {
       pins = Array.isArray(v.pins) ? v.pins.filter(k => Object.hasOwn(BOTS, k)) : [];
       prefs = v.prefs && typeof v.prefs === "object" ? JSON.parse(JSON.stringify(v.prefs)) : {};
-      lastSent.settings = JSON.stringify({ pins, prefs });
+      opts = { think: !(v.opts && v.opts.think === false) };
+      lastSent.settings = JSON.stringify({ pins, prefs, opts });
     }
   });
   try { const us = await F.getDoc(F.doc(db, "usage", u.uid)); creditsFromDoc(us.exists() ? us.data() : null); } catch (e) { credits = null; }
@@ -802,9 +1048,10 @@ function showGate(mode, email){
   $("aBack").hidden = mode !== "signin";
   if (mode === "home") { gate.scrollTop = 0; return; }
   $("aMain").hidden = mode !== "signin"; $("aVerify").hidden = mode !== "verify";
-  $("aAge").hidden = mode !== "age"; $("aBlocked").hidden = mode !== "blocked";
+  $("aAge").hidden = mode !== "age"; $("aBlocked").hidden = mode !== "blocked" && mode !== "banned";
   if (mode === "age") { $("aTitle").textContent = "How old are you?"; $("aText").textContent = "Orbs uses this to keep everyone safe. You can't change it later, so please be honest."; return; }
   if (mode === "blocked") { $("aTitle").textContent = "Sorry!"; $("aText").textContent = "Orbs is only for people 13 and older. Come back when you're older!"; return; }
+  if (mode === "banned") { $("aTitle").textContent = "Account blocked"; $("aText").textContent = "This account can't use Orbs anymore because it broke the rules. If you think that's a mistake, contact the person who runs Orbs."; return; }
   if (mode === "loading") { $("aTitle").textContent = "Orbs"; $("aText").textContent = "Loading…"; }
   else if (mode === "setup") { $("aTitle").textContent = "Almost ready"; $("aText").textContent = "Orbs isn't connected to Firebase yet. Paste your Firebase settings into firebase-config.js, then upload it again."; }
   else if (mode === "verify") { $("aTitle").textContent = "Check your email"; $("aText").textContent = "We sent a link to " + (email || "your email") + ". Click it to confirm it's really you, then come back here."; }
@@ -871,7 +1118,7 @@ $("vResend").onclick = () => busyBtn($("vResend"), async () => {
 $("vOut").onclick = () => A.signOut(auth);
 
 // ---------- Age + Kids Mode (the server decides; the page just shows it) ----------
-let kids = { age:null, on:false, locked:false, blocked:false, forcedForAll:false }, pending = null;
+let kids = { age:null, on:false, locked:false, blocked:false, forcedForAll:false, banned:false, web:true }, pending = null;
 async function kidsApi(u, body){
   const r = await fetch("/api/kids", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
   let j = {}; try { j = await r.json(); } catch(_) {}
@@ -891,6 +1138,7 @@ function renderKids(){
   $("kidsPin2").hidden = kids.on; $("kidsGo").textContent = kids.on ? "Turn off with PIN" : "Turn on Kids Mode";
   $("kidsPill").hidden = !kids.on;
   $("aiNote").textContent = (kids.on ? "🛡️ Kids Mode is on. " : "") + "Orbs is AI and can make mistakes. Please double-check important info.";
+  syncSel();
 }
 $("kidsBtn").onclick = () => { $("kidsForm").hidden = false; $("kidsBtn").hidden = true; $("kidsPin").value = ""; $("kidsPin2").value = ""; $("kidsPin").focus(); };
 $("kidsForm").addEventListener("submit", e => { e.preventDefault(); busyBtn($("kidsGo"), async () => {
@@ -917,10 +1165,12 @@ async function enter(u){
   showGate("loading"); pending = u;
   try { await loadAccount(u); await kidsApi(u, { action:"status" }); }
   catch (e) { user = null; showGate("signin"); say("Couldn't load your account. Check your connection and try again."); return; }
+  if (kids.banned) { showGate("banned"); return; }
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
-  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); gate.hidden = true; renderHome();
+  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); gate.hidden = true; renderHome();
   cloudSave(); // finishes moving any old-style chats
+  checkAdmin();
 }
 
 // ---------- Settings: sign out, delete ----------
@@ -1054,7 +1304,7 @@ if (SR) {
 form.addEventListener("submit", stopVoice, true);
 
 // ---------- Sidebar extras: search, what's new, shortcuts ----------
-const NEWS_VERSION = "2026-10-multichat";
+const NEWS_VERSION = "2026-10-bigupdate";
 function focusSearch(){ setSide(true); const q = $("q"); q.focus(); q.select(); }
 $("searchNav").onclick = focusSearch;
 try { $("newDot").hidden = localStorage.getItem("orbs-news") === NEWS_VERSION; } catch(_) { $("newDot").hidden = false; }
@@ -1074,7 +1324,7 @@ document.addEventListener("keydown", e => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal"];
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal"];
 function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
@@ -1090,6 +1340,113 @@ $("repSend").onclick = () => busyBtn($("repSend"), async () => {
     $("repMsg").textContent = "Thanks! Your report was sent."; $("repSend").disabled = true; setTimeout(closeLegal, 1200);
   } catch (e) { $("repMsg").textContent = "Couldn't send the report. Try again."; }
 });
+
+// ---------- Admin panel (only for the emails in ADMIN_EMAILS on Vercel) ----------
+async function adminApi(body){
+  const r = await fetch("/api/admin", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await user.getIdToken() }, body: JSON.stringify(body) });
+  let j = {}; try { j = await r.json(); } catch(_) {}
+  if (!r.ok) throw new Error(j.error || "failed");
+  return j;
+}
+async function checkAdmin(){
+  $("adminNav").hidden = true;
+  try { const j = await adminApi({ action:"check" }); $("adminNav").hidden = !j.admin; } catch(_) {}
+}
+let adminData = null, adminTab = "overview";
+const money = c => "$" + (c / 100).toFixed(c < 100 ? 3 : 2);
+const when = t => t ? new Date(t).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) : "";
+const MODEL_NAMES = ["Koa","Lumina","Chrysalis","Mythos"];
+async function openAdmin(){
+  openLegal("adminModal"); adminTab = adminTab || "overview";
+  $("admBody").replaceChildren(el("p", "fine", "Loading…"));
+  try { adminData = await adminApi({ action:"load" }); renderAdmin(); }
+  catch (e) { $("admBody").replaceChildren(el("p", "fine", e.message === "not_admin" ? "This account isn't an admin." : "Couldn't load the admin panel. Try again.")); }
+}
+$("adminNav").onclick = openAdmin;
+$("admRefresh").onclick = openAdmin;
+for (const b of document.querySelectorAll("#admTabs button")) b.onclick = () => { adminTab = b.dataset.tab; renderAdmin(); };
+function card(label, value, sub){ const c = el("div", "astat"); c.append(el("small", null, label), el("b", null, value)); if (sub) c.append(el("span", null, sub)); return c; }
+function renderAdmin(){
+  for (const b of document.querySelectorAll("#admTabs button")) b.setAttribute("aria-pressed", String(b.dataset.tab === adminTab));
+  const d = adminData, body = $("admBody"); body.innerHTML = ""; if (!d) return;
+  const today = d.stats.find(s => s.day === d.today) || { messages:0, cents:0, searches:0 };
+  if (adminTab === "overview") {
+    const month = d.stats.filter(s => s.day.slice(0, 7) === d.today.slice(0, 7)).reduce((n, s) => n + s.cents, 0);
+    const grid = el("div", "agrid");
+    grid.append(card("Spent today (about)", money(today.cents), today.messages + " messages"), card("This month (about)", money(month)),
+      card("Web searches today", String(d.searchesToday), "limit " + d.config.searchesSite + " for the whole site"),
+      card("People", String(d.users.total), d.users.newWeek + " new this week"), card("Kids Mode accounts", String(d.users.kidsOn), d.users.teens + " teens"),
+      card("Open reports", String(d.reports.length), d.flags.length + " safety flags"));
+    body.append(grid);
+    // Last 14 days of spending
+    const days = d.stats.slice(0, 14).reverse(), max = Math.max(1, ...days.map(s => s.cents));
+    const chart = el("div", "abars"); chart.setAttribute("role", "img"); chart.setAttribute("aria-label", "Spending for the last 14 days");
+    for (const s of days) { const col = el("div", "abar"); const bar = el("i"); bar.style.height = Math.max(2, s.cents / max * 100) + "%"; col.title = s.day + ": " + money(s.cents) + ", " + s.messages + " messages"; col.append(bar, el("small", null, s.day.slice(8))); chart.append(col); }
+    body.append(el("h3", null, "Spending, last 14 days"), days.length ? chart : el("p", "fine", "No messages yet."));
+    const mix = d.stats.slice(0, 7).reduce((o, s) => { o[0] += s.koa; o[1] += s.lumina; o[2] += s.chrysalis; o[3] += s.mythos; return o; }, [0,0,0,0]);
+    body.append(el("h3", null, "Messages per model, last 7 days"), el("p", "fine", MODEL_NAMES.map((n, i) => n + ": " + mix[i]).join(" · ")));
+    body.append(el("p", "fine", "These are estimates from Orbs. Your real bill is in the Claude Console."));
+  }
+  if (adminTab === "settings") {
+    const c = d.config, f = el("form", "aform");
+    const sw = (key, label, help) => { const r = el("label", "arow"); const i = el("input"); i.type = "checkbox"; i.name = key; i.checked = !!c[key]; r.append(i, el("span", null, label)); if (help) r.append(el("small", "fine", help)); return r; };
+    const numIn = (key, label, help) => { const r = el("label", "arow num"); const i = el("input"); i.type = "number"; i.min = "0"; i.max = "10000000"; i.name = key; i.value = c[key] == null ? "" : c[key]; i.placeholder = key.startsWith("searches") ? "0" : "No limit"; r.append(el("span", null, label), i); if (help) r.append(el("small", "fine", help)); return r; };
+    f.append(
+      sw("paused", "Pause Orbs (emergency stop)", "Nobody can send messages while this is on."),
+      (() => { const r = el("label", "arow num"); const i = el("input"); i.name = "pausedMsg"; i.maxLength = 300; i.value = c.pausedMsg || ""; i.placeholder = "Message to show (optional)"; r.append(el("span", null, "Pause message"), i); return r; })(),
+      sw("webSearch", "Allow web search", "About 1 cent per search, plus a bit more for reading the results."),
+      numIn("searchesPerUser", "Web searches per person per day"),
+      numIn("searchesSite", "Web searches per day for the whole site"),
+      numIn("dailyCredits", "Daily credits per person", "Empty or 0 = unlimited. Koa uses 1 per message, Lumina 3, Chrysalis 6, Mythos 10 (more at higher effort)."),
+      numIn("siteCredits", "Daily credits for the whole site", "Empty or 0 = unlimited."),
+      sw("kidsForAll", "Kids Mode for everyone", "Turns on Kids Mode for every account on the site."));
+    const go = el("button", "gbtn", "Save settings"); go.type = "submit"; const msg = el("small", "fine"); f.append(go, msg);
+    f.onsubmit = e => { e.preventDefault(); busyBtn(go, async () => {
+      const out = {};
+      for (const i of f.querySelectorAll("input")) {
+        if (i.type === "checkbox") out[i.name] = i.checked;
+        else if (i.type === "number") out[i.name] = i.value === "" ? (i.name.startsWith("searches") ? 0 : null) : Math.max(0, Math.floor(Number(i.value)) || 0);
+        else out[i.name] = i.value.trim();
+      }
+      try { const j = await adminApi({ action:"settings", settings: out }); adminData.config = { ...adminData.config, ...j.settings }; msg.textContent = "Saved! It takes up to 30 seconds to kick in."; }
+      catch (_) { msg.textContent = "Couldn't save. Try again."; }
+    }); };
+    body.append(f);
+  }
+  const list = (items, empty, row) => { if (!items.length) { body.append(el("p", "fine", empty)); return; } for (const it of items) body.append(row(it)); };
+  const banBtn = (uid, banned) => { const b = el("button", "outline small", banned ? "Unban" : "Ban"); b.type = "button";
+    b.onclick = () => armed(b, banned ? "Tap to unban" : "Tap to ban", () => busyBtn(b, async () => { try { await adminApi({ action: banned ? "unban" : "ban", uid }); b.textContent = banned ? "Unbanned" : "Banned"; } catch (e) { b.textContent = e.message === "self" ? "That's you!" : "Failed"; } })); return b; };
+  const dismissBtn = (kind, id, rowEl) => { const b = el("button", "outline small", "Dismiss"); b.type = "button";
+    b.onclick = () => busyBtn(b, async () => { try { await adminApi({ action:"dismiss", kind, id }); rowEl.remove(); } catch (_) { b.textContent = "Failed"; } }); return b; };
+  if (adminTab === "reports") {
+    body.append(el("h3", null, "Reported replies"));
+    list(d.reports, "No reports. Nice!", r => { const x = el("div", "aitem"); x.append(el("div", "ameta", `${BOTS[r.orb]?.name || "?"} · ${when(r.at)}${r.kids ? " · 🛡️ Kids Mode" : ""}`));
+      if (r.reason) x.append(el("p", "areason", "“" + r.reason + "”"));
+      const q = el("div", "aquote"); q.textContent = r.reply || ""; x.append(q);
+      const bar = el("div", "abtns"); bar.append(dismissBtn("report", r.id, x), banBtn(r.uid, false)); x.append(bar); return x; });
+    body.append(el("h3", null, "Kids Mode safety flags"), el("p", "fine", "What Kids Mode blocked. The messages themselves aren't saved."));
+    list(d.flags, "No safety flags.", f => { const x = el("div", "aitem"); x.append(el("div", "ameta", `${(f.type || "").replace(/_/g, " ")}${f.category ? " (" + f.category.toLowerCase() + ")" : ""} · ${BOTS[f.orb]?.name || "?"} · ${when(f.at)}`));
+      const bar = el("div", "abtns"); bar.append(dismissBtn("flag", f.id, x)); x.append(bar); return x; });
+  }
+  if (adminTab === "feedback") {
+    const by = MODEL_NAMES.map(() => ({ up:0, down:0 }));
+    for (const f of d.feedback) if (by[f.model]) by[f.model][f.vote === "up" ? "up" : "down"]++;
+    const grid = el("div", "agrid");
+    MODEL_NAMES.forEach((n, i) => grid.append(card(n, `👍 ${by[i].up}  👎 ${by[i].down}`)));
+    body.append(el("h3", null, "Thumbs, latest 300"), grid, el("h3", null, "Thumbs down"));
+    list(d.feedback.filter(f => f.vote === "down"), "No thumbs down yet.", f => { const x = el("div", "aitem");
+      x.append(el("div", "ameta", `${MODEL_NAMES[f.model] || "?"} · ${BOTS[f.orb]?.name || "?"} · ${when(f.at)}${f.tag ? " · " + f.tag.replace(/_/g, " ") : ""}`));
+      if (f.reason) x.append(el("p", "areason", "“" + f.reason + "”"));
+      if (f.reply) { const q = el("div", "aquote"); q.textContent = f.reply; x.append(q); }
+      const bar = el("div", "abtns"); bar.append(dismissBtn("feedback", f.id, x)); x.append(bar); return x; });
+  }
+  if (adminTab === "users") {
+    body.append(el("h3", null, `Newest people (${d.users.total} total)`));
+    list(d.users.list, "Nobody yet.", u => { const x = el("div", "aitem auser");
+      const info = el("div"); info.append(el("b", null, u.name || u.email || u.uid), el("div", "ameta", `${u.email} · joined ${when(u.created)}${u.last ? " · last seen " + when(u.last) : ""}${u.age ? " · " + (u.age === "adult" ? "18+" : u.age === "teen" ? "13-17" : "under 13") : ""}${u.banned ? " · BANNED" : ""}`));
+      x.append(info, banBtn(u.uid, u.banned)); return x; });
+  }
+}
 
 // ---------- Newest models ----------
 // The server always uses the newest Claude model in each family; this shows its name and Orbs version.

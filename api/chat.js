@@ -1,6 +1,6 @@
 // POST /api/chat — the only place your Claude API key is ever used.
 // It runs on Vercel's servers, so the key never reaches anyone's browser.
-import { admin, getKids, flag, setupProblem } from "./_admin.js";
+import { admin, getKids, flag, getConfig, searchesLeft, countSearches, record, setupProblem } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
 
 // Daily credits live in Firestore under usage/{uid}. Browsers can read their own, but only this server can change them.
@@ -40,6 +40,10 @@ const handler = makeChatHandler({
   refund,
   getKids,
   flag,
+  getConfig,
+  searchesLeft,
+  countSearches,
+  record,
 });
 
 export async function POST(request) {

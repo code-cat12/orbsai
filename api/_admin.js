@@ -61,3 +61,55 @@ export async function setKids(uid, data) {
 export async function flag(uid, info) {
   await (await admin()).db.collection("flags").add({ uid, ...info, at: new Date() });
 }
+
+// ---------- Site switches (config/site), set from the admin panel ----------
+let cfgCache = null;
+export async function getConfig() {
+  if (cfgCache && Date.now() - cfgCache.at < 30 * 1000) return cfgCache.data;
+  const snap = await (await admin()).db.doc("config/site").get();
+  const data = snap.exists ? snap.data() : null;
+  cfgCache = { at: Date.now(), data };
+  return data;
+}
+export async function setConfig(data) {
+  await (await admin()).db.doc("config/site").set(data, { merge: true });
+  cfgCache = null;
+}
+
+// ---------- Web search counters (searches/{uid} and searches/_site, server only) ----------
+export async function searchesLeft(uid, day, cfg) {
+  const { db } = await admin();
+  const [u, s] = await Promise.all([db.doc(`searches/${uid}`).get(), db.doc("searches/_site").get()]);
+  const used = u.exists && u.get("day") === day ? u.get("used") || 0 : 0;
+  const siteUsed = s.exists && s.get("day") === day ? s.get("used") || 0 : 0;
+  const left = Math.min(cfg.searchesPerUser - used, cfg.searchesSite - siteUsed);
+  return Number.isFinite(left) ? Math.max(0, left) : 0;
+}
+export async function countSearches(uid, n, day) {
+  const { db } = await admin();
+  const refs = [db.doc(`searches/${uid}`), db.doc("searches/_site")];
+  await db.runTransaction(async (tx) => {
+    const snaps = await Promise.all(refs.map((r) => tx.get(r)));
+    snaps.forEach((snap, i) => {
+      const used = snap.exists && snap.get("day") === day ? snap.get("used") || 0 : 0;
+      tx.set(refs[i], { day, used: used + n });
+    });
+  });
+}
+
+// ---------- Spending stats per day (stats/{day}, server only) ----------
+export async function record(day, u) {
+  const { db } = await admin();
+  const { FieldValue } = await loadFirebase();
+  const inc = (v) => FieldValue.increment(Number.isFinite(v) ? v : 0);
+  await db.doc(`stats/${day}`).set({
+    day, messages: inc(1), input: inc(u.input), output: inc(u.output), cacheRead: inc(u.cacheRead), cacheWrite: inc(u.cacheWrite),
+    searches: inc(u.searches), cents: inc(Math.round(u.cents * 1000) / 1000), ["m_" + u.family]: inc(1),
+  }, { merge: true });
+}
+
+// ---------- Thumbs up / down (feedback/{id}) ----------
+export async function saveFeedback(id, data) {
+  const ref = (await admin()).db.doc(`feedback/${id}`);
+  if (data === null) await ref.delete(); else await ref.set(data);
+}

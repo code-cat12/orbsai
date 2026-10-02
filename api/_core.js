@@ -5,6 +5,7 @@ import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT } from "./_orbs.js";
 import { latestModels } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
+import { costCents, familyOf } from "./_price.js";
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -92,7 +93,7 @@ export function cleanRequest(body) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, effort, turns, files: att.files };
+  return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true };
 }
 
 // Ask a quick question first when the request is unclear (the page turns the options line into buttons)
@@ -102,16 +103,47 @@ export const ASK_FIRST =
   "[options: First choice | Second choice | Third choice] (2 to 4 short options, no other text on that line). " +
   "Only ask when it truly matters; if the request is clear enough, just answer.";
 
+// Formatting the page can show nicely (tables, code colors, math)
+export const FORMAT =
+  "Format replies with Markdown when it helps: short headings, lists, tables, and fenced code blocks with a language tag. " +
+  "For math, use LaTeX inside \\( \\) for inline math and $$ $$ for big equations (never single $ signs, so prices stay plain).";
+export const WEB_RULES =
+  "You can search the web. Only search when the question needs fresh or current info (news, prices, scores, recent releases). " +
+  "Search as few times as you can, and mention which sites the info came from.";
+
+// Site switches the owner can change in the admin panel (config/site in Firestore)
+export const SITE_DEFAULTS = { paused: false, pausedMsg: "", webSearch: true, searchesPerUser: 5, searchesSite: 100, dailyCredits: null, siteCredits: null, kidsForAll: false };
+export function siteConfig(raw) {
+  const c = { ...SITE_DEFAULTS };
+  if (raw && typeof raw === "object") {
+    for (const k of ["paused", "webSearch", "kidsForAll"]) if (typeof raw[k] === "boolean") c[k] = raw[k];
+    if (typeof raw.pausedMsg === "string") c.pausedMsg = raw.pausedMsg.slice(0, 300);
+    for (const k of ["searchesPerUser", "searchesSite", "dailyCredits", "siteCredits"]) {
+      const v = raw[k];
+      if (v === null && (k === "dailyCredits" || k === "siteCredits")) c[k] = null;
+      else if (Number.isInteger(v) && v >= 0 && v <= 1e7) c[k] = v;
+    }
+  }
+  return c;
+}
+export const MAX_SEARCHES_PER_MESSAGE = 3;
+
 export function systemPrompt(orb, model) {
   const o = ORBS[orb];
   const others = ORDER.filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
-  return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", ASK_FIRST, `Reply as ${o.name}.`]
+  return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", ASK_FIRST, FORMAT, `Reply as ${o.name}.`]
     .filter(Boolean).join(" ");
 }
 
 // deps: verifyToken(idToken) -> decoded token, charge(uid, cost, limits, day) -> {ok, left, reason},
-//       refund(uid, cost, day), getKids(uid) -> kids settings, flag(uid, info) -> safety log, fetchImpl (for tests), env
-export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = async () => {}, fetchImpl = fetch, env = process.env }) {
+//       refund(uid, cost, day), getKids(uid) -> kids settings, flag(uid, info) -> safety log,
+//       getConfig() -> site switches, searchesLeft(uid, day, cfg) -> number, countSearches(uid, n, day),
+//       record(day, info) -> spending stats, fetchImpl (for tests), env
+export function makeChatHandler({
+  verifyToken, charge, refund, getKids, flag = async () => {}, getConfig = async () => null,
+  searchesLeft = async () => 0, countSearches = async () => {}, record = async () => {},
+  fetchImpl = fetch, env = process.env,
+}) {
   return async function POST(request) {
     if (!env.ANTHROPIC_API_KEY || !(env.FIREBASE_SERVICE_ACCOUNT || env.FIREBASE_PRIVATE_KEY)) return json(500, { error: "not_configured" });
 
@@ -127,9 +159,15 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
     const req = cleanRequest(body);
     if (req.error) return json(400, { error: req.error });
 
+    let cfg;
+    try { cfg = siteConfig(await getConfig()); } catch { cfg = siteConfig(null); }
+    if (cfg.paused) return json(503, { error: "paused", msg: cfg.pausedMsg });
+    const siteEnv = cfg.kidsForAll ? { ...env, KIDS_MODE: "all" } : env;
+
     // Age check and Kids Mode, decided on the server so nobody can switch it off from the page
-    let kids;
-    try { kids = publicState(await getKids(user.uid), env); } catch { return json(503, { error: "upstream_error" }); }
+    let kids, rawKids;
+    try { rawKids = await getKids(user.uid); kids = publicState(rawKids, siteEnv); } catch { return json(503, { error: "upstream_error" }); }
+    if (rawKids && rawKids.banned) return json(403, { error: "banned" });
     if (!kids.age) return json(403, { error: "age_required" });
     if (kids.blocked) return json(403, { error: "blocked_age" });
     const kidsOn = kids.on;
@@ -154,17 +192,34 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
     const effort = live.effort ? EFFORTS[req.effort] : null;
     const cost = model.cost * (effort ? effort.mult : 1);
     const day = dayKey();
-    // No limits unless you set DAILY_CREDITS and/or SITE_DAILY_CREDITS in Vercel.
-    const limited = !!(env.DAILY_CREDITS || env.SITE_DAILY_CREDITS);
-    const limits = { perUser: num(env.DAILY_CREDITS, 1e9), site: num(env.SITE_DAILY_CREDITS, 1e9) };
+
+    // Web search: only when asked for, never in Kids Mode, and capped per person and for the whole site each day
+    let searchCap = 0, searchNote = null;
+    if (req.web) {
+      if (kidsOn) searchNote = "kids";
+      else if (!cfg.webSearch) searchNote = "off";
+      else {
+        try { searchCap = Math.min(MAX_SEARCHES_PER_MESSAGE, await searchesLeft(user.uid, day, cfg)); } catch { searchCap = 0; }
+        if (searchCap <= 0) { searchCap = 0; searchNote = "limit"; }
+      }
+    }
+
+    // Credit limits: the admin panel's numbers win, then Vercel's DAILY_CREDITS / SITE_DAILY_CREDITS. 0 or empty = unlimited.
+    const perUser = cfg.dailyCredits !== null ? cfg.dailyCredits : num(env.DAILY_CREDITS, 0);
+    const site = cfg.siteCredits !== null ? cfg.siteCredits : num(env.SITE_DAILY_CREDITS, 0);
+    const limited = perUser > 0 || site > 0;
+    const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9 };
     let paid = { ok: true, left: null };
     if (limited) {
       try { paid = await charge(user.uid, cost, limits, day); } catch { return json(503, { error: "upstream_error" }); }
       if (!paid.ok) return json(429, { error: paid.reason, left: paid.left });
+      if (perUser <= 0) paid.left = null; // only a site-wide cap: don't show a personal count
     }
     const giveBack = async () => { if (limited) await refund(user.uid, cost, day).catch(() => {}); };
-    const leftAfterRefund = () => (limited ? paid.left + cost : null);
+    const leftAfterRefund = () => (limited && paid.left !== null ? paid.left + cost : null);
 
+    // Summarized thinking costs nothing extra on these models (the thinking happens either way); Kids Mode never shows it.
+    const showThinking = req.think && !kidsOn && live.effort;
     let upstream;
     try {
       upstream = await fetchImpl("https://api.anthropic.com/v1/messages", {
@@ -178,7 +233,11 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
           model: live.id,
           max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
           ...(effort ? { output_config: { effort: effort.id } } : {}),
-          system: [systemPrompt(req.orb, req.model), kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
+          ...(showThinking ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
+          ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
+          // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
+          cache_control: { type: "ephemeral" },
+          system: [systemPrompt(req.orb, req.model), searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
           messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content, req.files) } : t)),
           stream: true,
           // An anonymous id (not the email) so Anthropic can spot abuse from one person
@@ -197,13 +256,19 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
       return json(502, { error: broke ? "out_of_funds" : busy ? "overloaded" : "upstream_error", left: leftAfterRefund() });
     }
 
-    // Re-send Claude's reply to the browser as one small JSON object per line.
+    // Re-send Claude's reply to the browser as one small JSON object per line:
+    //   {d:"text"}  {t:"thinking"}  {q:"search words"}  {src:[{u,t}]}  {nosearch:"limit"}  then {done:...} or {error:...}
     const enc = new TextEncoder(), dec = new TextDecoder();
     // In Kids Mode the reply is held back until the safety check has read the whole thing.
     let wroteText = false, stop = null, failed = null, held = "";
+    const usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, searches: 0 };
+    const blocks = {}; // index -> { type, json }
+    let lastType = null;
     const stream = new ReadableStream({
       async start(controller) {
         const send = (o) => controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+        if (searchNote) send({ nosearch: searchNote });
+        const text = (t) => { wroteText = true; if (kidsOn) held += t; else send({ d: t }); };
         const reader = upstream.body.getReader();
         let buf = "";
         try {
@@ -216,11 +281,38 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
               const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
               if (!line.startsWith("data:")) continue;
               let ev; try { ev = JSON.parse(line.slice(5)); } catch { continue; }
-              if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta" && ev.delta.text) {
-                wroteText = true;
-                if (kidsOn) held += ev.delta.text; else send({ d: ev.delta.text });
-              } else if (ev.type === "message_delta" && ev.delta?.stop_reason) {
-                stop = ev.delta.stop_reason;
+              if (ev.type === "message_start") {
+                const u = ev.message?.usage || {};
+                usage.input = u.input_tokens || 0; usage.cacheWrite = u.cache_creation_input_tokens || 0; usage.cacheRead = u.cache_read_input_tokens || 0;
+              } else if (ev.type === "content_block_start") {
+                const cb = ev.content_block || {};
+                blocks[ev.index] = { type: cb.type, json: "" };
+                // A new text block after a search: start a new paragraph so the words don't run together
+                if (cb.type === "text" && wroteText && lastType && lastType !== "text") text("\n\n");
+                if (cb.type === "web_search_tool_result" && Array.isArray(cb.content)) {
+                  const src = cb.content.filter((r) => r && r.url).slice(0, 8).map((r) => ({ u: String(r.url).slice(0, 500), t: String(r.title || r.url).slice(0, 200) }));
+                  if (src.length && !kidsOn) send({ src });
+                }
+                if (cb.type !== "thinking") lastType = cb.type;
+              } else if (ev.type === "content_block_delta") {
+                const d = ev.delta || {};
+                if (d.type === "text_delta" && d.text) text(d.text);
+                else if (d.type === "thinking_delta" && d.thinking && showThinking) send({ t: d.thinking });
+                else if (d.type === "input_json_delta" && blocks[ev.index]) blocks[ev.index].json += d.partial_json || "";
+              } else if (ev.type === "content_block_stop") {
+                const b = blocks[ev.index];
+                if (b && b.type === "server_tool_use") {
+                  let q = ""; try { q = JSON.parse(b.json || "{}").query || ""; } catch {}
+                  if (q && !kidsOn) send({ q: String(q).slice(0, 200) });
+                }
+              } else if (ev.type === "message_delta") {
+                if (ev.delta?.stop_reason) stop = ev.delta.stop_reason;
+                const u = ev.usage || {};
+                if (u.output_tokens) usage.output = u.output_tokens;
+                if (u.input_tokens > usage.input) usage.input = u.input_tokens;
+                if (u.cache_read_input_tokens > usage.cacheRead) usage.cacheRead = u.cache_read_input_tokens;
+                if (u.cache_creation_input_tokens > usage.cacheWrite) usage.cacheWrite = u.cache_creation_input_tokens;
+                if (u.server_tool_use?.web_search_requests) usage.searches = u.server_tool_use.web_search_requests;
               } else if (ev.type === "error") {
                 failed = ev.error?.type === "overloaded_error" ? "overloaded" : "upstream_error";
               }
@@ -237,8 +329,11 @@ export function makeChatHandler({ verifyToken, charge, refund, getKids, flag = a
           else send({ d: held });
         }
         if (failed) send({ error: failed, left });
-        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn });
+        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0 });
         controller.close();
+        // Bookkeeping after the reply is done (never blocks or breaks the chat)
+        if (usage.searches) await countSearches(user.uid, usage.searches, day).catch(() => {});
+        await record(day, { family: familyOf(live.id), ...usage, cents: costCents(live.id, usage) }).catch(() => {});
       },
     });
     return new Response(stream, {
