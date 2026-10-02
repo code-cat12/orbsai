@@ -463,7 +463,7 @@ async function send(text, regen, filesOverride){
   if ((!text && !regen && !pendingFiles.length && !filesOverride) || busy) return;
   if (!user) return;
   const key = active, b = BOTS[key], mi = pf(key).m, model = MODELS[mi];
-  if (credits && credits.left < msgCost(pf(key))) { creditShort(model); return; }
+  if (credits && credits.left < estimate(key, { regen, files: filesOverride }).total) { creditShort(model); return; }
   // Start a new chat if none is open for this orb
   if (!curConv() || curConv().orb !== key) {
     const id = (incogNext ? "x_" : "") + newId(), now = Date.now();
@@ -585,7 +585,8 @@ async function send(text, regen, filesOverride){
 }
 
 function creditShort(model){
-  const cheaper = MODELS.filter(m => m.cost <= (credits ? credits.left : 0)).pop();
+  const ex = active ? estimate(active).total - msgCost(pf(active)) : 0;
+  const cheaper = MODELS.filter(m => m.cost + ex <= (credits ? credits.left : 0)).pop();
   if (!cheaper) { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; return; }
   status.textContent = `Not enough credits left for ${model.n} today. Switch to ${cheaper.n} to keep chatting.`;
 }
@@ -761,6 +762,22 @@ let prefs = {};
 const EFFORTS = [{n:"Low",d:"quickest and cheapest, thinks a little",mult:1},{n:"Medium",d:"good balance for everyday chats",mult:1},{n:"High",d:"thinks things through more carefully",mult:2},{n:"Extra",d:"thinks a lot, slower and pricier",mult:3},{n:"Max",d:"thinks as hard as it can, slowest and most expensive",mult:4}];
 const hasEffort = m => MODELS[m].effort !== false;
 const msgCost = p => MODELS[p.m].cost * (hasEffort(p.m) ? EFFORTS[p.e].mult : 1);
+// Extras on top (same rules as the server): long chat +1, web search +2 (given back if it doesn't search), big files +2
+const EXTRA = { long: 1, web: 2, files: 2 };
+function bigFiles(fs){
+  if (!fs || !fs.length) return false;
+  if (fs.length >= 6) return true;
+  if (fs.some(f => f.kind === "pdf" && f.data && f.data.length > 1000000)) return true;
+  return fs.reduce((n, f) => n + (f.kind === "text" ? f.text.length : 0), 0) > 100000;
+}
+function estimate(k, opts2 = {}){
+  const p = pf(k), c = curConv();
+  const count = (c && c.orb === k ? c.turns.length : 0) + (opts2.regen ? 0 : 1);
+  const e = { base: msgCost(p), long: count > 20 ? EXTRA.long : 0, files: bigFiles(opts2.files || pendingFiles) ? EXTRA.files : 0,
+    web: webOn && kids.web !== false && !kids.on ? EXTRA.web : 0 };
+  e.total = e.base + e.long + e.files + e.web;
+  return e;
+}
 function pf(k){
   if (!prefs || typeof prefs !== "object" || Object.isFrozen(prefs)) prefs = Object.assign({}, prefs || {});
   const old = prefs[k] && typeof prefs[k] === "object" ? prefs[k] : {};
@@ -811,27 +828,25 @@ function syncSel(){
 function hint(){
   const h = $("hint");
   const off = () => { h.textContent = ""; h.hidden = true; h.classList.remove("warn", "mid"); };
-  // Web search note comes first when it's on (it costs the site owner a little)
-  const web = active && webOn ? `🌐 Web search is on: the orb can look things up online (up to 3 searches per message, ${Number.isInteger(kids.webPerDay) ? kids.webPerDay : 5} per day).` : "";
-  if (!active || !credits) { if (!web) return off(); h.textContent = web; h.hidden = false; h.classList.remove("warn", "mid"); return; }
-  const p = pf(active), m = MODELS[p.m], cost = msgCost(p), left = credits.left, lim = credits.limit;
+  const show = (msg, cls) => { if (!msg) return off(); h.textContent = msg; h.hidden = false; h.classList.toggle("warn", cls === "warn"); h.classList.toggle("mid", cls === "mid"); };
+  // Web search note (it costs the site owner a little)
+  const web = active && webOn ? `🌐 Web search is on (up to 3 searches per message, ${Number.isInteger(kids.webPerDay) ? kids.webPerDay : 5} per day).` : "";
+  if (!active || !credits) return show(web);
+  const p = pf(active), m = MODELS[p.m], est = estimate(active), cost = est.total, left = credits.left;
   const what = m.n + (hasEffort(p.m) && EFFORTS[p.e].mult > 1 ? " on " + EFFORTS[p.e].n : "");
   const koaTip = p.m !== 0 ? " Koa uses just 1." : "";
-  let msg = "", warn = false, mid = false;
+  // "This message: Lumina 3 + web search 2 = 5 credits"
+  const parts = [`${what} ${est.base}`]; if (est.long) parts.push(`long chat ${est.long}`); if (est.files) parts.push(`big files ${est.files}`); if (est.web) parts.push(`web search ${est.web}`);
+  const cost1 = parts.length > 1 ? `This message: ${parts.join(" + ")} = ${creditWord(cost)}${est.web ? " (you get the 2 back if it doesn't search)" : ""}.` : `${what} uses ${creditWord(cost)} per message.`;
+  let msg = "", cls = "";
   if (left < cost) {
-    const cheaper = MODELS.filter(x => x.cost <= left).pop();
-    msg = left > 0 ? `Not enough credits for ${what} (${creditWord(cost)} per message, ${left} left). ${cheaper ? "Switch to " + cheaper.n + " to keep chatting." : ""}` : "You're out of credits for today. They refill at midnight.";
-    warn = true;
-  } else if (left <= 20) {
-    msg = `Low on credits: ${left} left today. ${what} uses ${creditWord(cost)} per message.` + koaTip; warn = true;
-  } else if (left <= 50) {
-    msg = `${creditWord(left)} left today. ${what} uses ${creditWord(cost)} per message.` + (cost > 3 ? koaTip : ""); mid = true;
-  } else if (cost > 3) {
-    msg = `${what} is a heavier pick: ${creditWord(cost)} per message (${left} left today).` + koaTip;
-  }
-  if (web) msg = web + (msg ? " " + msg : "");
-  if (!msg) return off();
-  h.textContent = msg; h.hidden = false; h.classList.toggle("warn", warn); h.classList.toggle("mid", mid);
+    const ex = cost - est.base, cheaper = MODELS.filter(x => x.cost + ex <= left).pop();
+    msg = left > 0 ? `Not enough credits: this message needs ${cost}, you have ${left}. ${cheaper ? "Switch to " + cheaper.n + " to keep chatting." : "They refill at midnight."}` : "You're out of credits for today. They refill at midnight.";
+    cls = "warn";
+  } else if (left <= 20) { msg = `Low on credits: ${left} left today. ${cost1}` + koaTip; cls = "warn"; }
+  else if (left <= 50) { msg = `${creditWord(left)} left today. ${cost1}`; cls = "mid"; }
+  else if (parts.length > 1 || cost > 3) msg = cost1 + (cost > 3 ? ` (${left} left today)` : "");
+  show([web, msg].filter(Boolean).join(" "), cls);
 }
 function toggleMenu(menuId, btnId){
   return e => { e.stopPropagation(); const mm = $(menuId), open = mm.hidden; closeMenus(); mm.hidden = !open; $(btnId).setAttribute("aria-expanded", String(open));
@@ -972,7 +987,7 @@ function renderUsage(){
   costs.hidden = false; costs.innerHTML = "";
   const curM = active ? pf(active).m : -1;
   MODELS.forEach((m, i) => { const d = el("div", i === curM ? "on" : null); d.append(el("b", null, String(m.cost)), el("small", null, m.n)); costs.append(d); });
-  costs.append(el("p", null, "Credits per message. Higher effort costs more: High ×2, Extra ×3, Max ×4."));
+  costs.append(el("p", null, "Credits per message. Higher effort costs more: High ×2, Extra ×3, Max ×4. Extras on top: long chat (more than 20 messages) +1, web search +2 (only if it searches), big files (6+ files, a big PDF, or lots of code) +2."));
 }
 
 // ---------- Account panel ----------
@@ -1267,7 +1282,7 @@ function renderAtts(){
     x.onclick = () => { pendingFiles.splice(i, 1); renderAtts(); };
     c.append(n, x); w.appendChild(c);
   });
-  updateSend();
+  updateSend(); if (typeof hint === "function") hint();
 }
 const readAs = (file, how) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r[how](file); });
 async function shrinkImage(file){

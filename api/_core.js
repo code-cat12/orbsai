@@ -86,7 +86,19 @@ export function cleanRequest(body) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true };
+  return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true, count: messages.length };
+}
+
+// Extra credits on top of the model's cost (never multiplied by effort)
+export const EXTRAS = { longChat: 1, web: 2, bigFiles: 2 };
+export const LONG_CHAT = 20;        // more than this many messages = long chat
+export const BIG_PDF = 1000000;     // a PDF bigger than about 750 KB
+export const BIG_TEXT = 100000;     // more than this many characters of text files
+export function isBigFiles(files) {
+  if (!files || !files.length) return false;
+  if (files.length >= 6) return true;
+  if (files.some((f) => f.kind === "pdf" && f.data.length > BIG_PDF)) return true;
+  return files.reduce((n, f) => n + (f.kind === "text" ? f.text.length : 0), 0) > BIG_TEXT;
 }
 
 // Ask a quick question first when the request is unclear (the page turns the options line into buttons)
@@ -183,7 +195,6 @@ export function makeChatHandler({
       if (label === "SELFHARM") { logFlag({ type: "self_harm_support", category: label }); extraRules = SELF_HARM_NOTE; }
     }
     const effort = live.effort ? EFFORTS[req.effort] : null;
-    const cost = model.cost * (effort ? effort.mult : 1);
     const day = dayKey();
 
     // Web search: only when asked for, never in Kids Mode, and capped per person and for the whole site each day
@@ -196,6 +207,12 @@ export function makeChatHandler({
         if (searchCap <= 0) { searchCap = 0; searchNote = "limit"; }
       }
     }
+
+    // Cost = model x effort, plus extras. Web search is charged up front and given back if it didn't search.
+    const extraLong = req.count > LONG_CHAT ? EXTRAS.longChat : 0;
+    const extraFiles = isBigFiles(req.files) ? EXTRAS.bigFiles : 0;
+    const extraWeb = searchCap ? EXTRAS.web : 0;
+    const cost = model.cost * (effort ? effort.mult : 1) + extraLong + extraFiles + extraWeb;
 
     // Credit limits: the admin panel's numbers win, then Vercel's DAILY_CREDITS / SITE_DAILY_CREDITS. 0 or empty = unlimited.
     const lim = creditLimits(cfg, env), site = lim.site, perUser = userLimit(lim.perUser, user, env);
@@ -313,6 +330,11 @@ export function makeChatHandler({
         } catch { failed = failed || "upstream_error"; }
         let left = paid.left;
         if (failed && !wroteText) { await giveBack(); left = leftAfterRefund(); }
+        else if (extraWeb && !usage.searches && limited) {
+          // It didn't end up searching, so the web search credits come back
+          await refund(user.uid, extraWeb, day).catch(() => {});
+          if (left !== null) left += extraWeb;
+        }
         if (!failed && kidsOn && held) {
           let label = null;
           try { label = await classify({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: held, kind: "reply" }); } catch {}
@@ -321,7 +343,8 @@ export function makeChatHandler({
           else send({ d: held });
         }
         if (failed) send({ error: failed, left });
-        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0 });
+        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0,
+          cost: limited ? cost - (extraWeb && !usage.searches ? extraWeb : 0) : null });
         controller.close();
         // Bookkeeping after the reply is done (never blocks or breaks the chat)
         if (usage.searches) await countSearches(user.uid, usage.searches, day).catch(() => {});
