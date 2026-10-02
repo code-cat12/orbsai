@@ -19,3 +19,13 @@ export function creditsLeft(usageDoc, perUser, day = dayKey()) {
   const used = usageDoc && usageDoc.day === day ? usageDoc.used || 0 : 0;
   return { limit: perUser, left: Math.max(0, perUser - used) };
 }
+
+// The owner (emails in ADMIN_EMAILS) gets a bigger daily allowance when limits are on
+export const ADMIN_CREDITS = 500;
+export function isAdmin(user, env) {
+  const list = String(env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return !!(user && user.email_verified === true && user.email && list.includes(String(user.email).toLowerCase()));
+}
+export function userLimit(perUser, user, env) {
+  return perUser > 0 && isAdmin(user, env) ? Math.max(perUser, ADMIN_CREDITS) : perUser;
+}

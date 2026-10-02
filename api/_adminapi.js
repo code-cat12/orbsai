@@ -12,10 +12,8 @@ async function who(request, verifyToken) {
   if (!m) return null;
   try { const u = await verifyToken(m[1]); return u && u.uid ? u : null; } catch (e) { if (e && e.setup) throw e; return null; }
 }
-export function isAdmin(user, env) {
-  const list = String(env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  return !!(user && user.email_verified === true && user.email && list.includes(String(user.email).toLowerCase()));
-}
+import { isAdmin } from "./_limits.js";
+export { isAdmin };
 
 // Only these switches can be changed, and only to sensible values
 export function cleanSettings(input) {

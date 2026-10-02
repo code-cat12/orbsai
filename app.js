@@ -815,18 +815,20 @@ function hint(){
   const p = pf(active), m = MODELS[p.m], cost = msgCost(p), left = credits.left, lim = credits.limit;
   const what = m.n + (hasEffort(p.m) && EFFORTS[p.e].mult > 1 ? " on " + EFFORTS[p.e].n : "");
   const koaTip = p.m !== 0 ? " Koa uses just 1." : "";
-  let msg = "", warn = false;
+  let msg = "", warn = false, mid = false;
   if (left < cost) {
     const cheaper = MODELS.filter(x => x.cost <= left).pop();
     msg = left > 0 ? `Not enough credits for ${what} (${creditWord(cost)} per message, ${left} left). ${cheaper ? "Switch to " + cheaper.n + " to keep chatting." : ""}` : "You're out of credits for today. They refill at midnight.";
     warn = true;
-  } else if (left <= Math.max(cost * 3, lim ? Math.ceil(lim * 0.2) : 0)) {
+  } else if (left <= 20) {
     msg = `Low on credits: ${left} left today. ${what} uses ${creditWord(cost)} per message.` + koaTip; warn = true;
+  } else if (left <= 50) {
+    msg = `${creditWord(left)} left today. ${what} uses ${creditWord(cost)} per message.` + (cost > 3 ? koaTip : ""); mid = true;
   } else if (cost > 3) {
     msg = `${what} is a heavier pick: ${creditWord(cost)} per message (${left} left today).` + koaTip;
   }
   if (!msg) return off();
-  h.textContent = msg; h.hidden = false; h.classList.toggle("warn", warn);
+  h.textContent = msg; h.hidden = false; h.classList.toggle("warn", warn); h.classList.toggle("mid", mid);
 }
 function toggleMenu(menuId, btnId){
   return e => { e.stopPropagation(); const mm = $(menuId), open = mm.hidden; closeMenus(); mm.hidden = !open; $(btnId).setAttribute("aria-expanded", String(open));
@@ -957,9 +959,10 @@ function renderUsage(){
   }
   const { left, limit } = credits;
   $("useState").textContent = limit ? `${left} of ${creditWord(limit)} left today` : `${creditWord(left)} left today`;
-  const low = limit ? left <= limit * 0.2 : false;
-  $("useDot").className = "dot2 " + (left === 0 ? "bad" : low ? "" : "ok");
-  bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (left === 0 ? " out" : low ? " low" : ""); }
+  // 20 or less = low (red), 21 to 50 = getting there (yellow), more = fine (green)
+  const level = left <= 20 ? "out" : left <= 50 ? "low" : "";
+  $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
+  bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (level ? " " + level : ""); }
   let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
   if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
   more.textContent = txt;

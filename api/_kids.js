@@ -3,7 +3,7 @@
 //  - 13 to 17: Kids Mode is on and locked (nobody can turn it off).
 //  - 18+: Kids Mode is optional, and turning it off needs the PIN that was set when it was turned on.
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
-import { creditLimits, creditsLeft } from "./_limits.js";
+import { creditLimits, creditsLeft, userLimit } from "./_limits.js";
 
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
@@ -46,7 +46,7 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
     if (action === "status") {
       // Today's credits, so the page can show them before the first message
       let credits = null;
-      const { perUser } = creditLimits(cfg, env);
+      const perUser = userLimit(creditLimits(cfg, env).perUser, user, env);
       if (perUser > 0) { try { credits = creditsLeft(await getUsage(user.uid), perUser); } catch { credits = { limit: perUser, left: perUser }; } }
       return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), credits });
     }

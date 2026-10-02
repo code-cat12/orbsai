@@ -47,7 +47,7 @@ export function withFiles(content, files) {
   blocks.push({ type: "text", text: content });
   return blocks;
 }
-import { dayKey, num, creditLimits } from "./_limits.js";
+import { dayKey, creditLimits, userLimit } from "./_limits.js";
 export { RESET_TZ, dayKey } from "./_limits.js";
 
 function json(status, body) {
@@ -198,7 +198,7 @@ export function makeChatHandler({
     }
 
     // Credit limits: the admin panel's numbers win, then Vercel's DAILY_CREDITS / SITE_DAILY_CREDITS. 0 or empty = unlimited.
-    const { perUser, site } = creditLimits(cfg, env);
+    const lim = creditLimits(cfg, env), site = lim.site, perUser = userLimit(lim.perUser, user, env);
     const limited = perUser > 0 || site > 0;
     const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9 };
     let paid = { ok: true, left: null };
