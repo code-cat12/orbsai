@@ -810,8 +810,10 @@ function syncSel(){
 // Credit note under the chat box: only when credits are on and you picked something heavy, or you're running low
 function hint(){
   const h = $("hint");
-  const off = () => { h.textContent = ""; h.hidden = true; h.classList.remove("warn"); };
-  if (!active || !credits) return off();
+  const off = () => { h.textContent = ""; h.hidden = true; h.classList.remove("warn", "mid"); };
+  // Web search note comes first when it's on (it costs the site owner a little)
+  const web = active && webOn ? `🌐 Web search is on: the orb can look things up online (up to 3 searches per message, ${Number.isInteger(kids.webPerDay) ? kids.webPerDay : 5} per day).` : "";
+  if (!active || !credits) { if (!web) return off(); h.textContent = web; h.hidden = false; h.classList.remove("warn", "mid"); return; }
   const p = pf(active), m = MODELS[p.m], cost = msgCost(p), left = credits.left, lim = credits.limit;
   const what = m.n + (hasEffort(p.m) && EFFORTS[p.e].mult > 1 ? " on " + EFFORTS[p.e].n : "");
   const koaTip = p.m !== 0 ? " Koa uses just 1." : "";
@@ -827,6 +829,7 @@ function hint(){
   } else if (cost > 3) {
     msg = `${what} is a heavier pick: ${creditWord(cost)} per message (${left} left today).` + koaTip;
   }
+  if (web) msg = web + (msg ? " " + msg : "");
   if (!msg) return off();
   h.textContent = msg; h.hidden = false; h.classList.toggle("warn", warn); h.classList.toggle("mid", mid);
 }

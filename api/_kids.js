@@ -48,7 +48,7 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
       let credits = null;
       const perUser = userLimit(creditLimits(cfg, env).perUser, user, env);
       if (perUser > 0) { try { credits = creditsLeft(await getUsage(user.uid), perUser); } catch { credits = { limit: perUser, left: perUser }; } }
-      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), credits });
+      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5, credits });
     }
 
     if (action === "age") {
