@@ -248,12 +248,10 @@ function renderHome(){
     mark.className = "mark"; orbInto(mark, active);
     box.disabled = false; form.classList.remove("locked");
     box.placeholder = b.ask;
-    $("whoText").textContent = b.name;
   } else {
     mark.className = "mark empty"; mark.innerHTML = ""; mark.textContent = "?";
     box.disabled = true; form.classList.add("locked");
     box.placeholder = "Pick an orb below to start…";
-    $("whoText").textContent = "No orb picked";
   }
   stopSpeak(); setAccent(); renderPicker(); updateSend(); snap(); renderSide(); renderIncog();
 }
@@ -406,7 +404,6 @@ function renderChat(){
   $("incogTag").hidden = !c.incog;
   box.disabled = false; form.classList.remove("locked");
   box.placeholder = `Reply to ${b.name}…`;
-  $("whoText").textContent = b.name;
   setAccent();
   log.innerHTML = "";
   if (c.incog) log.appendChild(el("div", "incognote", "🕶️ Incognito chat. It won't be saved, and it disappears when you leave."));
@@ -720,7 +717,7 @@ $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
 $("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); }
+function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); }).catch(() => {}); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); }
 // "Show thinking" switch
 function renderThinkSet(){ const on = opts.think !== false; $("thinkSw").setAttribute("aria-checked", String(on)); $("thinkTxt").textContent = on ? "On" : "Off"; }
 $("thinkSw").onclick = () => { opts = { ...opts, think: opts.think === false }; renderThinkSet(); cloudSave(); };
@@ -779,30 +776,57 @@ function menuItem(title, cost, desc, selected, onPick){
   if (cost) { const c = document.createElement("span"); c.className = "cost"; c.textContent = cost; b.appendChild(c); }
   d.textContent = desc; it.append(b, d); it.onclick = onPick; return it;
 }
-function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["effMenu","effBtn"],["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
+function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
+const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+// One button for model + effort. The menu lists the models, then effort as a row of choices.
 function syncSel(){
   const canWeb = !!active && kids.web !== false && !kids.on;
   $("webBtn").hidden = !canWeb; if (!canWeb) webOn = false;
   $("webBtn").setAttribute("aria-pressed", String(webOn)); $("webBtn").classList.toggle("on", webOn);
-  $("sels").hidden = !active; if (!active) { $("hint").textContent = ""; return; }
+  $("webBtn").title = webOn ? "Web search is on (tap to turn off)" : "Search the web";
+  $("sels").hidden = !active; if (!active) { hint(); return; }
   const p = pf(active), m0 = MODELS[p.m];
-  $("modelBtn").textContent = m0.n + " " + m0.v + " ▾";
+  const btn = $("modelBtn"); btn.replaceChildren(el("span", null, m0.n + " " + m0.v));
+  if (hasEffort(p.m)) btn.append(el("small", null, EFFORTS[p.e].n));
+  btn.append(el("span", "car", "▾"));
   const menu = $("modelMenu"); menu.innerHTML = "";
-  MODELS.forEach((m, i) => menu.appendChild(menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", m.d.charAt(0).toUpperCase() + m.d.slice(1) + ". Built on the latest " + m.base.replace(/ [\d.]+$/, "") + " model (" + m.base.replace(/^Claude /, "") + ").", i === p.m,
+  menu.append(el("div", "mh3", "Model"));
+  MODELS.forEach((m, i) => menu.appendChild(menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", cap(m.d) + ". Built on the latest " + m.base.replace(/ [\d.]+$/, "") + " model (" + m.base.replace(/^Claude /, "") + ").", i === p.m,
     () => { pf(active).m = i; savePrefs(); closeMenus(); syncSel(); })));
-  $("effWrap").hidden = !hasEffort(p.m);
-  $("effBtn").textContent = EFFORTS[p.e].n + " ▾";
-  const em = $("effMenu"); em.innerHTML = "";
-  EFFORTS.forEach((e, i) => em.appendChild(menuItem(e.n, credits ? "×" + e.mult : "", e.d.charAt(0).toUpperCase() + e.d.slice(1) + ".", i === p.e,
-    () => { pf(active).e = i; savePrefs(); closeMenus(); syncSel(); })));
-  hint();
+  if (hasEffort(p.m)) {
+    menu.append(el("div", "msep"), el("div", "mh3", "Effort"));
+    const row = el("div", "effrow");
+    EFFORTS.forEach((e, i) => {
+      const b = el("button", null, e.n); b.type = "button"; b.setAttribute("aria-pressed", String(i === p.e));
+      if (credits && e.mult > 1) b.append(el("small", null, "×" + e.mult + " credits"));
+      b.onclick = ev => { ev.stopPropagation(); pf(active).e = i; savePrefs(); syncSel(); };
+      row.append(b);
+    });
+    menu.append(row, el("div", "effdesc", cap(EFFORTS[p.e].d) + "."));
+  } else menu.append(el("div", "msep"), el("div", "effdesc", m0.n + " doesn't have effort settings. It always answers fast."));
+  menu.onclick = e => e.stopPropagation();
+  hint(); renderUsage();
 }
+// Credit note under the chat box: only when credits are on and you picked something heavy, or you're running low
 function hint(){
-  if (!active) { $("hint").textContent = ""; return; }
-  const p = pf(active), m = MODELS[p.m];
-  $("hint").textContent = (webOn ? "🌐 Web search is on: the orb can look things up (up to 3 searches per message). " : "") + m.n + " " + m.v + " (" + m.base + "): " + m.d + "." +
-    (hasEffort(p.m) ? " " + EFFORTS[p.e].n + " effort: " + EFFORTS[p.e].d + "." : " No effort setting on " + m.n + ".") +
-    (credits ? " Uses " + creditWord(msgCost(p)) + " per message." : "");
+  const h = $("hint");
+  const off = () => { h.textContent = ""; h.hidden = true; h.classList.remove("warn"); };
+  if (!active || !credits) return off();
+  const p = pf(active), m = MODELS[p.m], cost = msgCost(p), left = credits.left, lim = credits.limit;
+  const what = m.n + (hasEffort(p.m) && EFFORTS[p.e].mult > 1 ? " on " + EFFORTS[p.e].n : "");
+  const koaTip = p.m !== 0 ? " Koa uses just 1." : "";
+  let msg = "", warn = false;
+  if (left < cost) {
+    const cheaper = MODELS.filter(x => x.cost <= left).pop();
+    msg = left > 0 ? `Not enough credits for ${what} (${creditWord(cost)} per message, ${left} left). ${cheaper ? "Switch to " + cheaper.n + " to keep chatting." : ""}` : "You're out of credits for today. They refill at midnight.";
+    warn = true;
+  } else if (left <= Math.max(cost * 3, lim ? Math.ceil(lim * 0.2) : 0)) {
+    msg = `Low on credits: ${left} left today. ${what} uses ${creditWord(cost)} per message.` + koaTip; warn = true;
+  } else if (cost > 3) {
+    msg = `${what} is a heavier pick: ${creditWord(cost)} per message (${left} left today).` + koaTip;
+  }
+  if (!msg) return off();
+  h.textContent = msg; h.hidden = false; h.classList.toggle("warn", warn);
 }
 function toggleMenu(menuId, btnId){
   return e => { e.stopPropagation(); const mm = $(menuId), open = mm.hidden; closeMenus(); mm.hidden = !open; $(btnId).setAttribute("aria-expanded", String(open));
@@ -810,7 +834,6 @@ function toggleMenu(menuId, btnId){
 }
 $("modelBtn").onclick = toggleMenu("modelMenu", "modelBtn");
 $("webBtn").onclick = e => { e.stopPropagation(); if (!active) { nudge(); return; } webOn = !webOn; const c = curConv(); if (c) c.web = webOn; syncSel(); box.focus(); };
-$("effBtn").onclick = toggleMenu("effMenu", "effBtn");
 document.addEventListener("click", closeMenus);
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 let delArm = null, delTimer = null;
@@ -917,13 +940,33 @@ function setCredits(left){
   else if (left === null) { credits = null; limitHit = false; }
   renderUsage(); hint(); syncSel();
 }
+function untilMidnight(){
+  const ny = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const mid = new Date(ny); mid.setHours(24, 0, 0, 0);
+  const mins = Math.max(1, Math.round((mid - ny) / 60000)), h = Math.floor(mins / 60), m = mins % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
 function renderUsage(){
-  $("useBox").hidden = !credits;
-  $("useState").textContent = credits
-    ? creditWord(credits.left) + " left today" + (credits.limit ? " (out of " + credits.limit + ")" : "")
-    : "Full credits today";
-  $("useDot").className = "dot2 " + (limitHit ? "bad" : "ok");
   $("limit").hidden = !limitHit;
+  const bar = $("useBar"), more = $("useMore"), costs = $("useCost");
+  if (!credits) {
+    $("useState").textContent = "Unlimited"; $("useDot").className = "dot2 ok";
+    bar.hidden = true; costs.hidden = true;
+    more.textContent = "There's no daily credit limit right now, so every model is free to use as much as you want.";
+    return;
+  }
+  const { left, limit } = credits;
+  $("useState").textContent = limit ? `${left} of ${creditWord(limit)} left today` : `${creditWord(left)} left today`;
+  const low = limit ? left <= limit * 0.2 : false;
+  $("useDot").className = "dot2 " + (left === 0 ? "bad" : low ? "" : "ok");
+  bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (left === 0 ? " out" : low ? " low" : ""); }
+  let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
+  if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
+  more.textContent = txt;
+  costs.hidden = false; costs.innerHTML = "";
+  const curM = active ? pf(active).m : -1;
+  MODELS.forEach((m, i) => { const d = el("div", i === curM ? "on" : null); d.append(el("b", null, String(m.cost)), el("small", null, m.n)); costs.append(d); });
+  costs.append(el("p", null, "Credits per message. Higher effort costs more: High ×2, Extra ×3, Max ×4."));
 }
 
 // ---------- Account panel ----------
@@ -1123,6 +1166,7 @@ async function kidsApi(u, body){
   const r = await fetch("/api/kids", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
   let j = {}; try { j = await r.json(); } catch(_) {}
   if (typeof j.age !== "undefined") kids = { ...kids, ...j };
+  if ("credits" in j) { const c = j.credits; credits = c && typeof c.left === "number" ? { left: c.left, limit: c.limit || null } : null; limitHit = !!credits && credits.left === 0; }
   return { ok: r.ok, ...j };
 }
 function renderKids(){

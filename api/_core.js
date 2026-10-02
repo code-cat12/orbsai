@@ -47,11 +47,8 @@ export function withFiles(content, files) {
   blocks.push({ type: "text", text: content });
   return blocks;
 }
-export const RESET_TZ = "America/New_York"; // daily credits refill at midnight New York time
-
-export function dayKey(now = new Date()) {
-  return now.toLocaleDateString("en-CA", { timeZone: RESET_TZ });
-}
+import { dayKey, num, creditLimits } from "./_limits.js";
+export { RESET_TZ, dayKey } from "./_limits.js";
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -60,10 +57,6 @@ function json(status, body) {
   });
 }
 
-function num(v, fallback) {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
-}
 
 // Turn whatever the browser sent into a safe, Claude-ready list of turns.
 export function cleanRequest(body) {
@@ -205,8 +198,7 @@ export function makeChatHandler({
     }
 
     // Credit limits: the admin panel's numbers win, then Vercel's DAILY_CREDITS / SITE_DAILY_CREDITS. 0 or empty = unlimited.
-    const perUser = cfg.dailyCredits !== null ? cfg.dailyCredits : num(env.DAILY_CREDITS, 0);
-    const site = cfg.siteCredits !== null ? cfg.siteCredits : num(env.SITE_DAILY_CREDITS, 0);
+    const { perUser, site } = creditLimits(cfg, env);
     const limited = perUser > 0 || site > 0;
     const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9 };
     let paid = { ok: true, left: null };

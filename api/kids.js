@@ -1,5 +1,5 @@
 // POST /api/kids — age question and Kids Mode on/off (with parent PIN).
-import { admin, getKids, setKids, getConfig, setupProblem } from "./_admin.js";
+import { admin, getKids, setKids, getConfig, getUsage, setupProblem } from "./_admin.js";
 import { makeKidsHandler } from "./_kids.js";
 
 const handler = makeKidsHandler({
@@ -11,6 +11,7 @@ const handler = makeKidsHandler({
   getKids,
   setKids,
   getConfig,
+  getUsage,
 });
 
 export async function POST(request) {

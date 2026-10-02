@@ -113,3 +113,9 @@ export async function saveFeedback(id, data) {
   const ref = (await admin()).db.doc(`feedback/${id}`);
   if (data === null) await ref.delete(); else await ref.set(data);
 }
+
+// Today's credit count for one person (usage/{uid})
+export async function getUsage(uid) {
+  const snap = await (await admin()).db.doc(`usage/${uid}`).get();
+  return snap.exists ? snap.data() : null;
+}

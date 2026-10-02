@@ -3,6 +3,7 @@
 //  - 13 to 17: Kids Mode is on and locked (nobody can turn it off).
 //  - 18+: Kids Mode is optional, and turning it off needs the PIN that was set when it was turned on.
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
+import { creditLimits, creditsLeft } from "./_limits.js";
 
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
@@ -27,7 +28,7 @@ export function publicState(k, env = {}) {
   };
 }
 
-export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = async () => null, env: baseEnv = process.env, now = () => Date.now() }) {
+export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = async () => null, getUsage = async () => null, env: baseEnv = process.env, now = () => Date.now() }) {
   return async function POST(request) {
     const m = (request.headers.get("authorization") || "").match(/^Bearer ([\w.-]+)$/);
     if (!m) return json(401, { error: "unauthenticated" });
@@ -42,7 +43,13 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
     let cfg = null; try { cfg = await getConfig(); } catch {}
     const env = cfg && cfg.kidsForAll === true ? { ...baseEnv, KIDS_MODE: "all" } : baseEnv;
 
-    if (action === "status") return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false) });
+    if (action === "status") {
+      // Today's credits, so the page can show them before the first message
+      let credits = null;
+      const { perUser } = creditLimits(cfg, env);
+      if (perUser > 0) { try { credits = creditsLeft(await getUsage(user.uid), perUser); } catch { credits = { limit: perUser, left: perUser }; } }
+      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), credits });
+    }
 
     if (action === "age") {
       if (k.age) return json(409, { error: "age_already_set", ...publicState(k, env) });
