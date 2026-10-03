@@ -2,9 +2,9 @@
 import { creditLimits, isAdmin, ADMIN_CREDITS, dayKey } from "./_limits.js";
 
 export const PLANS = {
-  plus:         { name: "Plus",           daily: 175, month: 5250,  searches: 10, models: [0, 1, 2] },
-  plusplus:     { name: "Plus Plus",      daily: 350, month: 10500, searches: 25, models: [0, 1, 2, 3], memory: true },
-  plusplusplus: { name: "Plus Plus Plus", daily: 850, month: 25500, searches: 50, models: [0, 1, 2, 3], memory: true },
+  plus:         { name: "Plus",           daily: 225, month: 5000,  searches: 10, models: [0, 1, 2] },
+  plusplus:     { name: "Plus Plus",      daily: 325, month: 7500,  searches: 25, models: [0, 1, 2, 3], memory: true },
+  plusplusplus: { name: "Plus Plus Plus", daily: 750, month: 15000, searches: 50, models: [0, 1, 2, 3], memory: true },
 };
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 export const FREE_MODELS = [0, 1];       // Koa and Lumina
