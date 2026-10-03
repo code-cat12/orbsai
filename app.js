@@ -1617,6 +1617,7 @@ function maybePromo(){
   try { if (localStorage.getItem("orbs-promo7") === "seen") return; localStorage.setItem("orbs-promo7", "seen"); } catch(_) {}
   setTimeout(() => { if (POPUPS.some(id => !$(id).hidden)) return; openLegal("promoModal"); }, 1200);
 }
+$("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
@@ -1652,6 +1653,7 @@ function renderPlan(){
   $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
     : kids.owner ? "You get every model, 99,999 credits a day, no monthly cap, and as many web searches as the site allows. You can still test buying a plan." : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
+  $("promoNav").hidden = !user || !on || !promoOn() || !!(p && !p.test);
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
   $("planBtn").hidden = $("planBtn").hidden || testing;
   $("limitUp").hidden = !on || (p && p.id === "plusplusplus");
