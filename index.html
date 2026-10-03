@@ -3,8 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Orbs</title>
-<meta name="description" content="Nine little helpers in one chat.">
+<title>Orbs AI: nine little AI helpers in one chat</title>
+<meta name="description" content="Orbs AI is a free AI chat with nine helpers: tech help, cooking, games and Roblox, websites, stories, homework, music, languages, and more. Powered by Claude.">
+<link rel="canonical" href="https://orbsai.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Orbs AI">
+<meta property="og:title" content="Orbs AI: nine little AI helpers in one chat">
+<meta property="og:description" content="Tech help, cooking, games, homework, stories, music, languages, and more, each with its own orb.">
+<meta property="og:url" content="https://orbsai.vercel.app/">
+<meta property="og:image" content="https://orbsai.vercel.app/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://orbsai.vercel.app/og.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%220%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%234f7bff%22/%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%239b5cff%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ff5fb8%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg%20transform%3D%22rotate%28-22%2016%2016%29%22%3E%3Cpath%20d%3D%22M30%2016A14%205%200%200%200%202%2016%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20opacity%3D%22.6%22/%3E%3C/g%3E%3Ccircle%20cx%3D%2216%22%20cy%3D%2216%22%20r%3D%229.5%22%20fill%3D%22%23141416%22/%3E%3Crect%20x%3D%2212.1%22%20y%3D%2212.2%22%20width%3D%222.6%22%20height%3D%227%22%20rx%3D%221.3%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%2217.3%22%20y%3D%2212.2%22%20width%3D%222.6%22%20height%3D%227%22%20rx%3D%221.3%22%20fill%3D%22%23fff%22/%3E%3Cg%20transform%3D%22rotate%28-22%2016%2016%29%22%3E%3Cpath%20d%3D%22M2%2016A14%205%200%200%200%2030%2016%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -576,6 +586,11 @@ textarea:disabled{pointer-events:none}
 .upnav .ic{color:#9b5cff}
 .mitem.locked b{color:var(--muted)}
 .lock{font-size:.75rem;color:#9b5cff;border:1px solid #9b5cff;border-radius:999px;padding:1px 8px;margin-left:8px;font-weight:500;float:right}
+.faq{width:100%;max-width:720px;text-align:left;display:flex;flex-direction:column;gap:8px}
+.faq h2{font:400 1.6rem var(--display);margin:0 0 4px;text-align:center}
+.faq details{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.faq summary{cursor:pointer;font-weight:600}
+.faq p{margin:8px 0 2px;color:var(--muted);line-height:1.5}
 .memlist{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px}
 .memlist li{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:7px 8px 7px 12px}
 .memlist li span{flex:1;min-width:0;overflow-wrap:anywhere}
@@ -993,6 +1008,15 @@ textarea:disabled{pointer-events:none}
       <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
       <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
     </ul>
+    <section class="faq" aria-label="Questions">
+      <h2>Questions</h2>
+      <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>
+      <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you daily credits with the Koa and Lumina models. Orbs Plus plans add more credits, the Chrysalis and Mythos models, more web searches, and memory.</p></details>
+      <details><summary>What AI does Orbs use?</summary><p>Orbs runs on Anthropic's Claude models. Koa, Lumina, Chrysalis, and Mythos are each built on the newest Claude model in their family. Orbs is an independent project, not made by Anthropic.</p></details>
+      <details><summary>Is it safe for kids and teens?</summary><p>Orbs is for ages 13 and up. Teens always use Kids Mode, which gives kid-safe answers, checks every message and reply with an AI safety check, and blocks sharing personal info.</p></details>
+      <details><summary>Can Orbs search the web?</summary><p>Yes. Tap the globe and the orb can look up news, prices, scores, and other fresh info, and it shows the sites it used.</p></details>
+      <details><summary>Are my chats private?</summary><p>Only you can see your chats. They save to your account so they follow you to any device, and you can delete them anytime. Incognito chats are never saved.</p></details>
+    </section>
     <p class="legalnote"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button> · <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button> · Orbs is AI and can make mistakes.</p>
   </div>
   <div class="gcard auth" id="authCard">
