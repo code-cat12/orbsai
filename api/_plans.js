@@ -10,15 +10,23 @@ export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 export const FREE_MODELS = [0, 1];       // Koa and Lumina
 export const FREE_MONTH_DAYS = 20;       // free monthly cap = 20 days' worth
 
-// Stripe price IDs (test mode). For live mode, set STRIPE_PRICES in Vercel to the same shape with live IDs.
+// Stripe price IDs (test mode / sandbox, fake money)
 const TEST_PRICES = {
   plus:         { month: "price_1UMHB5BgLtESXgVqKX3K50fS", year: "price_1UMHBhBgLtESXgVqgPx2yb4J" },
   plusplus:     { month: "price_1UMHCEBgLtESXgVqqvWCkRoU", year: "price_1UMHCQBgLtESXgVqTK0Y4h5D" },
   plusplusplus: { month: "price_1UMHD5BgLtESXgVqFEqxfIOw", year: "price_1UMHDGBgLtESXgVqUyguTI4d" },
 };
+// Stripe price IDs (live mode, real money)
+const LIVE_PRICES = {
+  plus:         { month: "price_1UMG4yBgLtESXgVqv4tq72lR", year: "price_1UMGN3BgLtESXgVq1zl7jlu9" },
+  plusplus:     { month: "price_1UMGNVBgLtESXgVq2JZHZ1BF", year: "price_1UMGNxBgLtESXgVqMCL1KrBJ" },
+  plusplusplus: { month: "price_1UMGObBgLtESXgVqfXAkQ2Ri", year: "price_1UMGPOBgLtESXgVqfMv254Ot" },
+};
+// Uses the live prices with a live key (sk_live_…) and the test prices with a test key (sk_test_…).
+// STRIPE_PRICES in Vercel can override both if the prices ever change.
 export function prices(env = {}) {
   try { if (env.STRIPE_PRICES) { const p = JSON.parse(env.STRIPE_PRICES); if (p && p.plus) return p; } } catch {}
-  return TEST_PRICES;
+  return /^(sk|rk)_live_/.test(String(env.STRIPE_SECRET_KEY || "")) ? LIVE_PRICES : TEST_PRICES;
 }
 export function priceToPlan(id, env) {
   const p = prices(env);

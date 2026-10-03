@@ -64,7 +64,7 @@ Plans live in `api/_plans.js`: Plus (100 credits/day, Chrysalis), Plus Plus (200
 Vercel variables:
 - `STRIPE_SECRET_KEY`: from Stripe → Developers → API keys (`sk_test_…` while testing, `sk_live_…` for real)
 - `STRIPE_WEBHOOK_SECRET`: from your webhook destination (`whsec_…`), pointed at `https://YOUR-SITE/api/stripe-webhook`
-- `STRIPE_PRICES` (only for live mode): the live price IDs, like `{"plus":{"month":"price_…","year":"price_…"},"plusplus":{…},"plusplusplus":{…}}`
+- `STRIPE_PRICES` (optional): only if the prices change. Orbs already picks the live or test prices by itself depending on the key. Shape: `{"plus":{"month":"price_…","year":"price_…"},"plusplus":{…},"plusplusplus":{…}}`
 
 Webhook events: `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed`.
 Turn on the Customer portal (Settings → Billing → Customer portal) so people can cancel or switch plans.
