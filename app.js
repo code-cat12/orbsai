@@ -1673,9 +1673,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["225 credits a day (5,000 a month)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["325 credits a day (7,500 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["750 credits a day (15,000 a month)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["100 credits a day (2,000 a month)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["500 credits a day (10,000 a month)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
