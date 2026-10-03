@@ -67,7 +67,6 @@ export function cleanRequest(body) {
   const effort = body.effort === undefined ? DEFAULT_EFFORT : body.effort;
   if (!Number.isInteger(effort) || effort < 0 || effort >= EFFORTS.length) return { error: "bad_request" };
   if (typeof orb !== "string" || !Object.hasOwn(ORBS, orb)) return { error: "bad_request" };
-  if (!inSeason(orb)) return { error: "season_over" };
   if (!Number.isInteger(model) || model < 0 || model >= MODELS.length) return { error: "bad_request" };
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 400) return { error: "bad_request" };
 
@@ -137,12 +136,13 @@ export const WEB_RULES =
   "Search as few times as you can, and mention which sites the info came from.";
 
 // Site switches the owner can change in the admin panel (config/site in Firestore)
-export const SITE_DEFAULTS = { paused: false, pausedMsg: "", webSearch: true, searchesPerUser: 5, searchesSite: 100, dailyCredits: null, siteCredits: null, kidsForAll: false };
+export const SITE_DEFAULTS = { paused: false, pausedMsg: "", webSearch: true, searchesPerUser: 5, searchesSite: 100, dailyCredits: null, siteCredits: null, kidsForAll: false, halloween: "auto" };
 export function siteConfig(raw) {
   const c = { ...SITE_DEFAULTS };
   if (raw && typeof raw === "object") {
     for (const k of ["paused", "webSearch", "kidsForAll"]) if (typeof raw[k] === "boolean") c[k] = raw[k];
     if (typeof raw.pausedMsg === "string") c.pausedMsg = raw.pausedMsg.slice(0, 300);
+    if (["auto", "on", "off"].includes(raw.halloween)) c.halloween = raw.halloween;
     for (const k of ["searchesPerUser", "searchesSite", "dailyCredits", "siteCredits"]) {
       const v = raw[k];
       if (v === null && (k === "dailyCredits" || k === "siteCredits")) c[k] = null;
@@ -153,9 +153,9 @@ export function siteConfig(raw) {
 }
 export const MAX_SEARCHES_PER_MESSAGE = 3;
 
-export function systemPrompt(orb, model) {
+export function systemPrompt(orb, model, seasonMode = "auto") {
   const o = ORBS[orb];
-  const others = activeOrder().filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
+  const others = activeOrder(Date.now(), seasonMode).filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
   return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", ASK_FIRST, FORMAT, `Reply as ${o.name}.`]
     .filter(Boolean).join(" ");
 }
@@ -188,6 +188,7 @@ export function makeChatHandler({
     let cfg;
     try { cfg = siteConfig(await getConfig()); } catch { cfg = siteConfig(null); }
     if (cfg.paused) return json(503, { error: "paused", msg: cfg.pausedMsg });
+    if (!inSeason(req.orb, Date.now(), cfg.halloween)) return json(400, { error: "season_over" });
     const siteEnv = cfg.kidsForAll ? { ...env, KIDS_MODE: "all" } : env;
 
     // Age check and Kids Mode, decided on the server so nobody can switch it off from the page
@@ -288,7 +289,7 @@ export function makeChatHandler({
           ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
           // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
           cache_control: { type: "ephemeral" },
-          system: [systemPrompt(req.orb, req.model), memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
+          system: [systemPrompt(req.orb, req.model, cfg.halloween), memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
           messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content, req.files) } : t)),
           stream: true,
           // An anonymous id (not the email) so Anthropic can spot abuse from one person

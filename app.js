@@ -63,7 +63,11 @@ const BOTS = {
 const ORDER = ["neb","tech","cook","game","web","write","study","music","lang"];
 // Halloween orbs show up in October (Eastern time)
 const IN_OCT = (() => { try { return new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric" }) === "10"; } catch(_) { return new Date().getMonth() === 9; } })();
-const PICK_ORDER = IN_OCT ? [...ORDER, "spooks", "hex"] : ORDER;
+let seasonOn = IN_OCT;   // the owner can force Halloween on or off in the admin panel
+const pickOrder = () => seasonOn ? [...ORDER, "spooks", "hex"] : ORDER;
+const seasonP = fetch("/api/season").then(r => r.ok ? r.json() : null).then(j => {
+  if (j && typeof j.halloween === "boolean" && j.halloween !== seasonOn) { seasonOn = j.halloween; renderLandingBonus(); if (user) renderPicker(); }
+}).catch(() => {});
 
 const $ = id => document.getElementById(id);
 const app = $("app"), log = $("log"), box = $("box"), sendBtn = $("send"), status = $("status"), form = $("form");
@@ -250,7 +254,7 @@ function setAccent(){
 
 function renderPicker(){
   const wrap = $("bots"); wrap.innerHTML = "";
-  for (const k of PICK_ORDER) {
+  for (const k of pickOrder()) {
     const b = BOTS[k], el = document.createElement("button");
     el.type = "button"; el.className = "bot" + (b.season ? " spooky" : ""); el.id = "pick-" + k;
     el.setAttribute("aria-pressed", String(k === active));
@@ -1235,11 +1239,14 @@ for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () 
 $("aBack").onclick = () => showGate("home");
 $("lineup").innerHTML = ORDER.map(k => `<div class="lo"><div class="has-orb">${orbSVG(k)}</div><b></b><small></small></div>`).join("");
 $("lineup").querySelectorAll(".lo").forEach((el, i) => { el.querySelector("b").textContent = BOTS[ORDER[i]].name; el.querySelector("small").textContent = BOTS[ORDER[i]].role; });
-// October: show the 2 Halloween bonus orbs on the front page too
-if (IN_OCT) {
+// Halloween: show the 2 bonus orbs on the front page too
+function renderLandingBonus(){
+  document.querySelectorAll(".lbonus, .lo.bonus").forEach(x => x.remove());
+  if (!seasonOn) return;
   const note = el("p", "lbonus", "+2 bonus orbs for Halloween! 🎃👻"); $("lineup").before(note);
   for (const k of ["spooks", "hex"]) { const d = el("div", "lo bonus"); const g = el("div", "has-orb"); g.innerHTML = orbSVG(k); d.append(g, el("b", null, BOTS[k].name), el("small", null, BOTS[k].role)); $("lineup").append(d); }
 }
+renderLandingBonus();
 $("gGoogle").onclick = () => busyBtn($("gGoogle"), async () => {
   say("");
   try { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt:"select_account" }); await A.signInWithPopup(auth, p); }
@@ -1653,9 +1660,10 @@ const promoOn = id => Date.now() < PROMO_UNTIL && (!id || PROMO_PLANS.includes(i
 let popupQ = [];
 const seenOnce = key => { try { if (localStorage.getItem(key) === "seen") return true; localStorage.setItem(key, "seen"); } catch(_) {} return false; };
 function nextPopup(){ if (!popupQ.length || POPUPS.some(id => !$(id).hidden)) return; openLegal(popupQ.shift()); }
-function maybePromo(){
+async function maybePromo(){
+  await seasonP;
   popupQ = [];
-  if (IN_OCT && !seenOnce("orbs-hw" + new Date().getFullYear())) { popupQ.push("hwModal"); orbInto($("hwSpooks"), "spooks"); orbInto($("hwHex"), "hex"); }
+  if (seasonOn && !seenOnce("orbs-hw" + new Date().getFullYear())) { popupQ.push("hwModal"); orbInto($("hwSpooks"), "spooks"); orbInto($("hwHex"), "hex"); }
   if (promoOn() && kids.billing && !kids.plan && !seenOnce("orbs-promo7")) popupQ.push("promoModal");
   setTimeout(nextPopup, 1200);
 }
@@ -1827,10 +1835,14 @@ function renderAdmin(){
       numIn("searchesSite", "Web searches per day for the whole site"),
       numIn("dailyCredits", "Daily credits per person", "Empty or 0 = unlimited. Koa uses 1 per message, Lumina 3, Chrysalis 6, Mythos 10 (more at higher effort)."),
       numIn("siteCredits", "Daily credits for the whole site", "Empty or 0 = unlimited."),
-      sw("kidsForAll", "Kids Mode for everyone", "Turns on Kids Mode for every account on the site."));
+      sw("kidsForAll", "Kids Mode for everyone", "Turns on Kids Mode for every account on the site."),
+      (() => { const r = el("label", "arow num"); const sel = el("select"); sel.name = "halloween";
+        for (const [v, t] of [["auto", "Auto (October only)"], ["on", "On"], ["off", "Off"]]) { const o = el("option", null, t); o.value = v; if ((c.halloween || "auto") === v) o.selected = true; sel.append(o); }
+        r.append(el("span", null, "🎃 Halloween (Spooks and Hex)"), sel, el("small", "fine", "Auto = they show up in October and leave on November 1. On or Off overrides that.")); return r; })());
     const go = el("button", "gbtn", "Save settings"); go.type = "submit"; const msg = el("small", "fine"); f.append(go, msg);
     f.onsubmit = e => { e.preventDefault(); busyBtn(go, async () => {
       const out = {};
+      for (const i of f.querySelectorAll("select")) out[i.name] = i.value;
       for (const i of f.querySelectorAll("input")) {
         if (i.type === "checkbox") out[i.name] = i.checked;
         else if (i.type === "number") out[i.name] = i.value === "" ? (i.name.startsWith("searches") ? 0 : null) : Math.max(0, Math.floor(Number(i.value)) || 0);

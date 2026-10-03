@@ -28,13 +28,17 @@ export const ORBS = {
 export const ORDER = ["neb", "tech", "cook", "game", "web", "write", "study", "music", "lang"];
 export const SEASONAL = ["spooks", "hex"];
 // Seasonal orbs show up during their month (Eastern time), plus a day of grace
-export function inSeason(key, now = Date.now()) {
+// mode comes from the admin panel: "auto" (October only), "on" (always), "off" (never)
+export function inSeason(key, now = Date.now(), mode = "auto") {
   const o = ORBS[key]; if (!o || o.season === undefined) return true;
+  if (mode === "on") return true;
+  if (mode === "off") return false;
   const et = new Date(now - 4 * 3600e3); // close enough to Eastern time in October
   const grace = new Date(now - 28 * 3600e3);
   return et.getUTCMonth() === o.season || grace.getUTCMonth() === o.season;
 }
-export function activeOrder(now = Date.now()) { return [...ORDER, ...SEASONAL.filter((k) => inSeason(k, now))]; }
+export function activeOrder(now = Date.now(), mode = "auto") { return [...ORDER, ...SEASONAL.filter((k) => inSeason(k, now, mode))]; }
+export function halloweenOn(mode = "auto", now = Date.now()) { return inSeason("spooks", now, mode); }
 
 // Orbs models, in the same order as FAMILIES in _models.js (Koa, Lumina, Chrysalis, Mythos).
 // Which real Claude model each one uses is picked automatically (always the newest in its family).
