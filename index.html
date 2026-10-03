@@ -586,6 +586,26 @@ textarea:disabled{pointer-events:none}
 .upnav .ic{color:#9b5cff}
 .mitem.locked b{color:var(--muted)}
 .lock{font-size:.75rem;color:#9b5cff;border:1px solid #9b5cff;border-radius:999px;padding:1px 8px;margin-left:8px;font-weight:500;float:right}
+.lnav{position:sticky;top:-24px;z-index:2;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:10px 4px;background:color-mix(in srgb,var(--bg) 96%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.lbrand{display:flex;align-items:center;gap:8px;background:none;border:0;color:var(--ink);font:500 1.3rem var(--display);cursor:pointer;padding:0}
+.lbrand .lg{width:30px;height:30px;overflow:visible}
+.llinks{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+.llinks button,.llinks a{background:none;border:0;color:var(--ink);font:inherit;font-size:1.05rem;padding:6px 10px;border-radius:999px;cursor:pointer;text-decoration:none}
+.llinks button:hover,.llinks a:hover{background:var(--field)}
+.llinks .lsign{background:var(--ink);color:var(--bg);margin-left:4px}
+.llinks .lsign:hover{background:var(--ink);opacity:.85}
+.lsec{width:100%;max-width:880px;text-align:left;scroll-margin-top:70px}
+.lsec h2{font:400 1.6rem var(--display);margin:0 0 4px;text-align:center}
+.lsub{text-align:center;color:var(--muted);margin:0 0 4px}
+.lsec p{line-height:1.55}
+#labout{max-width:720px}
+#labout p{color:var(--muted)}
+#labout a,.lsec a{color:var(--accent)}
+.lsec .fine{text-align:center;margin-top:16px}
+.lsec .pgrid{padding-top:18px}
+.lsec .pcard{text-align:left}
+.faq{scroll-margin-top:70px}
+@media (max-width:520px){.lsec,.faq{scroll-margin-top:110px}.lnav{justify-content:center}.llinks{justify-content:center}.llinks button,.llinks a{padding:6px 8px;font-size:1rem}}
 .faq{width:100%;max-width:720px;text-align:left;display:flex;flex-direction:column;gap:8px}
 .faq h2{font:400 1.6rem var(--display);margin:0 0 4px;text-align:center}
 .faq details{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
@@ -997,6 +1017,15 @@ textarea:disabled{pointer-events:none}
 </div>
 <div class="gate" id="gate">
   <div class="landing" id="landing" hidden>
+    <nav class="lnav" aria-label="Main">
+      <button class="lbrand" type="button" data-go="top"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgN" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgN)" stroke-width="2.4" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgN)" stroke-width="2.4" stroke-linecap="round"/></g></svg><span>Orbs AI</span></button>
+      <div class="llinks">
+        <button type="button" data-go="lpricing">Pricing</button>
+        <button type="button" data-go="labout">About us</button>
+        <a href="mailto:contact-orbsai@proton.me">Contact</a>
+        <button type="button" class="lsign" id="navSignin">Sign in</button>
+      </div>
+    </nav>
     <div class="lhero">
       <svg class="lg lbig" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgL)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgL)" stroke-width="2.2" stroke-linecap="round"/><circle r="2" fill="#ff5fb8"><animateMotion dur="5s" repeatCount="indefinite" path="M30 16A14 5 0 0 1 2 16A14 5 0 0 1 30 16"/><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.49;.53;.97;1" dur="5s" repeatCount="indefinite"/></circle></g></svg>
       <h1 class="ltitle">Orbs</h1>
@@ -1012,6 +1041,18 @@ textarea:disabled{pointer-events:none}
       <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
       <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
     </ul>
+    <section class="lsec" id="lpricing" aria-labelledby="lpTitle">
+      <h2 id="lpTitle">Pricing</h2>
+      <p class="lsub">Start free. Upgrade anytime for more credits and stronger models. Pay yearly and get 2 months free.</p>
+      <div class="pgrid" id="lpGrid"></div>
+      <p class="fine">Plans renew automatically and you can cancel anytime. Payments are handled securely by Stripe.</p>
+    </section>
+    <section class="lsec" id="labout" aria-labelledby="laTitle">
+      <h2 id="laTitle">About us</h2>
+      <p>Orbs AI is made by <b>The Abyss</b>, a small independent studio run by one young developer who wanted AI chat to feel less like a boring tool and more like a group of friends who each know different things.</p>
+      <p>So instead of one AI for everything, Orbs has nine little helpers called orbs. Each one has its own personality and specialty, from coding and cooking to Roblox, stories, music, and homework.</p>
+      <p>Orbs runs on Anthropic's Claude models and is built to be safe, simple, and fun, with Kids Mode for teens and private chats for everyone. Have an idea or found a bug? Email <a href="mailto:contact-orbsai@proton.me">contact-orbsai@proton.me</a>. Every message gets read.</p>
+    </section>
     <section class="faq" aria-label="Questions">
       <h2>Questions</h2>
       <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>

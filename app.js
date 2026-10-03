@@ -1197,6 +1197,9 @@ async function busyBtn(btn, fn){ btn.disabled = true; try { await fn(); } finall
 $("aSwitch").onclick = () => setAuthMode(authMode === "up" ? "in" : "up");
 $("goBtn").onclick = () => setAuthMode("up");
 $("goSignin").onclick = () => setAuthMode("in");
+$("navSignin").onclick = () => setAuthMode("in");
+// Landing nav: scroll to a section (or the top)
+for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { if (b.dataset.go === "top") gate.scrollTo({ top:0, behavior:"smooth" }); else $(b.dataset.go).scrollIntoView({ behavior:"smooth", block:"start" }); };
 $("aBack").onclick = () => showGate("home");
 $("lineup").innerHTML = ORDER.map(k => `<div class="lo"><div class="has-orb">${orbSVG(k)}</div><b></b><small></small></div>`).join("");
 $("lineup").querySelectorAll(".lo").forEach((el, i) => { el.querySelector("b").textContent = BOTS[ORDER[i]].name; el.querySelector("small").textContent = BOTS[ORDER[i]].role; });
@@ -1475,6 +1478,19 @@ const PLAN_INFO = [
   { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
   { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["500 credits a day (10,000 a month)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
 ];
+// Landing pricing cards (same plans as the Upgrade window)
+(function landingPlans(){
+  const grid = $("lpGrid"); if (!grid) return;
+  const card = (name, color, price, sub, perks, pop) => {
+    const c = el("div", "pcard" + (pop ? " pop" : "")); c.style.setProperty("--pc", color);
+    const pr = el("div", "price", price); if (sub) pr.append(el("small", null, sub));
+    const ul = el("ul"); perks.forEach(t => ul.append(el("li", null, t)));
+    const b = el("button", "gbtn", "Get started"); b.type = "button"; b.onclick = () => setAuthMode("up");
+    c.append(el("h3", null, name), pr, ul, b); grid.append(c);
+  };
+  card("Free", "#6e6b64", "$0", "", ["Free credits every day", "Koa and Lumina", "A few web searches a day"]);
+  for (const pl of PLAN_INFO) card(pl.name, pl.color, "$" + pl.month, " / month", [...pl.perks, ...pl.soon.map(t => t + " (coming soon)"), "or $" + pl.year + " a year"], pl.pop);
+})();
 const needPlan = m => m >= 3 ? "plusplus" : "plus";
 function lockedModel(m){ return Array.isArray(kids.models) && !kids.models.includes(m); }
 let planInterval = "month";
