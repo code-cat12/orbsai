@@ -36,8 +36,10 @@ export function priceToPlan(id, env) {
 
 // A subscription counts while it's active (a failed renewal gets a few days of grace while Stripe retries)
 const LIVE = new Set(["active", "trialing", "past_due"]);
-export function activePlan(sub, now = Date.now()) {
+export function activePlan(sub, now = Date.now(), env = process.env) {
   if (!sub || !LIVE.has(sub.status) || !PLANS[sub.plan]) return null;
+  // A plan bought in the sandbox doesn't count on the live site (and the other way round)
+  if (sub.price && !priceToPlan(sub.price, env)) return null;
   if (sub.periodEnd && now > sub.periodEnd * 1000 + 3 * 864e5) return null;
   return sub.plan;
 }
