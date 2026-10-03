@@ -1536,7 +1536,7 @@ function billing(body, btn, msgEl){
       let j = {}; try { j = await r.json(); } catch(_) {}
       if (j.url && /^https:\/\/([a-z0-9-]+\.)*stripe\.com\//.test(j.url)) { location.href = j.url; return; }
       if (j.error === "already_subscribed") return billing({ action:"portal" }, btn, msgEl);
-      msgEl.textContent = j.error === "billing_off" ? "Paid plans aren't turned on yet." : j.error === "no_subscription" ? "You don't have a plan yet." : "Couldn't open Stripe. Try again.";
+      msgEl.textContent = j.error === "billing_off" ? "Paid plans aren't turned on yet." : j.error === "no_subscription" ? "You don't have a plan yet." : j.error === "age_required" ? "Set your age in Settings first." : j.error === "unverified" ? "Verify your email first." : "Couldn't open Stripe" + (j.why ? ": " + j.why : ". Try again.");
     } catch (_) { msgEl.textContent = "Couldn't reach Orbs. Check your connection."; }
   });
 }

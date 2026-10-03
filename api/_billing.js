@@ -56,7 +56,9 @@ export function makeBillingHandler({ verifyToken, getSub, getKids, stripe, env =
     const k = (await getKids(user.uid)) || {};
     if (k.banned) return json(403, { error: "banned" });
     if (!k.age || k.age === "under13") return json(403, { error: "age_required" });
-    const sub = await getSub(user.uid);
+    let sub = await getSub(user.uid);
+    // A plan saved from the Stripe sandbox (test mode) doesn't exist on the live site, so don't reuse its customer
+    if (sub && sub.price && !priceToPlan(sub.price, env)) sub = null;
     const origin = new URL(request.url).origin;
 
     if (body && body.action === "portal") {
@@ -68,7 +70,7 @@ export function makeBillingHandler({ verifyToken, getSub, getKids, stripe, env =
       const plan = body.plan, interval = body.interval === "year" ? "year" : "month";
       if (!Object.hasOwn(PLANS, plan)) return json(400, { error: "bad_request" });
       // Already paying? Switching happens in the portal so they don't get charged twice.
-      if (activePlan(sub)) return json(409, { error: "already_subscribed" });
+      if (activePlan(sub, Date.now(), env)) return json(409, { error: "already_subscribed" });
       const price = prices(env)[plan] && prices(env)[plan][interval];
       if (!price) return json(400, { error: "bad_request" });
       const s = await stripe("POST", "checkout/sessions", {
