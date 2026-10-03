@@ -252,7 +252,7 @@ function renderPicker(){
   const wrap = $("bots"); wrap.innerHTML = "";
   for (const k of PICK_ORDER) {
     const b = BOTS[k], el = document.createElement("button");
-    el.type = "button"; el.className = "bot"; el.id = "pick-" + k;
+    el.type = "button"; el.className = "bot" + (b.season ? " spooky" : ""); el.id = "pick-" + k;
     el.setAttribute("aria-pressed", String(k === active));
     el.style.setProperty("--c", `var(${b.color})`);
     el.innerHTML = `<span class="g"></span><span class="n"></span><span class="r"></span>`;

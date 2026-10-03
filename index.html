@@ -663,6 +663,10 @@ textarea:disabled{pointer-events:none}
 @keyframes o-sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
 @keyframes o-bowtilt{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(7deg)}}
 @media (prefers-reduced-motion:reduce){.orb-hex .o-hop,.orb-hex .o-arm,.orb-hex .o-bow,.orb-spooks .o-candle,.orb-spooks .o-spider,.orb-hex .o-ghostbody,.orb-hex .o-wisp,.orb-spooks .o-bat,.orb-spooks .o-bat path{animation:none}}
+.bot.spooky{border-color:color-mix(in srgb,#ff8a1a 65%,var(--line));animation:spookyglow 2.6s ease-in-out infinite}
+.bot.spooky[aria-pressed="true"]{border-color:#ff8a1a}
+@keyframes spookyglow{0%,100%{box-shadow:0 0 0 1px rgba(255,138,26,.35),0 0 10px 1px rgba(255,138,26,.28)}50%{box-shadow:0 0 0 1.5px rgba(255,138,26,.6),0 0 20px 4px rgba(255,138,26,.45)}}
+@media (prefers-reduced-motion:reduce){.bot.spooky{animation:none;box-shadow:0 0 0 1.5px rgba(255,138,26,.5),0 0 14px 2px rgba(255,138,26,.35)}}
 .hw .lbody{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
 .hwrow{display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
 .hwcard{flex:1 1 200px;max-width:260px;border-radius:18px;padding:14px;border:1.5px solid color-mix(in srgb,var(--c) 45%,var(--line));background:color-mix(in srgb,var(--c) 8%,var(--field));display:flex;flex-direction:column;align-items:center;gap:6px}
