@@ -518,6 +518,7 @@ async function send(text, regen, filesOverride){
         method:"POST",
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
         body: JSON.stringify({ orb:key, model:mi, effort:pf(key).e, messages:ctx, think: opts.think !== false, web: !!webOn,
+          ...(ctx.length === 1 && !conv.incog && !conv.renamed ? { title: true } : {}),
           ...(files.length ? { attachments: files.map(f => f.kind === "text" ? { kind:"text", name:f.name, text:f.text } : { kind:f.kind, name:f.name, media_type:f.media_type, data:f.data }) } : {}) }),
         signal: ctl.signal
       });
@@ -544,6 +545,7 @@ async function send(text, regen, filesOverride){
           else if (typeof ev.q === "string") { queries.push(ev.q); live.searched.hidden = false; live.searched.textContent = "🔎 Searching the web: " + queries.map(q => "“" + q + "”").join(", "); stickBottom(); }
           else if (Array.isArray(ev.src)) { for (const x of ev.src) if (x && typeof x.u === "string" && sources.length < 10 && !sources.some(y => y.u === x.u)) sources.push({ u: x.u, t: String(x.t || "") }); live.src.replaceChildren(sourcesBox(sources)); }
           else if (typeof ev.nosearch === "string") noSearch = ev.nosearch;
+          else if (typeof ev.title === "string") { if (!conv.renamed && ev.title.trim()) { conv.title = ev.title.trim().slice(0, 80); if (cur === cid) $("topRole").textContent = conv.title; renderSide(); } }
           else end = ev;
         }
       }
@@ -887,7 +889,7 @@ function startRename(id, row){
   const inp = document.createElement("input"); inp.className = "sq rename"; inp.value = c.title || ""; inp.maxLength = 80; inp.setAttribute("aria-label", "Chat name");
   row.replaceChildren(inp); inp.focus(); inp.select();
   let done = false;
-  const finish = ok => { if (done) return; done = true; if (ok) { const v = inp.value.trim(); if (v) { c.title = v.slice(0, 80); save(); } } renderSide(); if (cur === id) $("topRole").textContent = c.title; };
+  const finish = ok => { if (done) return; done = true; if (ok) { const v = inp.value.trim(); if (v && v !== c.title) { c.title = v.slice(0, 80); c.renamed = true; save(); } } renderSide(); if (cur === id) $("topRole").textContent = c.title; };
   inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); finish(false); } };
   inp.onblur = () => finish(true);
 }

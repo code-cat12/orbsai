@@ -87,7 +87,24 @@ export function cleanRequest(body) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true, count: messages.length };
+  return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true, count: messages.length,
+    wantTitle: body.title === true && messages.length === 1 };
+}
+
+// Smart chat title: Koa (the cheapest model) names a new chat in a few words. Costs a tiny fraction of a cent, no credits.
+export async function makeTitle({ apiKey, fetchImpl = fetch, modelId, text }) {
+  const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({ model: modelId, max_tokens: 24, messages: [{ role: "user", content:
+      "Write a short title (2 to 6 words) for a chat that starts with the message inside <message> tags. " +
+      "Use the same language as the message. Reply with only the title: no quotes, no emoji, no period at the end.\n\n" +
+      `<message>\n${String(text).slice(0, 2000).replace(/<\/?message>/gi, "")}\n</message>` }] }),
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  const t = String((j.content || []).map((b) => b.text || "").join(" ")).split("\n")[0].replace(/^["'“”‘’\s]+|["'“”‘’.\s]+$/g, "").trim();
+  return t && t.length <= 80 ? t : null;
 }
 
 // Extra credits on top of the model's cost (never multiplied by effort)
@@ -234,6 +251,11 @@ export function makeChatHandler({
     const giveBack = async () => { if (limited) await refund(user.uid, cost, day, limits.monthKey).catch(() => {}); };
     const leftAfterRefund = () => (limited && paid.left !== null ? paid.left + cost : null);
 
+    // Name the chat at the same time as the reply is written (not in Kids Mode: there the first words are used)
+    const titleP = req.wantTitle && !kidsOn
+      ? makeTitle({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: req.turns[req.turns.length - 1].content }).catch(() => null)
+      : null;
+
     // Summarized thinking costs nothing extra on these models (the thinking happens either way); Kids Mode never shows it.
     const showThinking = req.think && !kidsOn && live.effort;
     let upstream;
@@ -349,6 +371,7 @@ export function makeChatHandler({
           else if (BLOCKED.has(label)) { failed = "kids_reply_blocked"; logFlag({ type: "reply_blocked", category: label }); }
           else send({ d: held });
         }
+        if (!failed && titleP) { const t = await titleP; if (t) send({ title: t }); }
         if (failed) send({ error: failed, left });
         else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0,
           cost: limited ? cost - (extraWeb && !usage.searches ? extraWeb : 0) : null });
