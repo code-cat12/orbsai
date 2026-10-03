@@ -1251,7 +1251,7 @@ $("vDone").onclick = () => busyBtn($("vDone"), async () => {
   } catch (e) { say(authErr(e)); }
 });
 $("vResend").onclick = () => busyBtn($("vResend"), async () => {
-  try { await sendVerify(auth.currentUser); say("Sent! Check your inbox.", true); } catch (e) { say(authErr(e)); }
+  try { await sendVerify(auth.currentUser); say("Sent! Check your inbox, and your spam folder too.", true); } catch (e) { say(authErr(e)); }
 });
 $("vOut").onclick = () => A.signOut(auth);
 
