@@ -1,7 +1,7 @@
 // The chat endpoint's logic, kept apart from Firebase/Vercel so it can be tested on its own.
 // Flow: check who's asking -> clean up their messages -> take credits -> ask Claude -> stream the reply back.
 import { createHash } from "node:crypto";
-import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT } from "./_orbs.js";
+import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT, inSeason, activeOrder } from "./_orbs.js";
 import { latestModels } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
@@ -67,6 +67,7 @@ export function cleanRequest(body) {
   const effort = body.effort === undefined ? DEFAULT_EFFORT : body.effort;
   if (!Number.isInteger(effort) || effort < 0 || effort >= EFFORTS.length) return { error: "bad_request" };
   if (typeof orb !== "string" || !Object.hasOwn(ORBS, orb)) return { error: "bad_request" };
+  if (!inSeason(orb)) return { error: "season_over" };
   if (!Number.isInteger(model) || model < 0 || model >= MODELS.length) return { error: "bad_request" };
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 400) return { error: "bad_request" };
 
@@ -154,7 +155,7 @@ export const MAX_SEARCHES_PER_MESSAGE = 3;
 
 export function systemPrompt(orb, model) {
   const o = ORBS[orb];
-  const others = ORDER.filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
+  const others = activeOrder().filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
   return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", ASK_FIRST, FORMAT, `Reply as ${o.name}.`]
     .filter(Boolean).join(" ");
 }

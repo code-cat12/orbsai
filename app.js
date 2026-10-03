@@ -47,9 +47,23 @@ const BOTS = {
     name:"Lingo", role:"Language Tutor", glyph:"L", color:"--c-lang",
     ask:"What do you want to practice?",
     chips:["Teach me 5 useful Chinese phrases","Correct my English sentence","How do I say this in Chinese?"]
+  },
+  // Halloween orbs (October only)
+  spooks: {
+    name:"Spooks", role:"Halloween Party", glyph:"S", color:"--c-spooks", season:true,
+    ask:"Oh my gourd, what are we planning?",
+    chips:["Last-minute costume with stuff I have","Easy pumpkin carving design","Spooky snacks for a party"]
+  },
+  hex: {
+    name:"Hex", role:"Ghost Stories", glyph:"H", color:"--c-hex", season:true,
+    ask:"Hehehe… what do you seek, mortal?",
+    chips:["Tell me a cozy spooky story","Give me a spooky riddle","Read my (totally made-up) fortune"]
   }
 };
 const ORDER = ["neb","tech","cook","game","web","write","study","music","lang"];
+// Halloween orbs show up in October (Eastern time)
+const IN_OCT = (() => { try { return new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric" }) === "10"; } catch(_) { return new Date().getMonth() === 9; } })();
+const PICK_ORDER = IN_OCT ? [...ORDER, "spooks", "hex"] : ORDER;
 
 const $ = id => document.getElementById(id);
 const app = $("app"), log = $("log"), box = $("box"), sendBtn = $("send"), status = $("status"), form = $("form");
@@ -200,6 +214,18 @@ const ORB = {
       <g class="o-stars" fill="#9b5cff"><circle cx="14" cy="22" r="1.9"/><circle cx="88" cy="28" r="1.5"/><circle cx="86" cy="90" r="1.9"/></g>`; },
     acc:`` }
 };
+// 🎃 Spooks (pumpkin) and 👻 Hex (blue ghost with a bow)
+ORB.spooks = { shape:`<ellipse cx="50" cy="64" rx="35" ry="27"/>`, ey:58, tilt:0,
+  acc:`<g fill="none" stroke="#c45200" stroke-width="2.4" stroke-linecap="round" opacity=".55"><path d="M50 38C40 46 40 82 50 90"/><path d="M50 38C60 46 60 82 50 90"/><path d="M34 41C22 52 24 80 36 88"/><path d="M66 41C78 52 76 80 64 88"/></g>
+    <path d="M47 39C47 32 49 28 53 25C54 24.5 56 25.5 55.5 27C53.5 30 53 34 53.5 39Z" fill="#3f8f2a"/>
+    <path class="o-leaf" d="M54 30C60 24 68 25 70 29C64 33 59 33 54 30Z" fill="#5bbf3a"/>
+    <path d="M35 69Q50 80 65 69L61 73L57 70L53 75L50 71L47 75L43 70L39 73Z" fill="#111"/>
+    <path class="o-glow" d="M41 71Q50 76 59 71" fill="none" stroke="#ffd34d" stroke-width="1.6" stroke-linecap="round"/>` };
+ORB.hex = { shape:`<path class="o-ghost" d="M23 62C23 41 35 30 50 30S77 41 77 62V86C77 90.5 73 91.5 70.5 88.5C68 85 65 85 62.5 88.5C60 92 56.5 92 54 88.5C51.5 85 48.5 85 46 88.5C43.5 92 40 92 37.5 88.5C35 85 32 85 29.5 88.5C27 91.5 23 90.5 23 86Z" fill-opacity=".92"/>`, ey:57, tilt:0,
+  back:() => `<ellipse cx="50" cy="60" rx="36" ry="34" fill="#8fd0ff" opacity=".28" class="o-aura"/>`,
+  acc:`<g class="o-bow"><path d="M66 33L56 26L57 39Z" fill="#ff5fb8"/><path d="M66 33L76 26L75 39Z" fill="#ff5fb8"/><circle cx="66" cy="33" r="3.6" fill="#ff8fcd"/></g>
+    <ellipse cx="38" cy="68" rx="4.5" ry="2.6" fill="#ff8fcd" opacity=".55"/><ellipse cx="62" cy="68" rx="4.5" ry="2.6" fill="#ff8fcd" opacity=".55"/>
+    <g class="o-stars" fill="#8fd0ff"><path d="M14 40l1.6 3.6 3.6 1.6-3.6 1.6L14 50.4l-1.6-3.6L8.8 45.2l3.6-1.6z"/><circle cx="88" cy="52" r="1.8"/><circle cx="84" cy="30" r="1.3"/></g>` };
 let nebN = 0;
 function orbSVG(k){
   const o = ORB[k], y = o.ey;
@@ -220,7 +246,7 @@ function setAccent(){
 
 function renderPicker(){
   const wrap = $("bots"); wrap.innerHTML = "";
-  for (const k of ORDER) {
+  for (const k of PICK_ORDER) {
     const b = BOTS[k], el = document.createElement("button");
     el.type = "button"; el.className = "bot"; el.id = "pick-" + k;
     el.setAttribute("aria-pressed", String(k === active));
@@ -455,7 +481,8 @@ const ERR = {
   out_of_funds:"Orbs ran out of Claude money!! 😤💢 Tell the owner to add more, baka!",
   paused:"Orbs is taking a little break right now. Try again later!",
   banned:"This account can't chat on Orbs anymore.",
-  network:"Can't reach Orbs. Check your internet connection."
+  network:"Can't reach Orbs. Check your internet connection.",
+  season_over:"Spooks and Hex went back to sleep until next October! 🎃👻 Pick another orb."
 };
 const NOSEARCH = { kids:"Web search is off in Kids Mode, so that answer didn't search the web.", off:"Web search is turned off on Orbs right now, so that answer didn't search the web.", limit:"You've used all your web searches for today, so that answer didn't search the web. They refill at midnight." };
 
@@ -1571,7 +1598,7 @@ if (SR) {
 form.addEventListener("submit", stopVoice, true);
 
 // ---------- Sidebar extras: search, what's new, shortcuts ----------
-const NEWS_VERSION = "2026-10-plans-memory";
+const NEWS_VERSION = "2026-10-halloween";
 function focusSearch(){ setSide(true); const q = $("q"); q.focus(); q.select(); }
 $("searchNav").onclick = focusSearch;
 try { $("newDot").hidden = localStorage.getItem("orbs-news") === NEWS_VERSION; } catch(_) { $("newDot").hidden = false; }
@@ -1591,8 +1618,8 @@ document.addEventListener("keydown", e => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal","mfaModal","promoModal"];
-function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal","mfaModal","promoModal","hwModal"];
+function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); if (typeof popupQ !== "undefined" && popupQ.length) setTimeout(nextPopup, 450); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
   if (e.target.closest("[data-close]") || e.target.classList.contains("legal-modal")) closeLegal();
@@ -1613,11 +1640,18 @@ const PLAN_NAMES = { plus:"Plus", plusplus:"Plus Plus", plusplusplus:"Plus Plus 
 // Sale: code WELCOME7 = 7% off the first payment of Plus and Plus Plus until Nov 1, 2026 11:59 PM EDT (typed at Stripe checkout)
 const PROMO_UNTIL = Date.parse("2026-11-02T03:59:59Z"), PROMO_PLANS = ["plus", "plusplus"];
 const promoOn = id => Date.now() < PROMO_UNTIL && (!id || PROMO_PLANS.includes(id));
+// Popups after sign-in, one after another: Halloween first, then the sale
+let popupQ = [];
+const seenOnce = key => { try { if (localStorage.getItem(key) === "seen") return true; localStorage.setItem(key, "seen"); } catch(_) {} return false; };
+function nextPopup(){ if (!popupQ.length || POPUPS.some(id => !$(id).hidden)) return; openLegal(popupQ.shift()); }
 function maybePromo(){
-  if (!promoOn() || !kids.billing || kids.plan || (kids.plan && kids.plan.test)) return;
-  try { if (localStorage.getItem("orbs-promo7") === "seen") return; localStorage.setItem("orbs-promo7", "seen"); } catch(_) {}
-  setTimeout(() => { if (POPUPS.some(id => !$(id).hidden)) return; openLegal("promoModal"); }, 1200);
+  popupQ = [];
+  if (IN_OCT && !seenOnce("orbs-hw2026")) { popupQ.push("hwModal"); orbInto($("hwSpooks"), "spooks"); orbInto($("hwHex"), "hex"); }
+  if (promoOn() && kids.billing && !kids.plan && !seenOnce("orbs-promo7")) popupQ.push("promoModal");
+  setTimeout(nextPopup, 1200);
 }
+$("hwGoSpooks").onclick = () => { closeLegal(); pick("spooks"); };
+$("hwGoHex").onclick = () => { closeLegal(); pick("hex"); };
 $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
