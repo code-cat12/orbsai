@@ -1365,18 +1365,19 @@ function renderMfa(){
 async function mfaRefresh(){ try { const j = await mfaApi(user, { action:"status" }); if (j.httpOk) mfa = j; } catch(_) {} renderMfa(); }
 $("mfaBtn").onclick = async () => { if (!user) return; openLegal("mfaModal"); $("mfaBody").replaceChildren(el("p", "fine", "Loading…")); await mfaRefresh(); mfaMain(); };
 const mfaBtn = (t, fn, cls = "outline small") => { const b = el("button", cls, t); b.type = "button"; b.onclick = () => busyBtn(b, fn); return b; };
-function mfaRow(title, sub, ...btns){ const r = el("div", "mrow"), t = el("div"); t.append(el("b", null, title), el("small", null, sub)); const bs = el("span", "setrow"); btns.filter(Boolean).forEach(b => bs.append(b)); r.append(t, bs); return r; }
+const MFA_ICONS = {"phone": "<svg class=\"li\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"14\" height=\"20\" x=\"5\" y=\"2\" rx=\"2\" ry=\"2\"/><path d=\"M12 18h.01\"/></svg>", "mail": "<svg class=\"li\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/></svg>", "key": "<svg class=\"li\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z\"/><circle cx=\"16.5\" cy=\"7.5\" r=\".5\" fill=\"currentColor\"/></svg>"};
+function mfaRow(title, sub, ...btns){ const r = el("div", "mrow"), t = el("div"); const b = el("b"); const [ic, ...rest] = title.split(" "); if (MFA_ICONS[ic]) { b.innerHTML = MFA_ICONS[ic]; b.append(rest.join(" ")); } else b.textContent = title; t.append(b, el("small", null, sub)); const bs = el("span", "setrow"); btns.filter(Boolean).forEach(b => bs.append(b)); r.append(t, bs); return r; }
 function mfaShow(...nodes){ const box = el("div", "mfam"); box.append(...nodes); const m = el("p", "fine"); m.id = "mfaMsg"; m.setAttribute("role", "status"); box.append(m); $("mfaBody").replaceChildren(box); return m; }
 const mfaSay = t => { const m = $("mfaMsg"); if (m) m.textContent = t || ""; };
 function mfaMain(msg){
   const on = !!(mfa && mfa.on), ready = !!(mfa && mfa.emailReady);
   const parts = [];
   if (!on) parts.push(el("p", null, "Turn this on and Orbs asks for a code after your password, so nobody can get in with just your password. Pick how you want to get codes:"));
-  parts.push(mfaRow("📱 Authenticator app", mfa && mfa.totp ? "On. Codes come from your app." : "Google Authenticator, Microsoft Authenticator, Authy, or the Passwords app on iPhone and iPad.",
+  parts.push(mfaRow("phone Authenticator app", mfa && mfa.totp ? "On. Codes come from your app." : "Google Authenticator, Microsoft Authenticator, Authy, or the Passwords app on iPhone and iPad.",
     mfa && mfa.totp ? mfaBtn("Turn off", () => mfaNeedCode("off", "totp")) : mfaBtn("Set up", mfaTotpStart)));
-  parts.push(mfaRow("✉️ Email codes", mfa && mfa.email ? "On. We email you a 6-digit code." : ready ? "We email a 6-digit code to " + (user && user.email || "you") + "." : "Not available yet. Email sending isn't turned on for Orbs.",
+  parts.push(mfaRow("mail Email codes", mfa && mfa.email ? "On. We email you a 6-digit code." : ready ? "We email a 6-digit code to " + (user && user.email || "you") + "." : "Not available yet. Email sending isn't turned on for Orbs.",
     mfa && mfa.email ? mfaBtn("Turn off", () => mfaNeedCode("off", "email")) : ready ? mfaBtn("Set up", mfaEmailStart) : null));
-  if (on) parts.push(mfaRow("🔑 Backup codes", (mfa.backupLeft || 0) + " left. Use one if you lose your phone or can't get emails.", mfaBtn("Get new codes", () => mfaNeedCode("newBackup"))));
+  if (on) parts.push(mfaRow("key Backup codes", (mfa.backupLeft || 0) + " left. Use one if you lose your phone or can't get emails.", mfaBtn("Get new codes", () => mfaNeedCode("newBackup"))));
   mfaShow(...parts); mfaSay(msg);
 }
 async function drawQr(text){
@@ -1400,7 +1401,7 @@ function mfaCodeForm(btnText, onSubmit, placeholder = "123456"){
 }
 async function mfaTurnedOn(j, what){
   await user.getIdToken(true); await mfaRefresh();
-  if (j.backup) mfaBackup(j.backup, `${what} is on! ✅`); else mfaMain(`${what} is on! ✅`);
+  if (j.backup) mfaBackup(j.backup, `${what} is on!`); else mfaMain(`${what} is on!`);
 }
 async function mfaTotpStart(){
   const j = await mfaApi(user, { action:"totpStart" }); if (!j.secret) return mfaSay(mfaErr(j));
