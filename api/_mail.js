@@ -57,7 +57,7 @@ export function brevoSender(key, fetchImpl = fetch) {
     const res = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: { "api-key": key, "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ sender: { name: "Orbs AI", email: from }, replyTo: { email: from, name: "Orbs AI" },
+      body: JSON.stringify({ sender: { name: "Orbs AI", email: from }, replyTo: { email: MAIL_FROM, name: "Orbs AI" },
         to: [name ? { email: to, name } : { email: to }], subject, htmlContent: html, textContent: text, tags: [tag || "verify"] }),
     });
     if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error("brevo " + res.status + " " + (j.message || "")); }
