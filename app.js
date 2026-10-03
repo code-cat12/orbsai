@@ -1244,7 +1244,7 @@ $("lineup").querySelectorAll(".lo").forEach((el, i) => { el.querySelector("b").t
 function renderLandingBonus(){
   document.querySelectorAll(".lbonus, .lo.bonus").forEach(x => x.remove());
   if (!seasonOn) return;
-  const note = el("p", "lbonus", "+2 bonus orbs for Halloween! 🎃👻"); $("lineup").before(note);
+  const note = el("p", "lbonus", "+2 bonus orbs for Halloween! 🎃👻 They leave on November 1."); $("lineup").before(note);
   for (const k of ["spooks", "hex"]) { const d = el("div", "lo bonus"); const g = el("div", "has-orb"); g.innerHTML = orbSVG(k); d.append(g, el("b", null, BOTS[k].name), el("small", null, BOTS[k].role)); $("lineup").append(d); }
 }
 renderLandingBonus();
