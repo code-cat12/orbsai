@@ -49,6 +49,7 @@ export function withFiles(content, files) {
 }
 import { dayKey } from "./_limits.js";
 import { allowance, planFor, PLANS } from "./_plans.js";
+import { memoryRules, looksPersonal, extractMemory } from "./_memory.js";
 export { RESET_TZ, dayKey } from "./_limits.js";
 
 function json(status, body) {
@@ -88,7 +89,7 @@ export function cleanRequest(body) {
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
   return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true, count: messages.length,
-    wantTitle: body.title === true && messages.length === 1 };
+    wantTitle: body.title === true && messages.length === 1, memory: body.memory === true };
 }
 
 // Smart chat title: Koa (the cheapest model) names a new chat in a few words. Costs a tiny fraction of a cent, no credits.
@@ -165,6 +166,7 @@ export function systemPrompt(orb, model) {
 export function makeChatHandler({
   verifyToken, charge, refund, getKids, flag = async () => {}, getConfig = async () => null,
   searchesLeft = async () => 0, countSearches = async () => {}, record = async () => {}, getSub = async () => null,
+  getMemory = async () => [], addMemory = async () => [],
   fetchImpl = fetch, env = process.env,
 }) {
   return async function POST(request) {
@@ -251,6 +253,16 @@ export function makeChatHandler({
     const giveBack = async () => { if (limited) await refund(user.uid, cost, day, limits.monthKey).catch(() => {}); };
     const leftAfterRefund = () => (limited && paid.left !== null ? paid.left + cost : null);
 
+    // Memory (Plus Plus and up, never in Kids Mode): use what they told Orbs before, and save new things from this message
+    const memOn = req.memory && allow.memory && !kidsOn;
+    let memItems = [];
+    if (memOn) { try { memItems = await getMemory(user.uid); } catch { memItems = []; } }
+    const lastUser = req.turns[req.turns.length - 1].content;
+    const memP = memOn && looksPersonal(lastUser)
+      ? extractMemory({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: lastUser, existing: memItems })
+          .then((found) => (found.length ? addMemory(user.uid, found) : [])).catch(() => [])
+      : null;
+
     // Name the chat at the same time as the reply is written (not in Kids Mode: there the first words are used)
     const titleP = req.wantTitle && !kidsOn
       ? makeTitle({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: req.turns[req.turns.length - 1].content }).catch(() => null)
@@ -275,7 +287,7 @@ export function makeChatHandler({
           ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
           // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
           cache_control: { type: "ephemeral" },
-          system: [systemPrompt(req.orb, req.model), searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
+          system: [systemPrompt(req.orb, req.model), memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
           messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content, req.files) } : t)),
           stream: true,
           // An anonymous id (not the email) so Anthropic can spot abuse from one person
@@ -372,6 +384,7 @@ export function makeChatHandler({
           else send({ d: held });
         }
         if (!failed && titleP) { const t = await titleP; if (t) send({ title: t }); }
+        if (!failed && memP) { const added = await memP; if (added && added.length) send({ mem: added }); }
         if (failed) send({ error: failed, left });
         else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0,
           cost: limited ? cost - (extraWeb && !usage.searches ? extraWeb : 0) : null });

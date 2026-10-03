@@ -576,6 +576,14 @@ textarea:disabled{pointer-events:none}
 .upnav .ic{color:#9b5cff}
 .mitem.locked b{color:var(--muted)}
 .lock{font-size:.75rem;color:#9b5cff;border:1px solid #9b5cff;border-radius:999px;padding:1px 8px;margin-left:8px;font-weight:500;float:right}
+.memlist{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.memlist li{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:7px 8px 7px 12px}
+.memlist li span{flex:1;min-width:0;overflow-wrap:anywhere}
+.memlist .empty{border:none;color:var(--muted);padding:4px 0}
+.memadd{display:flex;gap:8px;margin:6px 0 12px}
+.memadd input{flex:1;font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:8px 11px;min-width:0}
+.memchip{font-size:.82rem;color:var(--muted);margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.memchip .linkbtn{font-size:.82rem;padding:0}
 .plantag{font-size:.7rem;color:#fff;background:#9b5cff;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:2px}
 #settings .card{max-height:calc(100dvh - 32px);overflow-y:auto}
 .ubar{height:8px;border-radius:999px;background:var(--me);overflow:hidden}
@@ -706,6 +714,9 @@ textarea:disabled{pointer-events:none}
     <div class="set-label">Show thinking</div>
     <div class="swrow"><span class="acct"><span id="thinkTxt">On</span></span><button class="switch" id="thinkSw" type="button" role="switch" aria-checked="true" aria-label="Show thinking"></button></div>
     <small class="fine">See a short summary of how the orb thought about your question (Lumina, Chrysalis, and Mythos). It's free. Hidden in Kids Mode.</small>
+    <div class="set-label">Memory</div>
+    <div class="swrow"><span class="acct"><span id="memTxt">On</span></span><span class="setrow" style="flex:none"><button class="outline small" id="memManage" type="button">Manage</button><button class="switch" id="memSw" type="button" role="switch" aria-checked="true" aria-label="Memory"></button></span></div>
+    <small class="fine" id="memHelp">Orbs remember things you tell them (like your name, hobbies, and projects) so you don't have to repeat yourself. You can see and delete everything in Manage.</small>
     <div class="set-label">Kids Mode</div>
     <div class="acct"><span class="dot2" id="kidsDot"></span><span id="kidsTxt">Off</span></div>
     <small class="fine" id="kidsHelp">Extra safety for kids and teens: kid-safe answers, an AI safety check on every message and reply, and a block on sharing personal info.</small>
@@ -776,6 +787,7 @@ textarea:disabled{pointer-events:none}
         <li><b>A safety log:</b> when Kids Mode blocks something, we save the type of problem (like "personal info"), which orb, and when. Not the message itself.</li>
         <li><b>Reports:</b> if you report a reply, we save that reply and your reason so it can be checked.</li>
         <li><b>Thumbs up and down:</b> your vote, which orb and model, and anything you choose to add (a reason, or the reply if you tick the box).</li>
+        <li><b>Memory</b> (Plus Plus and up, if you leave it on): short notes about you that you told the orbs, like your nickname or hobbies, so they can remember them in later chats. You can see, add, and delete them in Settings → Memory → Manage, or turn memory off. It's never used in incognito chats or Kids Mode.</li>
         <li><b>Usage totals:</b> how many messages and web searches Orbs handles each day and about how much they cost. Not what the messages say.</li>
       </ul>
       <p>We don't run ads, we don't sell your information, and we don't use tracking or analytics tools.</p>
@@ -848,6 +860,9 @@ textarea:disabled{pointer-events:none}
     <div class="lbody">
       <p class="lupd">October 2026</p>
       <ul>
+        <li><b>Orbs Plus plans:</b> more credits, Chrysalis and Mythos, and more web searches. Tap Upgrade in the sidebar.</li>
+        <li><b>Memory (Plus Plus and up):</b> orbs remember your name, hobbies, and projects. See and delete it in Settings.</li>
+        <li><b>Smart chat titles:</b> new chats get a short name automatically.</li>
         <li><b>Edit and redo:</b> fix a message you sent, or get a new answer to any reply.</li>
         <li><b>Read aloud:</b> tap the speaker to hear a reply.</li>
         <li><b>Thumbs up and down:</b> tell the orbs how they did.</li>
@@ -931,6 +946,18 @@ textarea:disabled{pointer-events:none}
     <label class="agree"><input type="checkbox" id="fbShare"> <span>Include this reply so the person who runs Orbs can read it</span></label>
     <button class="gbtn" id="fbSend" type="button">Send feedback</button>
     <small class="fine" id="fbMsg" role="status"></small>
+  </div>
+</div>
+<div class="modal legal-modal" id="memModal" hidden>
+  <div class="card legal" role="dialog" aria-modal="true" aria-labelledby="memTitle">
+    <div class="mh"><h2 id="memTitle">What Orbs remember</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="lbody">
+      <p class="fine">Orbs use these in all your chats. Delete anything you don't want remembered. Incognito chats never save or use memory.</p>
+      <ul class="memlist" id="memList"></ul>
+      <form class="memadd" id="memAdd"><label for="memNew" hidden>Add a memory</label><input id="memNew" maxlength="160" placeholder="Add something, like “Call me Icy”"><button class="outline small" type="submit">Add</button></form>
+      <div class="setrow"><button class="danger" id="memWipe" type="button">Forget everything</button></div>
+      <p class="fine" id="memMsg" role="status"></p>
+    </div>
   </div>
 </div>
 <div class="modal legal-modal" id="planModal" hidden>

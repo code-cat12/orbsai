@@ -120,6 +120,26 @@ export async function getUsage(uid) {
   return snap.exists ? snap.data() : null;
 }
 
+// ---------- Memory (users/{uid}/data/memory) ----------
+export async function getMemory(uid) {
+  const { cleanItems } = await import("./_memory.js");
+  const snap = await (await admin()).db.doc(`users/${uid}/data/memory`).get();
+  return cleanItems(snap.exists ? snap.data() : null);
+}
+export async function addMemory(uid, texts) {
+  const { cleanItems, MAX_ITEMS } = await import("./_memory.js");
+  const { db } = await admin();
+  const ref = db.doc(`users/${uid}/data/memory`);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const items = cleanItems(snap.exists ? snap.data() : null);
+    const have = new Set(items.map((m) => m.text.toLowerCase()));
+    const added = texts.filter((t) => !have.has(t.toLowerCase())).map((t) => ({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), text: t, at: Date.now() }));
+    if (added.length) tx.set(ref, { items: [...items, ...added].slice(-MAX_ITEMS) });
+    return added.map((a) => a.text);
+  });
+}
+
 // ---------- Paid plans (subs/{uid}, written only by the Stripe webhook) ----------
 export async function getSub(uid) {
   const snap = await (await admin()).db.doc(`subs/${uid}`).get();

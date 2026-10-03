@@ -55,7 +55,7 @@ const $ = id => document.getElementById(id);
 const app = $("app"), log = $("log"), box = $("box"), sendBtn = $("send"), status = $("status"), form = $("form");
 let active = null, busy = false, ctl = null, user = null;
 let webOn = false, incogNext = false;      // web search for this chat; next new chat is incognito
-let opts = { think: true };                // your settings that aren't per-orb (saved to your account)
+let opts = { think: true, memory: true };                // your settings that aren't per-orb (saved to your account)
 // Chats live in your Firebase account; this is just the copy on screen.
 // Conversations: each orb can have as many chats as you want.
 let convs = {};          // id -> { id, orb, title, turns, created, updated }
@@ -350,6 +350,7 @@ function bubble(role, turn, idx, isLast){
     if (Array.isArray(turn.q) && turn.q.length) col.appendChild(searchedLine(turn.q));
     m.innerHTML = md(splitOptions(turn.content).body); col.appendChild(m);
     if (Array.isArray(turn.src) && turn.src.length) col.appendChild(sourcesBox(turn.src));
+    if (Array.isArray(turn.mem) && turn.mem.length) col.appendChild(memChip(turn.mem));
     if (isLast && !busy) {
       const opts = splitOptions(turn.content).options;
       if (opts.length) {
@@ -495,7 +496,7 @@ async function send(text, regen, filesOverride){
   ctl = new AbortController();
   const ctx = conv.turns.slice(-30).map(t => ({ role:t.role, content:t.content }));
   while (ctx.length && ctx[0].role !== "user") ctx.shift();
-  let reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0;
+  let reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0, memSaved = [];
   const paint = () => {
     raf = 0;
     if (thinking) { live.think.hidden = false; live.think.querySelector(".thinktext").innerHTML = md(thinking); }
@@ -508,6 +509,7 @@ async function send(text, regen, filesOverride){
     if (thinking) { o.th = thinking.slice(0, 20000); if (thinkSecs) o.tm = thinkSecs; }
     if (queries.length) o.q = queries.slice(0, 5);
     if (sources.length) o.src = sources.slice(0, 10);
+    if (memSaved.length) o.mem = memSaved;
     return o;
   };
   try {
@@ -519,6 +521,7 @@ async function send(text, regen, filesOverride){
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
         body: JSON.stringify({ orb:key, model:mi, effort:pf(key).e, messages:ctx, think: opts.think !== false, web: !!webOn,
           ...(ctx.length === 1 && !conv.incog && !conv.renamed ? { title: true } : {}),
+          ...(kids.memory && opts.memory !== false && !conv.incog ? { memory: true } : {}),
           ...(files.length ? { attachments: files.map(f => f.kind === "text" ? { kind:"text", name:f.name, text:f.text } : { kind:f.kind, name:f.name, media_type:f.media_type, data:f.data }) } : {}) }),
         signal: ctl.signal
       });
@@ -545,6 +548,7 @@ async function send(text, regen, filesOverride){
           else if (typeof ev.q === "string") { queries.push(ev.q); live.searched.hidden = false; live.searched.textContent = "🔎 Searching the web: " + queries.map(q => "“" + q + "”").join(", "); stickBottom(); }
           else if (Array.isArray(ev.src)) { for (const x of ev.src) if (x && typeof x.u === "string" && sources.length < 10 && !sources.some(y => y.u === x.u)) sources.push({ u: x.u, t: String(x.t || "") }); live.src.replaceChildren(sourcesBox(sources)); }
           else if (typeof ev.nosearch === "string") noSearch = ev.nosearch;
+          else if (Array.isArray(ev.mem)) { memSaved = ev.mem.filter(x => typeof x === "string").slice(0, 3); live.src.after(memChip(memSaved)); }
           else if (typeof ev.title === "string") { if (!conv.renamed && ev.title.trim()) { conv.title = ev.title.trim().slice(0, 80); if (cur === cid) $("topRole").textContent = conv.title; renderSide(); } }
           else end = ev;
         }
@@ -726,7 +730,47 @@ $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
 $("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); }).catch(() => {}); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); }
+function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); renderMemSet(); }).catch(() => {}); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); renderMemSet(); }
+// ---------- Memory ----------
+function memChip(list){
+  const d = el("div", "memchip"); d.append(el("span", null, "📝 Saved to memory: " + list.join(" · ")));
+  const b = el("button", "linkbtn", "Manage"); b.type = "button"; b.onclick = () => openMemory(); d.append(b); return d;
+}
+function renderMemSet(){
+  const allowed = !!kids.memory, on = allowed && opts.memory !== false;
+  $("memSw").setAttribute("aria-checked", String(on)); $("memSw").disabled = !allowed; $("memManage").hidden = !allowed;
+  $("memTxt").textContent = !allowed ? (kids.on ? "Off in Kids Mode" : "🔒 Plus Plus") : on ? "On" : "Off";
+  $("memHelp").textContent = allowed ? "Orbs remember things you tell them (like your name, hobbies, and projects) so you don't have to repeat yourself. You can see and delete everything in Manage."
+    : kids.on ? "Memory is turned off in Kids Mode to keep things private." : "Orbs can remember things you tell them across chats. Memory comes with Plus Plus and Plus Plus Plus.";
+}
+$("memSw").onclick = () => { if (!kids.memory) { openPlans(); return; } opts = { ...opts, memory: opts.memory === false }; renderMemSet(); cloudSave(); };
+$("memManage").onclick = () => openMemory();
+const memRef = () => F.doc(db, "users", user.uid, "data", "memory");
+let memItems = [];
+async function openMemory(){
+  if (!user) return;
+  openLegal("memModal"); $("memMsg").textContent = ""; $("memList").replaceChildren(el("li", "empty", "Loading…"));
+  try { const snap = await F.getDoc(memRef()); const v = snap.exists() ? snap.data() : {}; memItems = Array.isArray(v.items) ? v.items.filter(m => m && typeof m.text === "string") : []; renderMemList(); }
+  catch (_) { $("memList").replaceChildren(el("li", "empty", "Couldn't load your memory. Try again.")); }
+}
+function renderMemList(){
+  const ul = $("memList"); ul.innerHTML = "";
+  if (!memItems.length) ul.append(el("li", "empty", "Nothing yet. Tell an orb about yourself and it'll remember."));
+  for (const m of memItems.slice().reverse()) {
+    const li = el("li"); li.append(el("span", null, m.text));
+    const x = el("button", "icon-btn delb"); x.type = "button"; x.innerHTML = TRASH_SVG; x.title = "Forget this"; x.setAttribute("aria-label", "Forget: " + m.text);
+    x.onclick = () => saveMem(memItems.filter(i => i !== m), "Forgotten.");
+    li.append(x); ul.append(li);
+  }
+}
+async function saveMem(items, msg){
+  try { await F.setDoc(memRef(), { items: items.slice(-60) }); memItems = items; renderMemList(); $("memMsg").textContent = msg; }
+  catch (_) { $("memMsg").textContent = "Couldn't save. Try again."; }
+}
+$("memAdd").addEventListener("submit", e => { e.preventDefault(); const t = $("memNew").value.trim().slice(0, 160); if (!t) return;
+  $("memNew").value = ""; saveMem([...memItems, { id: Date.now().toString(36), text: t, at: Date.now() }], "Added."); });
+$("memWipe").onclick = () => armed($("memWipe"), "Tap again to forget everything", () => saveMem([], "Everything forgotten."));
+
 // "Show thinking" switch
 function renderThinkSet(){ const on = opts.think !== false; $("thinkSw").setAttribute("aria-checked", String(on)); $("thinkTxt").textContent = on ? "On" : "Off"; }
 $("thinkSw").onclick = () => { opts = { ...opts, think: opts.think === false }; renderThinkSet(); cloudSave(); };
@@ -1023,7 +1067,7 @@ $("prof").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.prevent
 
 function resetState(){
   convs = {}; cur = null; deletedIds.clear(); legacyDel.clear();
-  pins = []; prefs = {}; lastSent = {}; opts = { think: true }; webOn = false; incogNext = false; stopSpeak();
+  pins = []; prefs = {}; lastSent = {}; opts = { think: true, memory: true }; webOn = false; incogNext = false; stopSpeak();
   active = null; hist = []; hi = -1; credits = null; limitHit = false;
   log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts(); stopVoice();
 }
@@ -1044,6 +1088,7 @@ function cleanTurns(v){
         if (Number.isInteger(m.m) && m.m >= 0 && m.m < 4) o.m = m.m;
         if (m.fb === "up" || m.fb === "down") o.fb = m.fb;
         if (Array.isArray(m.q)) o.q = m.q.filter(q => typeof q === "string").slice(0, 5).map(q => q.slice(0, 200));
+        if (Array.isArray(m.mem)) o.mem = m.mem.filter(x => typeof x === "string").slice(0, 3).map(x => x.slice(0, 160));
         if (Array.isArray(m.src)) o.src = m.src.filter(x => x && typeof x.u === "string" && /^https?:\/\//i.test(x.u)).slice(0, 10).map(x => ({ u: x.u.slice(0, 500), t: String(x.t || "").slice(0, 200) }));
       }
       return o; }) : [];
@@ -1094,7 +1139,7 @@ async function loadAccount(u){
     else if (d.id === "settings") {
       pins = Array.isArray(v.pins) ? v.pins.filter(k => Object.hasOwn(BOTS, k)) : [];
       prefs = v.prefs && typeof v.prefs === "object" ? JSON.parse(JSON.stringify(v.prefs)) : {};
-      opts = { think: !(v.opts && v.opts.think === false) };
+      opts = { think: !(v.opts && v.opts.think === false), memory: !(v.opts && v.opts.memory === false) };
       lastSent.settings = JSON.stringify({ pins, prefs, opts });
     }
   });
@@ -1386,7 +1431,7 @@ if (SR) {
 form.addEventListener("submit", stopVoice, true);
 
 // ---------- Sidebar extras: search, what's new, shortcuts ----------
-const NEWS_VERSION = "2026-10-bigupdate";
+const NEWS_VERSION = "2026-10-plans-memory";
 function focusSearch(){ setSide(true); const q = $("q"); q.focus(); q.select(); }
 $("searchNav").onclick = focusSearch;
 try { $("newDot").hidden = localStorage.getItem("orbs-news") === NEWS_VERSION; } catch(_) { $("newDot").hidden = false; }
@@ -1406,7 +1451,7 @@ document.addEventListener("keydown", e => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal"];
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal"];
 function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
@@ -1427,8 +1472,8 @@ $("repSend").onclick = () => busyBtn($("repSend"), async () => {
 const PLAN_NAMES = { plus:"Plus", plusplus:"Plus Plus", plusplusplus:"Plus Plus Plus" };
 const PLAN_INFO = [
   { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["100 credits a day (2,000 a month)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day"], soon:["Memory", "Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["500 credits a day (10,000 a month)", "Every model", "50 web searches a day", "New features first"], soon:["Memory", "Custom orbs"] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["500 credits a day (10,000 a month)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
 ];
 const needPlan = m => m >= 3 ? "plusplus" : "plus";
 function lockedModel(m){ return Array.isArray(kids.models) && !kids.models.includes(m); }

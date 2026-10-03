@@ -3,8 +3,8 @@ import { creditLimits, isAdmin, ADMIN_CREDITS, dayKey } from "./_limits.js";
 
 export const PLANS = {
   plus:         { name: "Plus",           daily: 100, month: 2000,  searches: 10, models: [0, 1, 2] },
-  plusplus:     { name: "Plus Plus",      daily: 200, month: 4000,  searches: 25, models: [0, 1, 2, 3] },
-  plusplusplus: { name: "Plus Plus Plus", daily: 500, month: 10000, searches: 50, models: [0, 1, 2, 3] },
+  plusplus:     { name: "Plus Plus",      daily: 200, month: 4000,  searches: 25, models: [0, 1, 2, 3], memory: true },
+  plusplusplus: { name: "Plus Plus Plus", daily: 500, month: 10000, searches: 50, models: [0, 1, 2, 3], memory: true },
 };
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 export const FREE_MODELS = [0, 1];       // Koa and Lumina
@@ -58,10 +58,10 @@ export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null
   if (admin && viewAs && viewAs !== "owner" && VIEW_AS.includes(viewAs)) { admin = false; sub = testSub(viewAs); }
   const plan = activePlan(sub, now);
   const free = creditLimits(cfg, env);
-  let perUser, month, monthKey, searches, models;
+  let perUser, month, monthKey, searches, models, memory = false;
   if (plan) {
     const p = PLANS[plan];
-    perUser = p.daily; month = p.month; monthKey = "p" + (sub.periodStart || 0); searches = p.searches; models = p.models;
+    perUser = p.daily; month = p.month; monthKey = "p" + (sub.periodStart || 0); searches = p.searches; models = p.models; memory = !!p.memory;
     // If free people have no credit limit right now, paying people shouldn't have one either
     if (!(free.perUser > 0)) { perUser = 0; month = 0; }
     // Paying people never get less than free people
@@ -71,8 +71,8 @@ export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null
     searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5; models = FREE_MODELS;
   }
   // The owner gets everything: every model, 99,999 credits a day, no monthly cap, and lots of web searches
-  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = 0; models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); }
-  return { admin, plan, perUser, month, monthKey, site: free.site, searches, models };
+  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = 0; models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); memory = true; }
+  return { admin, plan, perUser, month, monthKey, site: free.site, searches, models, memory };
 }
 // What's left today and this month (null when there's no limit)
 export function creditsLeftFor(usageDoc, a, day = dayKey()) {
