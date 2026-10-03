@@ -1,31 +1,39 @@
 // POST /api/chat — the only place your Claude API key is ever used.
 // It runs on Vercel's servers, so the key never reaches anyone's browser.
-import { admin, getKids, flag, getConfig, searchesLeft, countSearches, record, setupProblem } from "./_admin.js";
+import { admin, getKids, flag, getConfig, searchesLeft, countSearches, record, getSub, setupProblem } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
 
-// Daily credits live in Firestore under usage/{uid}. Browsers can read their own, but only this server can change them.
+// Credits live in Firestore under usage/{uid}: today's count (day/used) and this month's (mkey/mused).
+// Browsers can read their own, but only this server can change them.
 async function charge(uid, cost, limits, day) {
   const { db } = await admin();
   const userRef = db.doc(`usage/${uid}`), siteRef = db.doc("usage/_site");
   return db.runTransaction(async (tx) => {
     const [u, s] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
     const used = u.exists && u.get("day") === day ? u.get("used") || 0 : 0;
+    const mused = u.exists && u.get("mkey") === limits.monthKey ? u.get("mused") || 0 : 0;
     const siteUsed = s.exists && s.get("day") === day ? s.get("used") || 0 : 0;
-    const left = Math.max(0, limits.perUser - used);
+    const left = Math.max(0, Math.min(limits.perUser - used, limits.month - mused));
     if (used + cost > limits.perUser) return { ok: false, reason: "limit_reached", left };
+    if (mused + cost > limits.month) return { ok: false, reason: "month_limit", left };
     if (siteUsed + cost > limits.site) return { ok: false, reason: "site_busy", left };
-    tx.set(userRef, { day, used: used + cost, limit: limits.perUser });
+    tx.set(userRef, { day, used: used + cost, limit: limits.perUser, mkey: limits.monthKey || null, mused: mused + cost });
     tx.set(siteRef, { day, used: siteUsed + cost, limit: limits.site });
     return { ok: true, left: left - cost };
   });
 }
 
-async function refund(uid, cost, day) {
+async function refund(uid, cost, day, monthKey) {
   const { db } = await admin();
   const userRef = db.doc(`usage/${uid}`), siteRef = db.doc("usage/_site");
   await db.runTransaction(async (tx) => {
     const [u, s] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
-    if (u.exists && u.get("day") === day) tx.update(userRef, { used: Math.max(0, (u.get("used") || 0) - cost) });
+    if (u.exists) {
+      const upd = {};
+      if (u.get("day") === day) upd.used = Math.max(0, (u.get("used") || 0) - cost);
+      if (monthKey && u.get("mkey") === monthKey) upd.mused = Math.max(0, (u.get("mused") || 0) - cost);
+      if (Object.keys(upd).length) tx.update(userRef, upd);
+    }
     if (s.exists && s.get("day") === day) tx.update(siteRef, { used: Math.max(0, (s.get("used") || 0) - cost) });
   });
 }
@@ -44,6 +52,7 @@ const handler = makeChatHandler({
   searchesLeft,
   countSearches,
   record,
+  getSub,
 });
 
 export async function POST(request) {

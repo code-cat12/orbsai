@@ -3,7 +3,7 @@
 //  - 13 to 17: Kids Mode is on and locked (nobody can turn it off).
 //  - 18+: Kids Mode is optional, and turning it off needs the PIN that was set when it was turned on.
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
-import { creditLimits, creditsLeft, userLimit } from "./_limits.js";
+import { allowance, creditsLeftFor, publicPlan } from "./_plans.js";
 
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
@@ -28,7 +28,7 @@ export function publicState(k, env = {}) {
   };
 }
 
-export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = async () => null, getUsage = async () => null, env: baseEnv = process.env, now = () => Date.now() }) {
+export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = async () => null, getUsage = async () => null, getSub = async () => null, env: baseEnv = process.env, now = () => Date.now() }) {
   return async function POST(request) {
     const m = (request.headers.get("authorization") || "").match(/^Bearer ([\w.-]+)$/);
     if (!m) return json(401, { error: "unauthenticated" });
@@ -45,10 +45,13 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
 
     if (action === "status") {
       // Today's credits, so the page can show them before the first message
+      // ...plus their plan and what it unlocks
+      let sub = null; try { sub = await getSub(user.uid); } catch {}
+      const a = allowance({ sub, cfg, env, user });
       let credits = null;
-      const perUser = userLimit(creditLimits(cfg, env).perUser, user, env);
-      if (perUser > 0) { try { credits = creditsLeft(await getUsage(user.uid), perUser); } catch { credits = { limit: perUser, left: perUser }; } }
-      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5, credits });
+      if (a.perUser > 0) { try { credits = creditsLeftFor(await getUsage(user.uid), a); } catch { credits = { limit: a.perUser, left: a.perUser }; } }
+      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, credits,
+        plan: publicPlan(sub), models: a.models, billing: !!env.STRIPE_SECRET_KEY });
     }
 
     if (action === "age") {

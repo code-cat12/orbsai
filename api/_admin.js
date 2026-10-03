@@ -119,3 +119,18 @@ export async function getUsage(uid) {
   const snap = await (await admin()).db.doc(`usage/${uid}`).get();
   return snap.exists ? snap.data() : null;
 }
+
+// ---------- Paid plans (subs/{uid}, written only by the Stripe webhook) ----------
+export async function getSub(uid) {
+  const snap = await (await admin()).db.doc(`subs/${uid}`).get();
+  return snap.exists ? snap.data() : null;
+}
+export async function setSub(uid, data) {
+  const { db } = await admin();
+  await db.doc(`subs/${uid}`).set({ ...data, updated: Date.now() }, { merge: true });
+  if (data.customer) await db.doc(`customers/${data.customer}`).set({ uid }, { merge: true });
+}
+export async function uidForCustomer(customerId) {
+  const snap = await (await admin()).db.doc(`customers/${customerId}`).get();
+  return snap.exists ? snap.get("uid") : null;
+}

@@ -57,6 +57,19 @@ Set `ADMIN_EMAILS` in Vercel, redeploy, then sign in to Orbs. **Admin** shows up
 - **Settings:** emergency pause, web search on/off and daily search limits, daily credit limits, Kids Mode for everyone. These win over the Vercel variables.
 - **Reports**, **Feedback** (thumbs), and **People** (ban or unban accounts).
 
+## Paid plans (Stripe)
+
+Plans live in `api/_plans.js`: Plus (100 credits/day, Chrysalis), Plus Plus (200/day, Mythos), Plus Plus Plus (500/day). Free gets Koa and Lumina with the daily credits set in the admin panel.
+
+Vercel variables:
+- `STRIPE_SECRET_KEY`: from Stripe → Developers → API keys (`sk_test_…` while testing, `sk_live_…` for real)
+- `STRIPE_WEBHOOK_SECRET`: from your webhook destination (`whsec_…`), pointed at `https://YOUR-SITE/api/stripe-webhook`
+- `STRIPE_PRICES` (only for live mode): the live price IDs, like `{"plus":{"month":"price_…","year":"price_…"},"plusplus":{…},"plusplusplus":{…}}`
+
+Webhook events: `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed`.
+Turn on the Customer portal (Settings → Billing → Customer portal) so people can cancel or switch plans.
+`/api/health` shows whether the Stripe keys are set and if you're in test or live mode.
+
 ## Web search
 
 Off unless someone taps the globe. Up to 3 searches per message, 5 per person per day, and 100 per day for the whole site (change these in the admin panel). Each search costs about 1 cent. Never used in Kids Mode.

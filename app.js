@@ -463,6 +463,7 @@ async function send(text, regen, filesOverride){
   if ((!text && !regen && !pendingFiles.length && !filesOverride) || busy) return;
   if (!user) return;
   const key = active, b = BOTS[key], mi = pf(key).m, model = MODELS[mi];
+  if (lockedModel(mi)) { status.textContent = `${model.n} needs Orbs ${PLAN_NAMES[needPlan(mi)]}. Upgrade, or pick Koa or Lumina.`; openPlans(); return; }
   if (credits && credits.left < estimate(key, { regen, files: filesOverride }).total) { creditShort(model); return; }
   // Start a new chat if none is open for this orb
   if (!curConv() || curConv().orb !== key) {
@@ -518,7 +519,7 @@ async function send(text, regen, filesOverride){
         signal: ctl.signal
       });
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
-    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), left: j.left, msg: j.msg }; }
+    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), left: j.left, msg: j.msg, needName: j.needName }; }
     // The server sends one small JSON object per line: {d:"text"} {t:"thinking"} {q:"search"} {src:[...]} ... then {done:true} or {error:"..."}
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "", end = null;
@@ -557,6 +558,8 @@ async function send(text, regen, filesOverride){
     if (typeof (e && e.left) === "number") setCredits(e.left);
     if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
+    else if (code === "plan_model") { status.textContent = `${model.n} needs Orbs ${e.needName || "Plus"}. Upgrade, or pick Koa or Lumina.`; refreshStatus(); openPlans(); }
+    else if (code === "month_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this month." + (kids.billing ? " Upgrade for more!" : ""); }
     else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
     else if (code === "kids_personal_info" || code === "kids_blocked" || code === "kids_no_media" || code === "files_too_big") {
@@ -718,7 +721,7 @@ $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
 $("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); }).catch(() => {}); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); }
+function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); }).catch(() => {}); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); }
 // "Show thinking" switch
 function renderThinkSet(){ const on = opts.think !== false; $("thinkSw").setAttribute("aria-checked", String(on)); $("thinkTxt").textContent = on ? "On" : "Off"; }
 $("thinkSw").onclick = () => { opts = { ...opts, think: opts.think === false }; renderThinkSet(); cloudSave(); };
@@ -803,13 +806,17 @@ function syncSel(){
   $("webBtn").title = webOn ? "Web search is on (tap to turn off)" : "Search the web";
   $("sels").hidden = !active; if (!active) { hint(); return; }
   const p = pf(active), m0 = MODELS[p.m];
-  const btn = $("modelBtn"); btn.replaceChildren(el("span", null, m0.n + " " + m0.v));
+  const btn = $("modelBtn"); btn.replaceChildren(el("span", null, (lockedModel(p.m) ? "🔒 " : "") + m0.n + " " + m0.v));
   if (hasEffort(p.m)) btn.append(el("small", null, EFFORTS[p.e].n));
   btn.append(el("span", "car", "▾"));
   const menu = $("modelMenu"); menu.innerHTML = "";
   menu.append(el("div", "mh3", "Model"));
-  MODELS.forEach((m, i) => menu.appendChild(menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", cap(m.d) + ". Built on the latest " + m.base.replace(/ [\d.]+$/, "") + " model (" + m.base.replace(/^Claude /, "") + ").", i === p.m,
-    () => { pf(active).m = i; savePrefs(); closeMenus(); syncSel(); })));
+  MODELS.forEach((m, i) => {
+    const it = menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", cap(m.d) + ". Built on the latest " + m.base.replace(/ [\d.]+$/, "") + " model (" + m.base.replace(/^Claude /, "") + ").", i === p.m,
+      () => { pf(active).m = i; savePrefs(); closeMenus(); syncSel(); });
+    if (lockedModel(i)) { it.classList.add("locked"); it.querySelector("b").append(el("span", "lock", "🔒 " + PLAN_NAMES[needPlan(i)])); it.onclick = () => { closeMenus(); openPlans(); }; }
+    menu.appendChild(it);
+  });
   if (hasEffort(p.m)) {
     menu.append(el("div", "msep"), el("div", "mh3", "Effort"));
     const row = el("div", "effrow");
@@ -982,6 +989,7 @@ function renderUsage(){
   $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
   bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (level ? " " + level : ""); }
   let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
+  if (credits.monthLimit) txt += ` This month: ${credits.monthLeft} of ${credits.monthLimit} left.`;
   if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
   more.textContent = txt;
   costs.hidden = false; costs.innerHTML = "";
@@ -1187,7 +1195,7 @@ async function kidsApi(u, body){
   const r = await fetch("/api/kids", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
   let j = {}; try { j = await r.json(); } catch(_) {}
   if (typeof j.age !== "undefined") kids = { ...kids, ...j };
-  if ("credits" in j) { const c = j.credits; credits = c && typeof c.left === "number" ? { left: c.left, limit: c.limit || null } : null; limitHit = !!credits && credits.left === 0; }
+  if ("credits" in j) { const c = j.credits; credits = c && typeof c.left === "number" ? { left: c.left, limit: c.limit || null, monthLeft: c.monthLeft, monthLimit: c.monthLimit } : null; limitHit = !!credits && credits.left === 0; }
   return { ok: r.ok, ...j };
 }
 function renderKids(){
@@ -1233,9 +1241,9 @@ async function enter(u){
   if (kids.banned) { showGate("banned"); return; }
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
-  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); gate.hidden = true; renderHome();
+  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); gate.hidden = true; renderHome();
   cloudSave(); // finishes moving any old-style chats
-  checkAdmin();
+  checkAdmin(); afterBilling();
 }
 
 // ---------- Settings: sign out, delete ----------
@@ -1389,7 +1397,7 @@ document.addEventListener("keydown", e => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal"];
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal"];
 function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
@@ -1405,6 +1413,84 @@ $("repSend").onclick = () => busyBtn($("repSend"), async () => {
     $("repMsg").textContent = "Thanks! Your report was sent."; $("repSend").disabled = true; setTimeout(closeLegal, 1200);
   } catch (e) { $("repMsg").textContent = "Couldn't send the report. Try again."; }
 });
+
+// ---------- Paid plans (Stripe) ----------
+const PLAN_NAMES = { plus:"Plus", plusplus:"Plus Plus", plusplusplus:"Plus Plus Plus" };
+const PLAN_INFO = [
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["100 credits a day (2,000 a month)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day"], soon:["Memory", "Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["500 credits a day (10,000 a month)", "Every model", "50 web searches a day", "New features first"], soon:["Memory", "Custom orbs"] },
+];
+const needPlan = m => m >= 3 ? "plusplus" : "plus";
+function lockedModel(m){ return Array.isArray(kids.models) && !kids.models.includes(m); }
+let planInterval = "month";
+async function refreshStatus(){ if (!user) return; try { await kidsApi(user, { action:"status" }); renderUsage(); renderPlan(); syncSel(); } catch(_) {} }
+const fmtDate = sec => sec ? new Date(sec * 1000).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }) : "";
+function renderPlan(){
+  const p = kids.plan, on = !!kids.billing;
+  $("planTxt").textContent = p ? `Orbs ${p.name} (${p.interval === "year" ? "yearly" : "monthly"})` : "Free";
+  $("planMore").textContent = p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
+    : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
+  $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
+  $("upNav").hidden = !user || !on; $("upNavTxt").textContent = p ? `Orbs ${p.name}` : "Upgrade";
+  $("limitUp").hidden = !on || (p && p.id === "plusplusplus");
+}
+$("planBtn").onclick = () => { if (kids.plan) billing({ action:"portal" }, $("planBtn"), $("setMsg")); else openPlans(); };
+$("upNav").onclick = () => openPlans();
+$("limitUp").onclick = () => openPlans();
+for (const b of document.querySelectorAll("#planSeg button")) b.onclick = () => { planInterval = b.dataset.i; renderPlans(); };
+function openPlans(){ $("planMsg").textContent = ""; renderPlans(); openLegal("planModal"); refreshStatus().then(() => { if (!$("planModal").hidden) renderPlans(); }); }
+function renderPlans(){
+  for (const b of document.querySelectorAll("#planSeg button")) b.setAttribute("aria-pressed", String(b.dataset.i === planInterval));
+  const grid = $("planGrid"); grid.innerHTML = "";
+  const cur = kids.plan ? kids.plan.id : null, on = !!kids.billing;
+  // Free
+  const free = el("div", "pcard" + (!cur ? " cur" : "")); free.style.setProperty("--pc", "#6e6b64");
+  const fl = el("ul"); [credits && credits.limit && !cur ? `${credits.limit} credits a day` : "Daily free credits", "Koa and Lumina", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
+  const fb = el("button", "outline", !cur ? "Current plan" : "Included"); fb.type = "button"; fb.disabled = true;
+  free.append(el("h3", null, "Free"), el("div", "price", "$0"), fl, fb); grid.append(free);
+  for (const pl of PLAN_INFO) {
+    const c = el("div", "pcard" + (pl.id === cur ? " cur" : "") + (pl.pop && !cur ? " pop" : "")); c.style.setProperty("--pc", pl.color);
+    const price = el("div", "price", "$" + (planInterval === "year" ? pl.year : pl.month)); price.append(el("small", null, planInterval === "year" ? " / year" : " / month"));
+    const ul = el("ul"); pl.perks.forEach(t => ul.append(el("li", null, t))); pl.soon.forEach(t => ul.append(el("li", "soon", t + " (coming soon)")));
+    const b = el("button", "gbtn"); b.type = "button";
+    if (!on) { b.textContent = "Coming soon"; b.disabled = true; }
+    else if (pl.id === cur) { b.textContent = "Manage"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
+    else if (cur) { b.textContent = "Switch"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
+    else { b.textContent = "Upgrade"; b.onclick = () => billing({ action:"checkout", plan: pl.id, interval: planInterval }, b, $("planMsg")); }
+    c.append(el("h3", null, pl.name), price, ul, b); grid.append(c);
+  }
+}
+// Sends you to Stripe: checkout to buy, or the portal to change or cancel
+function billing(body, btn, msgEl){
+  return busyBtn(btn, async () => {
+    if (!user) return;
+    msgEl.textContent = "Opening Stripe…";
+    try {
+      const r = await fetch("/api/billing", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await user.getIdToken() }, body: JSON.stringify(body) });
+      let j = {}; try { j = await r.json(); } catch(_) {}
+      if (j.url && /^https:\/\/([a-z0-9-]+\.)*stripe\.com\//.test(j.url)) { location.href = j.url; return; }
+      if (j.error === "already_subscribed") return billing({ action:"portal" }, btn, msgEl);
+      msgEl.textContent = j.error === "billing_off" ? "Paid plans aren't turned on yet." : j.error === "no_subscription" ? "You don't have a plan yet." : "Couldn't open Stripe. Try again.";
+    } catch (_) { msgEl.textContent = "Couldn't reach Orbs. Check your connection."; }
+  });
+}
+// Coming back from Stripe
+async function afterBilling(){
+  const q = new URLSearchParams(location.search), c = q.get("checkout"), back = q.get("billing");
+  if (!c && !back) return;
+  history.replaceState(null, "", location.pathname);
+  if (c === "cancel") { status.textContent = "Checkout cancelled. No worries, nothing was charged."; return; }
+  if (back) { await refreshStatus(); return; }
+  status.textContent = "🎉 Payment done! Setting up your plan…";
+  // Stripe tells Orbs a few seconds after paying, so check a few times
+  for (let i = 0; i < 12; i++) {
+    await refreshStatus();
+    if (kids.plan) { status.textContent = `🎉 Welcome to Orbs ${kids.plan.name}! Thanks for supporting Orbs.`; return; }
+    await new Promise(r => setTimeout(r, 2500));
+  }
+  status.textContent = "Your payment went through. Your plan should show up in a minute. Refresh if it doesn't.";
+}
 
 // ---------- Admin panel (only for the emails in ADMIN_EMAILS on Vercel) ----------
 async function adminApi(body){
@@ -1440,7 +1526,8 @@ function renderAdmin(){
     const grid = el("div", "agrid");
     grid.append(card("Spent today (about)", money(today.cents), today.messages + " messages"), card("This month (about)", money(month)),
       card("Web searches today", String(d.searchesToday), "limit " + d.config.searchesSite + " for the whole site"),
-      card("People", String(d.users.total), d.users.newWeek + " new this week"), card("Kids Mode accounts", String(d.users.kidsOn), d.users.teens + " teens"),
+      card("People", String(d.users.total), d.users.newWeek + " new this week"),
+      card("Paying people", String(Object.values(d.subs || {}).reduce((n, v) => n + v, 0)), ["plus","plusplus","plusplusplus"].map(k => (PLAN_NAMES[k] + ": " + ((d.subs || {})[k] || 0))).join(" · ")), card("Kids Mode accounts", String(d.users.kidsOn), d.users.teens + " teens"),
       card("Open reports", String(d.reports.length), d.flags.length + " safety flags"));
     body.append(grid);
     // Last 14 days of spending
@@ -1508,7 +1595,7 @@ function renderAdmin(){
   if (adminTab === "users") {
     body.append(el("h3", null, `Newest people (${d.users.total} total)`));
     list(d.users.list, "Nobody yet.", u => { const x = el("div", "aitem auser");
-      const info = el("div"); info.append(el("b", null, u.name || u.email || u.uid), el("div", "ameta", `${u.email} · joined ${when(u.created)}${u.last ? " · last seen " + when(u.last) : ""}${u.age ? " · " + (u.age === "adult" ? "18+" : u.age === "teen" ? "13-17" : "under 13") : ""}${u.banned ? " · BANNED" : ""}`));
+      const info = el("div"); info.append(el("b", null, u.name || u.email || u.uid), el("div", "ameta", `${u.email} · joined ${when(u.created)}${u.last ? " · last seen " + when(u.last) : ""}${u.age ? " · " + (u.age === "adult" ? "18+" : u.age === "teen" ? "13-17" : "under 13") : ""}${u.plan ? " · " + PLAN_NAMES[u.plan] : ""}${u.banned ? " · BANNED" : ""}`));
       x.append(info, banBtn(u.uid, u.banned)); return x; });
   }
 }

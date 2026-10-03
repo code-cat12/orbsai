@@ -2,6 +2,7 @@
 import { admin, getConfig, setConfig, setKids, setupProblem } from "./_admin.js";
 import { makeAdminHandler } from "./_adminapi.js";
 import { siteConfig, dayKey } from "./_core.js";
+import { activePlan } from "./_plans.js";
 
 const ms = (v) => (v && typeof v.toMillis === "function" ? v.toMillis() : typeof v === "number" ? v : v instanceof Date ? v.getTime() : null);
 const rows = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -9,7 +10,7 @@ const rows = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 async function load() {
   const { db, auth } = await admin();
   const day = dayKey();
-  const [stats, reports, flags, feedback, kidsSnap, searchSnap, cfg] = await Promise.all([
+  const [stats, reports, flags, feedback, kidsSnap, searchSnap, cfg, subsSnap] = await Promise.all([
     db.collection("stats").orderBy("day", "desc").limit(30).get(),
     db.collection("reports").orderBy("at", "desc").limit(30).get(),
     db.collection("flags").orderBy("at", "desc").limit(30).get(),
@@ -17,7 +18,11 @@ async function load() {
     db.collection("kids").get(),
     db.doc("searches/_site").get(),
     getConfig(),
+    db.collection("subs").get(),
   ]);
+  // Paying people per plan
+  const subs = {}, planOf = {};
+  subsSnap.forEach((d) => { const p = activePlan(d.data()); if (p) { subs[p] = (subs[p] || 0) + 1; planOf[d.id] = p; } });
   const kids = {}; let teens = 0, kidsOn = 0, banned = 0;
   kidsSnap.forEach((d) => { const k = d.data() || {}; kids[d.id] = k; if (k.age === "teen") teens++; if (k.on || k.age === "teen") kidsOn++; if (k.banned) banned++; });
 
@@ -32,7 +37,7 @@ async function load() {
   const newest = users.map((u) => ({
     uid: u.uid, email: u.email || "", name: u.displayName || "", created: Date.parse(u.metadata.creationTime) || 0,
     last: Date.parse(u.metadata.lastSignInTime || u.metadata.lastRefreshTime || "") || 0, disabled: !!u.disabled,
-    age: kids[u.uid]?.age || null, banned: !!kids[u.uid]?.banned,
+    age: kids[u.uid]?.age || null, banned: !!kids[u.uid]?.banned, plan: planOf[u.uid] || null,
   })).sort((a, b) => b.created - a.created);
 
   return {
@@ -41,6 +46,7 @@ async function load() {
     searchesToday: searchSnap.exists && searchSnap.get("day") === day ? searchSnap.get("used") || 0 : 0,
     stats: rows(stats).map((s) => ({ day: s.day, messages: s.messages || 0, cents: s.cents || 0, searches: s.searches || 0, input: s.input || 0, output: s.output || 0,
       koa: s.m_haiku || 0, lumina: s.m_sonnet || 0, chrysalis: s.m_opus || 0, mythos: s.m_fable || 0 })),
+    subs,
     users: { total: users.length, newWeek: newest.filter((u) => u.created > week).length, teens, kidsOn, banned, list: newest.slice(0, 40) },
     reports: rows(reports).map((r) => ({ ...r, at: ms(r.at) })),
     flags: rows(flags).map((f) => ({ ...f, at: ms(f.at) })),

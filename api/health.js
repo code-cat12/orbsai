@@ -6,6 +6,8 @@ export async function GET() {
     claudeKey: process.env.ANTHROPIC_API_KEY ? "set" : "missing",
     firebaseKeyVariables: process.env.FIREBASE_PRIVATE_KEY ? "three-variable mode" : process.env.FIREBASE_SERVICE_ACCOUNT ? "FIREBASE_SERVICE_ACCOUNT is set" : "missing",
     node: process.version,
+    stripeKey: !process.env.STRIPE_SECRET_KEY ? "missing" : /^sk_test_|^rk_test_/.test(process.env.STRIPE_SECRET_KEY) ? "test mode" : "live mode",
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ? "set" : "missing",
   };
   try {
     const { db } = await admin();

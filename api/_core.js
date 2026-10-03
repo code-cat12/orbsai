@@ -47,7 +47,8 @@ export function withFiles(content, files) {
   blocks.push({ type: "text", text: content });
   return blocks;
 }
-import { dayKey, creditLimits, userLimit } from "./_limits.js";
+import { dayKey } from "./_limits.js";
+import { allowance, planFor, PLANS } from "./_plans.js";
 export { RESET_TZ, dayKey } from "./_limits.js";
 
 function json(status, body) {
@@ -146,7 +147,7 @@ export function systemPrompt(orb, model) {
 //       record(day, info) -> spending stats, fetchImpl (for tests), env
 export function makeChatHandler({
   verifyToken, charge, refund, getKids, flag = async () => {}, getConfig = async () => null,
-  searchesLeft = async () => 0, countSearches = async () => {}, record = async () => {},
+  searchesLeft = async () => 0, countSearches = async () => {}, record = async () => {}, getSub = async () => null,
   fetchImpl = fetch, env = process.env,
 }) {
   return async function POST(request) {
@@ -177,6 +178,12 @@ export function makeChatHandler({
     if (kids.blocked) return json(403, { error: "blocked_age" });
     const kidsOn = kids.on;
 
+    // What this person's plan allows (free, Plus, Plus Plus, Plus Plus Plus)
+    let sub = null;
+    try { sub = await getSub(user.uid); } catch { sub = null; }
+    const allow = allowance({ sub, cfg, env, user });
+    if (!allow.models.includes(req.model)) { const need = planFor(req.model); return json(403, { error: "plan_model", need, needName: PLANS[need].name }); }
+
     const model = MODELS[req.model];
     const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
     const live = allModels[req.model];
@@ -203,7 +210,7 @@ export function makeChatHandler({
       if (kidsOn) searchNote = "kids";
       else if (!cfg.webSearch) searchNote = "off";
       else {
-        try { searchCap = Math.min(MAX_SEARCHES_PER_MESSAGE, await searchesLeft(user.uid, day, cfg)); } catch { searchCap = 0; }
+        try { searchCap = Math.min(MAX_SEARCHES_PER_MESSAGE, await searchesLeft(user.uid, day, { ...cfg, searchesPerUser: allow.searches })); } catch { searchCap = 0; }
         if (searchCap <= 0) { searchCap = 0; searchNote = "limit"; }
       }
     }
@@ -214,17 +221,17 @@ export function makeChatHandler({
     const extraWeb = searchCap ? EXTRAS.web : 0;
     const cost = model.cost * (effort ? effort.mult : 1) + extraLong + extraFiles + extraWeb;
 
-    // Credit limits: the admin panel's numbers win, then Vercel's DAILY_CREDITS / SITE_DAILY_CREDITS. 0 or empty = unlimited.
-    const lim = creditLimits(cfg, env), site = lim.site, perUser = userLimit(lim.perUser, user, env);
+    // Credit limits: paid plans use their own numbers; free uses the admin panel's (then Vercel's). 0 = unlimited.
+    const perUser = allow.perUser, site = allow.site;
     const limited = perUser > 0 || site > 0;
-    const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9 };
+    const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9, month: perUser > 0 && allow.month > 0 ? allow.month : 1e12, monthKey: allow.monthKey };
     let paid = { ok: true, left: null };
     if (limited) {
       try { paid = await charge(user.uid, cost, limits, day); } catch { return json(503, { error: "upstream_error" }); }
       if (!paid.ok) return json(429, { error: paid.reason, left: paid.left });
       if (perUser <= 0) paid.left = null; // only a site-wide cap: don't show a personal count
     }
-    const giveBack = async () => { if (limited) await refund(user.uid, cost, day).catch(() => {}); };
+    const giveBack = async () => { if (limited) await refund(user.uid, cost, day, limits.monthKey).catch(() => {}); };
     const leftAfterRefund = () => (limited && paid.left !== null ? paid.left + cost : null);
 
     // Summarized thinking costs nothing extra on these models (the thinking happens either way); Kids Mode never shows it.
@@ -332,7 +339,7 @@ export function makeChatHandler({
         if (failed && !wroteText) { await giveBack(); left = leftAfterRefund(); }
         else if (extraWeb && !usage.searches && limited) {
           // It didn't end up searching, so the web search credits come back
-          await refund(user.uid, extraWeb, day).catch(() => {});
+          await refund(user.uid, extraWeb, day, limits.monthKey).catch(() => {});
           if (left !== null) left += extraWeb;
         }
         if (!failed && kidsOn && held) {
