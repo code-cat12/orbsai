@@ -8,6 +8,7 @@ export async function GET() {
     node: process.version,
     stripeKey: !process.env.STRIPE_SECRET_KEY ? "missing" : /^sk_test_|^rk_test_/.test(process.env.STRIPE_SECRET_KEY) ? "test mode" : "live mode",
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ? "set" : "missing",
+    brevoKey: process.env.BREVO_API_KEY ? "set" : "missing (plain Firebase emails)",
   };
   try {
     const { db } = await admin();

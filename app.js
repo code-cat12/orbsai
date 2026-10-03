@@ -1208,6 +1208,15 @@ $("gGoogle").onclick = () => busyBtn($("gGoogle"), async () => {
   try { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt:"select_account" }); await A.signInWithPopup(auth, p); }
   catch (e) { say(authErr(e)); }
 });
+// Pretty Orbs confirm email (server, through Brevo). If that's off or fails, Firebase sends its plain one.
+async function sendVerify(u){
+  try {
+    const r = await fetch("/api/verify-email", { method:"POST", headers:{ authorization:"Bearer " + await u.getIdToken(true) } });
+    if (r.ok) return;
+    if (r.status === 429) { const e = new Error("too many"); e.code = "auth/too-many-requests"; throw e; }
+  } catch (e) { if (e && e.code) throw e; }
+  await A.sendEmailVerification(u);
+}
 $("aForm").addEventListener("submit", e => { e.preventDefault(); busyBtn($("aSubmit"), async () => {
   const email = $("aEmail").value.trim(), pass = $("aPass").value, name = $("aName").value.trim();
   if (!email) return say("Type your email.");
@@ -1218,7 +1227,7 @@ $("aForm").addEventListener("submit", e => { e.preventDefault(); busyBtn($("aSub
     if (authMode === "up") {
       const cred = await A.createUserWithEmailAndPassword(auth, email, pass);
       if (name) await A.updateProfile(cred.user, { displayName: name });
-      await A.sendEmailVerification(cred.user);
+      await sendVerify(cred.user);
       showGate("verify", email);
     } else {
       await A.signInWithEmailAndPassword(auth, email, pass);
@@ -1242,7 +1251,7 @@ $("vDone").onclick = () => busyBtn($("vDone"), async () => {
   } catch (e) { say(authErr(e)); }
 });
 $("vResend").onclick = () => busyBtn($("vResend"), async () => {
-  try { await A.sendEmailVerification(auth.currentUser); say("Sent! Check your inbox.", true); } catch (e) { say(authErr(e)); }
+  try { await sendVerify(auth.currentUser); say("Sent! Check your inbox.", true); } catch (e) { say(authErr(e)); }
 });
 $("vOut").onclick = () => A.signOut(auth);
 

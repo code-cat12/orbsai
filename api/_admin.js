@@ -154,3 +154,14 @@ export async function uidForCustomer(customerId) {
   const snap = await (await admin()).db.doc(`customers/${customerId}`).get();
   return snap.exists ? snap.get("uid") : null;
 }
+
+// Pretty verify emails: at most 1 a minute and 5 a day per person (stops spam)
+export async function mailRate(uid, now = Date.now()) {
+  const { db } = await admin(); const ref = db.doc(`mail/${uid}`);
+  return db.runTransaction(async (tx) => {
+    const d = (await tx.get(ref)).data() || {}; const day = new Date(now).toISOString().slice(0, 10);
+    const n = d.day === day ? (d.n || 0) : 0;
+    if (n >= 5 || (d.last && now - d.last < 60000)) return false;
+    tx.set(ref, { day, n: n + 1, last: now }); return true;
+  });
+}
