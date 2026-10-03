@@ -2,13 +2,21 @@
 import { creditLimits, isAdmin, ADMIN_CREDITS, dayKey } from "./_limits.js";
 
 export const PLANS = {
-  plus:         { name: "Plus",           daily: 100, month: 2000,  searches: 10, models: [0, 1, 2] },
-  plusplus:     { name: "Plus Plus",      daily: 200, month: 4000,  searches: 25, models: [0, 1, 2, 3], memory: true },
-  plusplusplus: { name: "Plus Plus Plus", daily: 500, month: 10000, searches: 50, models: [0, 1, 2, 3], memory: true },
+  plus:         { name: "Plus",           daily: 140, week: 800,  searches: 10, models: [0, 1, 2] },
+  plusplus:     { name: "Plus Plus",      daily: 255, week: 1400, searches: 25, models: [0, 1, 2, 3], memory: true },
+  plusplusplus: { name: "Plus Plus Plus", daily: 625, week: 3200, searches: 50, models: [0, 1, 2, 3], memory: true },
 };
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 export const FREE_MODELS = [0, 1];       // Koa and Lumina
 export const FREE_MONTH_DAYS = 20;       // free monthly cap = 20 days' worth
+export const FREE_WEEK_DAYS = 7;         // paying people never get a weekly cap below free people's week
+
+// The Monday (New York time) that starts this week, e.g. "2026-10-05". Weekly credits come back then.
+export function weekKey(now = Date.now()) {
+  const d = new Date(dayKey(new Date(now)) + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
 
 // Stripe price IDs (test mode / sandbox, fake money)
 const TEST_PRICES = {
@@ -46,8 +54,8 @@ export function activePlan(sub, now = Date.now(), env = process.env) {
 // The cheapest plan that unlocks a model
 export function planFor(model) { return PLAN_ORDER.find((p) => PLANS[p].models.includes(model)) || "plusplus"; }
 
-// Everything one person is allowed: credits per day and month, web searches, models.
-// perUser/month of 0 = unlimited.
+// Everything one person is allowed: credits per day and per week (paid) or month (free), web searches, models.
+// perUser/month of 0 = unlimited. "month" and "monthKey" hold the longer cap whatever its period is ("week" for paid plans, "month" for free).
 // The owner can pretend to be on any plan to test it ("viewAs": free, plus, plusplus, plusplusplus; "owner" = normal)
 export const VIEW_AS = ["owner", "free", "plus", "plusplus", "plusplusplus"];
 export function testSub(viewAs) {
@@ -58,30 +66,30 @@ export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null
   if (admin && viewAs && viewAs !== "owner" && VIEW_AS.includes(viewAs)) { admin = false; sub = testSub(viewAs); }
   const plan = activePlan(sub, now);
   const free = creditLimits(cfg, env);
-  let perUser, month, monthKey, searches, models, memory = false;
+  let perUser, month, monthKey, period = "month", searches, models, memory = false;
   if (plan) {
     const p = PLANS[plan];
-    perUser = p.daily; month = p.month; monthKey = "p" + (sub.periodStart || 0); searches = p.searches; models = p.models; memory = !!p.memory;
+    perUser = p.daily; month = p.week; period = "week"; monthKey = "w" + weekKey(now) + (sub.test ? sub.periodStart : ""); searches = p.searches; models = p.models; memory = !!p.memory;
     // If free people have no credit limit right now, paying people shouldn't have one either
     if (!(free.perUser > 0)) { perUser = 0; month = 0; }
     // Paying people never get less than free people
-    else if (free.perUser > perUser) { perUser = free.perUser; month = Math.max(month, free.perUser * FREE_MONTH_DAYS); }
+    else if (free.perUser > perUser) { perUser = free.perUser; month = Math.max(month, free.perUser * FREE_WEEK_DAYS); }
   } else {
     perUser = free.perUser; month = perUser > 0 ? perUser * FREE_MONTH_DAYS : 0; monthKey = "m" + dayKey(new Date(now)).slice(0, 7);
     searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5; models = FREE_MODELS;
   }
   // The owner gets everything: every model, 99,999 credits a day, no monthly cap, and lots of web searches
   if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = 0; models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); memory = true; }
-  return { admin, plan, perUser, month, monthKey, site: free.site, searches, models, memory };
+  return { admin, plan, perUser, month, monthKey, period, site: free.site, searches, models, memory };
 }
-// What's left today and this month (null when there's no limit)
+// What's left today and this week/month (null when there's no limit)
 export function creditsLeftFor(usageDoc, a, day = dayKey()) {
   if (!(a.perUser > 0)) return null;
   const used = usageDoc && usageDoc.day === day ? usageDoc.used || 0 : 0;
   const mused = usageDoc && usageDoc.mkey === a.monthKey ? usageDoc.mused || 0 : 0;
   const dayLeft = Math.max(0, a.perUser - used);
   const out = { limit: a.perUser, left: dayLeft };
-  if (a.month > 0) { out.monthLimit = a.month; out.monthLeft = Math.max(0, a.month - mused); out.left = Math.min(dayLeft, out.monthLeft); }
+  if (a.month > 0) { out.period = a.period || "month"; out.monthLimit = a.month; out.monthLeft = Math.max(0, a.month - mused); out.left = Math.min(dayLeft, out.monthLeft); }
   return out;
 }
 // The part of the subscription the page is allowed to see

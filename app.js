@@ -603,6 +603,7 @@ async function send(text, regen, filesOverride){
     if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
     else if (code === "plan_model") { status.textContent = `${model.n} needs Orbs ${e.needName || "Plus"}. Upgrade, or pick Koa or Lumina.`; refreshStatus(); openPlans(); }
+    else if (code === "week_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this week. They come back Monday!" + (kids.billing ? " Upgrade for more!" : ""); }
     else if (code === "month_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this month." + (kids.billing ? " Upgrade for more!" : ""); }
     else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
@@ -1077,7 +1078,7 @@ function renderUsage(){
   $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
   bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (level ? " " + level : ""); }
   let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
-  if (credits.monthLimit) txt += ` This month: ${credits.monthLeft} of ${credits.monthLimit} left.`;
+  if (credits.monthLimit) txt += ` This ${credits.period === "week" ? "week (resets Monday)" : "month"}: ${credits.monthLeft} of ${credits.monthLimit} left.`;
   if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
   more.textContent = txt;
   costs.hidden = false; costs.innerHTML = "";
@@ -1305,7 +1306,7 @@ async function kidsApi(u, body){
   const r = await fetch("/api/kids", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
   let j = {}; try { j = await r.json(); } catch(_) {}
   if (typeof j.age !== "undefined") kids = { ...kids, ...j };
-  if ("credits" in j) { const c = j.credits; credits = c && typeof c.left === "number" ? { left: c.left, limit: c.limit || null, monthLeft: c.monthLeft, monthLimit: c.monthLimit } : null; limitHit = !!credits && credits.left === 0; }
+  if ("credits" in j) { const c = j.credits; credits = c && typeof c.left === "number" ? { left: c.left, limit: c.limit || null, monthLeft: c.monthLeft, monthLimit: c.monthLimit, period: c.period } : null; limitHit = !!credits && credits.left === 0; }
   return { ok: r.ok, ...j };
 }
 function renderKids(){
@@ -1673,9 +1674,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["100 credits a day (2,000 a month)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["500 credits a day (10,000 a month)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["140 credits a day (800 a week)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["255 credits a day (1,400 a week)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["625 credits a day (3,200 a week)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){

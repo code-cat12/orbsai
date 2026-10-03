@@ -245,7 +245,7 @@ export function makeChatHandler({
     // Credit limits: paid plans use their own numbers; free uses the admin panel's (then Vercel's). 0 = unlimited.
     const perUser = allow.perUser, site = allow.site;
     const limited = perUser > 0 || site > 0;
-    const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9, month: perUser > 0 && allow.month > 0 ? allow.month : 1e12, monthKey: allow.monthKey };
+    const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9, month: perUser > 0 && allow.month > 0 ? allow.month : 1e12, monthKey: allow.monthKey, period: allow.period };
     let paid = { ok: true, left: null };
     if (limited) {
       try { paid = await charge(user.uid, cost, limits, day); } catch { return json(503, { error: "upstream_error" }); }

@@ -4,7 +4,7 @@ import { checkMfa } from "./_mfa.js";
 import { admin, getKids, flag, getConfig, searchesLeft, countSearches, record, getSub, getMemory, addMemory, setupProblem } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
 
-// Credits live in Firestore under usage/{uid}: today's count (day/used) and this month's (mkey/mused).
+// Credits live in Firestore under usage/{uid}: today's count (day/used) and this week's or month's (mkey/mused).
 // Browsers can read their own, but only this server can change them.
 async function charge(uid, cost, limits, day) {
   const { db } = await admin();
@@ -16,7 +16,7 @@ async function charge(uid, cost, limits, day) {
     const siteUsed = s.exists && s.get("day") === day ? s.get("used") || 0 : 0;
     const left = Math.max(0, Math.min(limits.perUser - used, limits.month - mused));
     if (used + cost > limits.perUser) return { ok: false, reason: "limit_reached", left };
-    if (mused + cost > limits.month) return { ok: false, reason: "month_limit", left };
+    if (mused + cost > limits.month) return { ok: false, reason: limits.period === "week" ? "week_limit" : "month_limit", left };
     if (siteUsed + cost > limits.site) return { ok: false, reason: "site_busy", left };
     tx.set(userRef, { day, used: used + cost, limit: limits.perUser, mkey: limits.monthKey || null, mused: mused + cost });
     tx.set(siteRef, { day, used: siteUsed + cost, limit: limits.site });
