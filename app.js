@@ -1312,7 +1312,7 @@ async function enter(u){
   if (kids.blocked) { showGate("blocked"); return; }
   pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; renderHome();
   cloudSave(); // finishes moving any old-style chats
-  checkAdmin(); afterBilling();
+  checkAdmin(); afterBilling(); maybePromo();
 }
 
 // ---------- Two-step sign-in (MFA) ----------
@@ -1590,7 +1590,7 @@ document.addEventListener("keydown", e => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal","mfaModal"];
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal","mfaModal","promoModal"];
 function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }
@@ -1609,6 +1609,16 @@ $("repSend").onclick = () => busyBtn($("repSend"), async () => {
 
 // ---------- Paid plans (Stripe) ----------
 const PLAN_NAMES = { plus:"Plus", plusplus:"Plus Plus", plusplusplus:"Plus Plus Plus" };
+// Sale: code WELCOME7 = 7% off the first payment of Plus and Plus Plus until Nov 1, 2026 11:59 PM EDT (typed at Stripe checkout)
+const PROMO_UNTIL = Date.parse("2026-11-02T03:59:59Z"), PROMO_PLANS = ["plus", "plusplus"];
+const promoOn = id => Date.now() < PROMO_UNTIL && (!id || PROMO_PLANS.includes(id));
+function maybePromo(){
+  if (!promoOn() || !kids.billing || kids.plan || (kids.plan && kids.plan.test)) return;
+  try { if (localStorage.getItem("orbs-promo7") === "seen") return; localStorage.setItem("orbs-promo7", "seen"); } catch(_) {}
+  setTimeout(() => { if (POPUPS.some(id => !$(id).hidden)) return; openLegal("promoModal"); }, 1200);
+}
+$("promoGo").onclick = () => { closeLegal(); openPlans(); };
+$("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
   { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["100 credits a day (2,000 a month)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
   { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["200 credits a day (4,000 a month)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
@@ -1617,15 +1627,16 @@ const PLAN_INFO = [
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
   const grid = $("lpGrid"); if (!grid) return;
-  const card = (name, color, price, sub, perks, pop) => {
+  const card = (name, color, price, sub, perks, pop, id) => {
     const c = el("div", "pcard" + (pop ? " pop" : "")); c.style.setProperty("--pc", color);
     const pr = el("div", "price", price); if (sub) pr.append(el("small", null, sub));
+    const deal = id && promoOn(id) ? el("div", "pdeal", "Code WELCOME7: 7% off first payment · ends Nov 1") : null;
     const ul = el("ul"); perks.forEach(t => ul.append(el("li", null, t)));
     const b = el("button", "gbtn", "Get started"); b.type = "button"; b.onclick = () => setAuthMode("up");
-    c.append(el("h3", null, name), pr, ul, b); grid.append(c);
+    c.append(el("h3", null, name), pr); if (deal) c.append(deal); c.append(ul, b); grid.append(c);
   };
   card("Free", "#6e6b64", "$0", "", ["Free credits every day", "Koa and Lumina", "A few web searches a day"]);
-  for (const pl of PLAN_INFO) card(pl.name, pl.color, "$" + pl.month, " / month", [...pl.perks, ...pl.soon.map(t => t + " (coming soon)"), "or $" + pl.year + " a year"], pl.pop);
+  for (const pl of PLAN_INFO) card(pl.name, pl.color, "$" + pl.month, " / month", [...pl.perks, ...pl.soon.map(t => t + " (coming soon)"), "or $" + pl.year + " a year"], pl.pop, pl.id);
 })();
 const needPlan = m => m >= 3 ? "plusplus" : "plus";
 function lockedModel(m){ return Array.isArray(kids.models) && !kids.models.includes(m); }
@@ -1675,7 +1686,9 @@ function renderPlans(){
     else if (pl.id === cur) { b.textContent = "Manage"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
     else if (cur) { b.textContent = "Switch"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
     else { b.textContent = "Upgrade"; b.onclick = () => billing({ action:"checkout", plan: pl.id, interval: planInterval }, b, $("planMsg")); }
-    c.append(el("h3", null, pl.name), price, ul, b); grid.append(c);
+    c.append(el("h3", null, pl.name), price);
+    if (promoOn(pl.id) && !cur) c.append(el("div", "pdeal", "Code WELCOME7: 7% off first payment · ends Nov 1"));
+    c.append(ul, b); grid.append(c);
   }
 }
 // Sends you to Stripe: checkout to buy, or the portal to change or cancel
