@@ -226,7 +226,7 @@ ORB.spooks = { shape:`<ellipse cx="33" cy="66" rx="20" ry="24"/><ellipse cx="67"
 ORB.hex = { shape:`<g class="o-ghostbody"><path d="M50 27C66 27 76 39 76 53C76 68 68 77 60 83C55 87 54 92 59 96C48 97 41 91 43 84C33 79 24 69 24 53C24 39 34 27 50 27Z" fill="url(#hexg)" stroke="currentColor" stroke-opacity=".55" stroke-width="1.2"/>
     <ellipse cx="50" cy="52" rx="15" ry="14" fill="#fff" opacity=".22"/></g>`, ey:52, tilt:0,
   back:() => `<defs><linearGradient id="hexg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".85"/><stop offset=".6" stop-color="currentColor" stop-opacity=".55"/><stop offset="1" stop-color="currentColor" stop-opacity=".05"/></linearGradient></defs>`,
-  acc:`<g class="o-bow"><path class="o-dk" d="M37 30L27 23L28.5 37Z" fill="#ff5fb8"/><path class="o-dk" d="M37 30L47 24.5L45 37Z" fill="#ff5fb8"/><circle cx="37" cy="30.5" r="3.6" fill="#ff8fcd"/></g>
+  acc:`<g class="o-bow"><path class="o-dk" d="M37 30.5C33 24 25 21 23.5 26C22 31 25 37.5 37 30.5Z" fill="#ff5fb8"/><path class="o-dk" d="M37 30.5C41 24 49 21 50.5 26C52 31 49 37.5 37 30.5Z" fill="#ff5fb8"/><path d="M35 33C33.5 36 32 38 30 39.5M39 33C40.5 36 42 38 44 39.5" stroke="#ff5fb8" stroke-width="2.4" stroke-linecap="round" fill="none"/><circle cx="37" cy="30.8" r="3.7" fill="#ff8fcd"/></g>
     <g class="o-wisp w1"><circle cx="16" cy="66" r="5" fill="#bfe6ff" opacity=".35"/><circle cx="16" cy="66" r="2.3" fill="#e8f6ff"/></g>
     <g class="o-wisp w2"><circle cx="85" cy="38" r="4.4" fill="#bfe6ff" opacity=".35"/><circle cx="85" cy="38" r="2" fill="#e8f6ff"/></g>
     <g class="o-wisp w3"><circle cx="80" cy="80" r="3.4" fill="#bfe6ff" opacity=".35"/><circle cx="80" cy="80" r="1.6" fill="#e8f6ff"/></g>` };
