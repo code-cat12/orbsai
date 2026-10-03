@@ -408,7 +408,10 @@ function renderChat(){
   log.innerHTML = "";
   if (c.incog) log.appendChild(el("div", "incognote", "🕶️ Incognito chat. It won't be saved, and it disappears when you leave."));
   const turns = c.turns;
-  turns.forEach((t, i) => bubble(t.role === "user" ? "user" : "assistant", t, i, i === turns.length - 1));
+  turns.forEach((t, i) => {
+    bubble(t.role === "user" ? "user" : "assistant", t, i, i === turns.length - 1);
+    if (credits && i === 19 && turns.length > 20) log.appendChild(el("div", "incognote", "💬 This chat got long. From here on, each message costs 1 extra credit. Start a new chat to save credits."));
+  });
   if (turns.length && turns[turns.length - 1].role === "assistant" && !busy) tailOrb(false);
   log.scrollTop = log.scrollHeight;
   updateSend(); snap(); renderSide(); renderIncog();
@@ -853,7 +856,11 @@ function hint(){
   } else if (left <= 20) { msg = `Low on credits: ${left} left today. ${cost1}` + koaTip; cls = "warn"; }
   else if (left <= 50) { msg = `${creditWord(left)} left today. ${cost1}`; cls = "mid"; }
   else if (parts.length > 1 || cost > 3) msg = cost1 + (cost > 3 ? ` (${left} left today)` : "");
-  show([web, msg].filter(Boolean).join(" "), cls);
+  // Say plainly when an extra kicks in
+  const why = [];
+  if (est.long) why.push("💬 This chat is long now, so each message costs 1 extra credit. Start a new chat to save credits.");
+  if (est.files) why.push("📁 Big files cost 2 extra credits for this message.");
+  show([web, ...why, msg].filter(Boolean).join(" "), cls);
 }
 function toggleMenu(menuId, btnId){
   return e => { e.stopPropagation(); const mm = $(menuId), open = mm.hidden; closeMenus(); mm.hidden = !open; $(btnId).setAttribute("aria-expanded", String(open));
