@@ -1,4 +1,5 @@
 // POST /api/admin — the owner's admin panel. Only emails listed in ADMIN_EMAILS (on Vercel) get in.
+import { checkMfa } from "./_mfa.js";
 import { admin, getConfig, setConfig, setKids, setupProblem } from "./_admin.js";
 import { makeAdminHandler } from "./_adminapi.js";
 import { siteConfig, dayKey } from "./_core.js";
@@ -58,7 +59,7 @@ const handler = makeAdminHandler({
   verifyToken: async (t) => {
     let a;
     try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
-    return a.auth.verifyIdToken(t);
+    return checkMfa(await a.auth.verifyIdToken(t));
   },
   load,
   saveSettings: setConfig,

@@ -1175,6 +1175,7 @@ function showGate(mode, email){
   if (mode === "home") { gate.scrollTop = 0; return; }
   $("aMain").hidden = mode !== "signin"; $("aVerify").hidden = mode !== "verify";
   $("aAge").hidden = mode !== "age"; $("aBlocked").hidden = mode !== "blocked" && mode !== "banned";
+  $("aMfa").hidden = mode !== "mfa"; if (mode === "mfa") return;
   if (mode === "age") { $("aTitle").textContent = "How old are you?"; $("aText").textContent = "Orbs uses this to keep everyone safe. You can't change it later, so please be honest."; return; }
   if (mode === "blocked") { $("aTitle").textContent = "Sorry!"; $("aText").textContent = "Orbs is only for people 13 and older. Come back when you're older!"; return; }
   if (mode === "banned") { $("aTitle").textContent = "Account blocked"; $("aText").textContent = "This account can't use Orbs anymore because it broke the rules. If you think that's a mistake, email contact-orbsai@proton.me."; return; }
@@ -1302,14 +1303,140 @@ $("bOut").onclick = () => A.signOut(auth);
 
 async function enter(u){
   showGate("loading"); pending = u;
+  try { const m = await mfaApi(u, { action:"status" }); mfa = m.httpOk ? m : null; } catch(_) { mfa = null; }
+  if (mfa && mfa.need) { showGate("mfa"); setMfaKind(mfa.totp ? "totp" : "email"); return; }
   try { await loadAccount(u); await kidsApi(u, { action:"status" }); }
   catch (e) { user = null; showGate("signin"); say("Couldn't load your account. Check your connection and try again."); return; }
   if (kids.banned) { showGate("banned"); return; }
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
-  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); gate.hidden = true; renderHome();
+  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; renderHome();
   cloudSave(); // finishes moving any old-style chats
   checkAdmin(); afterBilling();
+}
+
+// ---------- Two-step sign-in (MFA) ----------
+let mfa = null, mfaKind = "totp";
+async function mfaApi(u, body){
+  const r = await fetch("/api/mfa", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
+  let j = {}; try { j = await r.json(); } catch(_) {}
+  j.httpOk = r.ok; return j;
+}
+const MFA_ERR = { wrong_code:"That code didn't work. Check it and try again.", locked:"Too many wrong tries. Wait 15 minutes, then try again.", email_off:"Email codes aren't working right now. Use your authenticator app or a backup code.", expired:"That took too long. Start again.", mfa_required:"Sign in again first.", unverified:"Confirm your email first." };
+const mfaErr = j => (j.error === "wait" && j.wait ? `Wait ${j.wait} seconds before asking for another code.` : MFA_ERR[j.error]) || "Something went wrong. Try again.";
+// Sign-in screen
+function setMfaKind(k){
+  mfaKind = k; say("");
+  const email = pending && pending.email || "your email";
+  $("aTitle").textContent = "Two-step sign-in";
+  $("aText").textContent = k === "totp" ? "Open your authenticator app and type the 6-digit code for Orbs AI."
+    : k === "email" ? `Tap "Email me a code", then type the 6-digit code we send to ${email}.` : "Type one of your backup codes (like abcd-1234). Each one works once.";
+  $("mfaMail").hidden = !(mfa && mfa.email && k !== "backup");
+  $("mfaMail").textContent = k === "totp" ? "Email me a code instead" : "Email me a code";
+  const c = $("mfaCode"); c.value = ""; c.placeholder = k === "backup" ? "abcd-1234" : "123456"; c.inputMode = k === "backup" ? "text" : "numeric";
+  const next = k === "backup" ? (mfa && mfa.totp ? "totp" : "email") : "backup";
+  $("mfaSwap").dataset.k = next;
+  $("mfaSwap").textContent = next === "backup" ? "Lost your phone? Use a backup code" : next === "totp" ? "Use my authenticator app" : "Use an email code";
+  setTimeout(() => c.focus(), 50);
+}
+$("mfaSwap").onclick = () => setMfaKind($("mfaSwap").dataset.k);
+$("mfaOut").onclick = () => A.signOut(auth);
+$("mfaMail").onclick = () => busyBtn($("mfaMail"), async () => {
+  const u = pending; if (!u) return;
+  if (mfaKind !== "email") setMfaKind("email");
+  const j = await mfaApi(u, { action:"send" });
+  say(j.sent ? "Sent! Check your inbox, and your spam folder too." : mfaErr(j), !!j.sent);
+});
+$("aMfa").addEventListener("submit", e => { e.preventDefault(); busyBtn($("mfaGo"), async () => {
+  const u = pending; if (!u) return;
+  const code = $("mfaCode").value.trim(); if (!code) return say("Type the code first.");
+  try {
+    const j = await mfaApi(u, { action:"verify", kind: mfaKind, code });
+    if (!j.ok) return say(mfaErr(j));
+    await u.getIdToken(true); await enter(u);
+  } catch (_) { say("Couldn't reach Orbs. Check your connection."); }
+}); });
+// Settings
+function renderMfa(){
+  const on = !!(mfa && mfa.on);
+  $("mfaTxt").textContent = !on ? "Off" : mfa.totp && mfa.email ? "On (app and email)" : mfa.totp ? "On (authenticator app)" : "On (email codes)";
+  $("mfaDot").classList.toggle("ok", on); $("mfaBtn").textContent = on ? "Manage" : "Set up";
+}
+async function mfaRefresh(){ try { const j = await mfaApi(user, { action:"status" }); if (j.httpOk) mfa = j; } catch(_) {} renderMfa(); }
+$("mfaBtn").onclick = async () => { if (!user) return; openLegal("mfaModal"); $("mfaBody").replaceChildren(el("p", "fine", "Loading…")); await mfaRefresh(); mfaMain(); };
+const mfaBtn = (t, fn, cls = "outline small") => { const b = el("button", cls, t); b.type = "button"; b.onclick = () => busyBtn(b, fn); return b; };
+function mfaRow(title, sub, ...btns){ const r = el("div", "mrow"), t = el("div"); t.append(el("b", null, title), el("small", null, sub)); const bs = el("span", "setrow"); btns.filter(Boolean).forEach(b => bs.append(b)); r.append(t, bs); return r; }
+function mfaShow(...nodes){ const box = el("div", "mfam"); box.append(...nodes); const m = el("p", "fine"); m.id = "mfaMsg"; m.setAttribute("role", "status"); box.append(m); $("mfaBody").replaceChildren(box); return m; }
+const mfaSay = t => { const m = $("mfaMsg"); if (m) m.textContent = t || ""; };
+function mfaMain(msg){
+  const on = !!(mfa && mfa.on), ready = !!(mfa && mfa.emailReady);
+  const parts = [];
+  if (!on) parts.push(el("p", null, "Turn this on and Orbs asks for a code after your password, so nobody can get in with just your password. Pick how you want to get codes:"));
+  parts.push(mfaRow("📱 Authenticator app", mfa && mfa.totp ? "On. Codes come from your app." : "Google Authenticator, Microsoft Authenticator, Authy, or the Passwords app on iPhone and iPad.",
+    mfa && mfa.totp ? mfaBtn("Turn off", () => mfaNeedCode("off", "totp")) : mfaBtn("Set up", mfaTotpStart)));
+  parts.push(mfaRow("✉️ Email codes", mfa && mfa.email ? "On. We email you a 6-digit code." : ready ? "We email a 6-digit code to " + (user && user.email || "you") + "." : "Not available yet. Email sending isn't turned on for Orbs.",
+    mfa && mfa.email ? mfaBtn("Turn off", () => mfaNeedCode("off", "email")) : ready ? mfaBtn("Set up", mfaEmailStart) : null));
+  if (on) parts.push(mfaRow("🔑 Backup codes", (mfa.backupLeft || 0) + " left. Use one if you lose your phone or can't get emails.", mfaBtn("Get new codes", () => mfaNeedCode("newBackup"))));
+  mfaShow(...parts); mfaSay(msg);
+}
+async function drawQr(text){
+  const { default: qrcode } = await import("./vendor/qrcode.mjs");
+  const q = qrcode(0, "M"); q.addData(text); q.make();
+  const n = q.getModuleCount(), s = 6, pad = 4, cv = document.createElement("canvas");
+  cv.width = cv.height = (n + pad * 2) * s; cv.className = "mfaqr";
+  const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = "#000";
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) g.fillRect((c + pad) * s, (r + pad) * s, s, s);
+  cv.setAttribute("role", "img"); cv.setAttribute("aria-label", "QR code to scan with your authenticator app");
+  return cv;
+}
+function mfaCodeForm(btnText, onSubmit, placeholder = "123456"){
+  const f = el("form", "vbox"); f.noValidate = true;
+  const i = el("input", "mfacode"); i.inputMode = "numeric"; i.autocomplete = "one-time-code"; i.maxLength = 9; i.placeholder = placeholder; i.setAttribute("aria-label", "Code");
+  const b = el("button", "gbtn", btnText); b.type = "submit";
+  f.append(i, b);
+  f.onsubmit = e => { e.preventDefault(); const v = i.value.trim(); if (!v) return mfaSay("Type the code first."); busyBtn(b, () => onSubmit(v, i)); };
+  setTimeout(() => i.focus(), 50);
+  return f;
+}
+async function mfaTurnedOn(j, what){
+  await user.getIdToken(true); await mfaRefresh();
+  if (j.backup) mfaBackup(j.backup, `${what} is on! ✅`); else mfaMain(`${what} is on! ✅`);
+}
+async function mfaTotpStart(){
+  const j = await mfaApi(user, { action:"totpStart" }); if (!j.secret) return mfaSay(mfaErr(j));
+  const steps = el("ol"); ["Open your authenticator app and tap + to add an account.", "Scan this QR code. On this device? Tap the button below instead.", "Type the 6-digit code the app shows."].forEach(t => steps.append(el("li", null, t)));
+  const open = el("a", "outline", "Open in my authenticator app"); open.href = j.uri; open.style.textAlign = "center"; open.style.textDecoration = "none";
+  const back = mfaBtn("‹ Back", async () => mfaMain(), "linkbtn");
+  mfaShow(steps, await drawQr(j.uri), open, el("small", "fine", "Can't scan? Type this key into the app:"), el("div", "mfasecret", j.secret.match(/.{1,4}/g).join(" ")),
+    mfaCodeForm("Turn on", async v => { const r = await mfaApi(user, { action:"totpConfirm", code: v }); if (!r.ok) return mfaSay(mfaErr(r)); await mfaTurnedOn(r, "Authenticator app"); }), back);
+}
+async function mfaEmailStart(){
+  const j = await mfaApi(user, { action:"emailStart" }); if (!j.sent) return mfaSay(mfaErr(j));
+  const again = mfaBtn("Send it again", async () => { const r = await mfaApi(user, { action:"emailStart" }); mfaSay(r.sent ? "Sent again!" : mfaErr(r)); }, "linkbtn");
+  mfaShow(el("p", null, `We sent a 6-digit code to ${user.email}. Type it here. (Check spam if you don't see it.)`),
+    mfaCodeForm("Turn on", async v => { const r = await mfaApi(user, { action:"emailConfirm", code: v }); if (!r.ok) return mfaSay(mfaErr(r)); await mfaTurnedOn(r, "Email codes"); }),
+    again, mfaBtn("‹ Back", async () => mfaMain(), "linkbtn"));
+}
+// Turning something off or making new backup codes needs a code first (in case someone else grabbed your device)
+function mfaNeedCode(action, method){
+  const kinds = [mfa.totp && ["totp", "App"], mfa.email && ["email", "Email"], ["backup", "Backup code"]].filter(Boolean);
+  let kind = kinds[0][0];
+  const seg = el("div", "seg"); const form = mfaCodeForm(action === "off" ? "Turn off" : "Get new codes", async v => {
+    const r = await mfaApi(user, { action, method, kind, code: v }); if (!r.ok) return mfaSay(mfaErr(r));
+    if (action === "newBackup") return mfaBackup(r.backup, "New backup codes made. The old ones don't work anymore.");
+    await user.getIdToken(true); await mfaRefresh(); mfaMain(r.on ? "Turned off." : "Two-step sign-in is off.");
+  });
+  const send = mfaBtn("Email me a code", async () => { const r = await mfaApi(user, { action:"sendCheck" }); mfaSay(r.sent ? "Sent! Check your inbox." : mfaErr(r)); });
+  const pick = k => { kind = k; for (const b of seg.children) b.setAttribute("aria-pressed", String(b.dataset.k === k)); send.hidden = k !== "email"; form.querySelector("input").placeholder = k === "backup" ? "abcd-1234" : "123456"; form.querySelector("input").inputMode = k === "backup" ? "text" : "numeric"; };
+  for (const [k, t] of kinds) { const b = el("button", null, t); b.type = "button"; b.dataset.k = k; b.onclick = () => pick(k); seg.append(b); }
+  mfaShow(el("p", null, "To keep your account safe, type a code first."), seg, send, form, mfaBtn("‹ Back", async () => mfaMain(), "linkbtn"));
+  pick(kind);
+}
+function mfaBackup(codes, msg){
+  const list = el("div", "mfacodes"); codes.forEach(c => list.append(el("span", null, c)));
+  const copy = mfaBtn("Copy codes", async () => { try { await navigator.clipboard.writeText(codes.join("\n")); mfaSay("Copied! Paste them somewhere safe."); } catch(_) { mfaSay("Couldn't copy. Take a screenshot instead."); } });
+  mfaShow(el("p", null, msg), el("p", null, "Save these backup codes somewhere safe, like your Notes app or a screenshot. If you lose your phone or can't get emails, they're the only way back in. Each one works once."),
+    list, copy, mfaBtn("I saved them", async () => mfaMain(), "gbtn"));
 }
 
 // ---------- Settings: sign out, delete ----------
@@ -1463,7 +1590,7 @@ document.addEventListener("keydown", e => {
 // ---------- Terms and Privacy pop-ups ----------
 let legalBack = null;
 function openLegal(id){ legalBack = document.activeElement; $(id).hidden = false; $(id).querySelector("[data-close]").focus(); }
-const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal"];
+const POPUPS = ["tosModal","privModal","safetyModal","reportModal","helpModal","newsModal","keysModal","fbModal","adminModal","planModal","memModal","mfaModal"];
 function closeLegal(){ for (const id of POPUPS) $(id).hidden = true; if (legalBack && legalBack.focus) legalBack.focus(); }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]"); if (o) { e.preventDefault(); openLegal(o.dataset.open); return; }

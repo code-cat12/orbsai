@@ -32,13 +32,33 @@ Orbs AI · made by The Abyss<br><a href="${origin}" style="color:#7b4dff">orbsai
   return { subject: "Confirm your email for Orbs AI", html, text };
 }
 
+// The sign-in code email (two-step sign-in)
+export function codeEmail({ code, origin }) {
+  const hand = `'Patrick Hand','Comic Sans MS','Trebuchet MS',Arial,sans-serif`;
+  const serif = `'Source Serif 4',Georgia,'Times New Roman',serif`;
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>Your Orbs code</title>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Source+Serif+4:wght@500&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#ece9f5">
+<div style="display:none;max-height:0;overflow:hidden">Your Orbs AI sign-in code is ${code}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ece9f5"><tr><td align="center" style="padding:28px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:20px;overflow:hidden">
+<tr><td><img src="${origin}/email-header.png" width="600" alt="Orbs AI" style="display:block;width:100%;height:auto;border:0"></td></tr>
+<tr><td style="padding:30px 34px 6px;font-family:${serif};font-size:28px;line-height:1.2;color:#1c1b19;font-weight:500">Your sign-in code</td></tr>
+<tr><td style="padding:6px 34px 0;font-family:${hand};font-size:19px;line-height:1.5;color:#3b3934">Type this code into Orbs to finish signing in. It works for 10 minutes.</td></tr>
+<tr><td align="center" style="padding:24px 34px"><div style="display:inline-block;background:#f1e9ff;border-radius:16px;padding:14px 28px;font-family:Menlo,Consolas,monospace;font-size:36px;letter-spacing:8px;color:#1c1b19;font-weight:700">${code}</div></td></tr>
+<tr><td style="padding:0 34px 30px;font-family:${hand};font-size:15px;line-height:1.5;color:#6e6b64">Didn't try to sign in? Someone may know your password. Change it soon, and never share this code with anyone. Orbs will never ask you for it.</td></tr>
+<tr><td style="background:#f6f5f2;padding:18px 34px;font-family:${hand};font-size:14px;line-height:1.5;color:#8a867d;text-align:center">Orbs AI · made by The Abyss<br><a href="${origin}" style="color:#7b4dff">orbsai.vercel.app</a> · <a href="mailto:${MAIL_FROM}" style="color:#7b4dff">${MAIL_FROM}</a></td></tr>
+</table></td></tr></table></body></html>`;
+  const text = `Your Orbs AI sign-in code is ${code}\n\nIt works for 10 minutes. Didn't try to sign in? Change your password and never share this code.\n\n${origin}`;
+  return { subject: `${code} is your Orbs AI sign-in code`, html, text };
+}
+
 export function brevoSender(key, fetchImpl = fetch) {
-  return async function send({ to, name, subject, html, text, from = MAIL_FROM }) {
+  return async function send({ to, name, subject, html, text, from = MAIL_FROM, tag }) {
     const res = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: { "api-key": key, "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify({ sender: { name: "Orbs AI", email: from }, replyTo: { email: from, name: "Orbs AI" },
-        to: [name ? { email: to, name } : { email: to }], subject, htmlContent: html, textContent: text, tags: ["verify"] }),
+        to: [name ? { email: to, name } : { email: to }], subject, htmlContent: html, textContent: text, tags: [tag || "verify"] }),
     });
     if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error("brevo " + res.status + " " + (j.message || "")); }
   };

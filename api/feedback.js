@@ -1,4 +1,5 @@
 // POST /api/feedback — thumbs up / down on a reply.
+import { checkMfa } from "./_mfa.js";
 import { admin, saveFeedback, setupProblem } from "./_admin.js";
 import { makeFeedbackHandler } from "./_adminapi.js";
 
@@ -6,7 +7,7 @@ const handler = makeFeedbackHandler({
   verifyToken: async (t) => {
     let a;
     try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
-    return a.auth.verifyIdToken(t);
+    return checkMfa(await a.auth.verifyIdToken(t));
   },
   saveFeedback,
 });

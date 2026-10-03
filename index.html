@@ -607,6 +607,16 @@ textarea:disabled{pointer-events:none}
 .faq{scroll-margin-top:70px}
 @media (max-width:520px){.lsec,.faq{scroll-margin-top:110px}.lnav{justify-content:center}.llinks{justify-content:center}.llinks button,.llinks a{padding:6px 8px;font-size:1rem}}
 .vspam{margin:6px 0 0;padding:10px 12px;border-radius:12px;background:var(--field);border:1px solid var(--line);color:var(--muted);font-size:.92rem;line-height:1.45;text-align:left}
+.mfacode{font:600 1.6rem/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.3em;text-align:center}
+.mfam{display:flex;flex-direction:column;gap:12px}
+.mfam .mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--field)}
+.mfam .mrow b{display:block}
+.mfam .mrow small{color:var(--muted)}
+.mfam .mrow .setrow{flex:none}
+.mfaqr{display:block;margin:4px auto;width:200px;height:200px;background:#fff;border-radius:12px;padding:8px;image-rendering:pixelated}
+.mfasecret{font:600 1rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.08em;text-align:center;word-break:break-all;background:var(--field);border:1px dashed var(--line);border-radius:10px;padding:8px;user-select:all}
+.mfacodes{display:grid;grid-template-columns:1fr 1fr;gap:6px;font:600 1.05rem ui-monospace,Menlo,Consolas,monospace;text-align:center;background:var(--field);border-radius:12px;padding:12px;user-select:all}
+.mfam ol{margin:0;padding-left:20px;line-height:1.5}
 .faq{width:100%;max-width:720px;text-align:left;display:flex;flex-direction:column;gap:8px}
 .faq h2{font:400 1.6rem var(--display);margin:0 0 4px;text-align:center}
 .faq details{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
@@ -763,6 +773,9 @@ textarea:disabled{pointer-events:none}
     </form>
     <div class="setrow"><button class="outline" id="kidsBtn" type="button" hidden>Turn on Kids Mode</button><button class="outline" type="button" data-open="safetyModal">Safety tips</button></div>
     <small class="fine" id="kidsMsg" role="status"></small>
+    <div class="set-label">Two-step sign-in</div>
+    <div class="swrow"><span class="acct"><span class="dot2" id="mfaDot"></span><span id="mfaTxt">Off</span></span><button class="outline small" id="mfaBtn" type="button">Set up</button></div>
+    <small class="fine">After your password, Orbs also asks for a code from an authenticator app or your email. Your account stays safe even if someone learns your password.</small>
     <div class="setrow"><button class="outline" id="outBtn" type="button">Sign out</button></div>
     <button class="danger" id="wipeBtn" type="button">Delete all chats</button>
     <button class="danger" id="killBtn" type="button">Delete my account</button>
@@ -1000,6 +1013,12 @@ textarea:disabled{pointer-events:none}
     </div>
   </div>
 </div>
+<div class="modal legal-modal" id="mfaModal" hidden>
+  <div class="card legal" role="dialog" aria-modal="true" aria-labelledby="mfaTitle">
+    <div class="mh"><h2 id="mfaTitle">Two-step sign-in</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="lbody" id="mfaBody"></div>
+  </div>
+</div>
 <div class="modal legal-modal" id="planModal" hidden>
   <div class="card legal plans" role="dialog" aria-modal="true" aria-labelledby="planTitle">
     <div class="mh"><h2 id="planTitle">Get more with Orbs Plus</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
@@ -1089,6 +1108,12 @@ textarea:disabled{pointer-events:none}
       <button class="linkbtn" id="vOut" type="button">Use a different account</button>
       <p class="vspam">📭 Can't find it? Check your <b>spam</b> or <b>junk</b> folder. It comes from <b>Orbs AI</b>. If it's there, tap "Not spam" so the next one lands in your inbox.</p>
     </div>
+    <form class="vbox" id="aMfa" hidden novalidate>
+      <label for="mfaCode" hidden>Code</label><input id="mfaCode" class="mfacode" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="123456">
+      <button class="gbtn" id="mfaGo" type="submit">Continue</button>
+      <button class="outline" id="mfaMail" type="button" hidden>Email me a code</button>
+      <div class="alinks"><button class="linkbtn" id="mfaSwap" type="button"></button><button class="linkbtn" id="mfaOut" type="button">Sign out</button></div>
+    </form>
     <div class="vbox" id="aAge" hidden>
       <button class="gbtn" type="button" data-age="adult">18 or older</button>
       <button class="gbtn" type="button" data-age="teen">13 to 17</button>

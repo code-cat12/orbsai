@@ -1,4 +1,5 @@
 // POST /api/billing — start a Stripe checkout for a plan, or open the "manage subscription" page.
+import { checkMfa } from "./_mfa.js";
 import { admin, getSub, getKids, setupProblem } from "./_admin.js";
 import { makeBillingHandler, stripeClient } from "./_billing.js";
 
@@ -6,7 +7,7 @@ const handler = makeBillingHandler({
   verifyToken: async (t) => {
     let a;
     try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
-    return a.auth.verifyIdToken(t);
+    return checkMfa(await a.auth.verifyIdToken(t));
   },
   getSub,
   getKids,

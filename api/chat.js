@@ -1,5 +1,6 @@
 // POST /api/chat — the only place your Claude API key is ever used.
 // It runs on Vercel's servers, so the key never reaches anyone's browser.
+import { checkMfa } from "./_mfa.js";
 import { admin, getKids, flag, getConfig, searchesLeft, countSearches, record, getSub, getMemory, addMemory, setupProblem } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
 
@@ -42,7 +43,7 @@ const handler = makeChatHandler({
   verifyToken: async (token) => {
     let a;
     try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
-    return a.auth.verifyIdToken(token);
+    return checkMfa(await a.auth.verifyIdToken(token));
   },
   charge,
   refund,

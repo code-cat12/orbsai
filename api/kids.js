@@ -1,4 +1,5 @@
 // POST /api/kids — age question and Kids Mode on/off (with parent PIN).
+import { checkMfa } from "./_mfa.js";
 import { admin, getKids, setKids, getConfig, getUsage, getSub, setupProblem } from "./_admin.js";
 import { makeKidsHandler } from "./_kids.js";
 
@@ -6,7 +7,7 @@ const handler = makeKidsHandler({
   verifyToken: async (t) => {
     let a;
     try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
-    return a.auth.verifyIdToken(t);
+    return checkMfa(await a.auth.verifyIdToken(t));
   },
   getKids,
   setKids,

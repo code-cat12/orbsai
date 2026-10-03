@@ -165,3 +165,12 @@ export async function mailRate(uid, now = Date.now()) {
     tx.set(ref, { day, n: n + 1, last: now }); return true;
   });
 }
+
+// Two-step sign-in settings live in mfa/{uid} (server only)
+export async function getMfa(uid) {
+  const snap = await (await admin()).db.doc(`mfa/${uid}`).get();
+  return snap.exists ? snap.data() : null;
+}
+export async function setMfa(uid, data) { await (await admin()).db.doc(`mfa/${uid}`).set(data); }
+export async function getClaims(uid) { return (await (await admin()).auth.getUser(uid)).customClaims || {}; }
+export async function setClaims(uid, claims) { await (await admin()).auth.setCustomUserClaims(uid, claims); }
