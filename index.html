@@ -272,11 +272,15 @@ button{font:inherit;color:inherit}
 .lbtns{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px}
 .gbtn.lgo{padding:14px 34px;border-radius:999px;font-size:1.2rem;background:var(--ink);color:var(--bg)}
 .gbtn.lgo:hover{transform:translateY(-1px)}
-.lineup{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:16px 8px;width:100%}
+.lineup{display:flex;flex-wrap:wrap;justify-content:center;gap:16px 8px;width:100%}
+.lineup .lo{flex:0 0 92px}
+@media (max-width:520px){.lineup .lo{flex-basis:calc(33% - 8px)}.lbonus{font-size:1rem}}
 .lo{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
 .lo .has-orb{width:62px;height:62px}
 .lo b{font-weight:400;font-size:1.02rem}
 .lo small{color:var(--muted);font-size:.8rem;line-height:1.2}
+.lbonus{margin:0 0 -14px;font-size:1.15rem;color:#ff7a00;background:color-mix(in srgb,#ff7a00 12%,transparent);border:1.5px dashed color-mix(in srgb,#ff7a00 55%,transparent);border-radius:999px;padding:6px 16px}
+.lo.bonus b{color:var(--c-spooks)}.lo.bonus:last-child b{color:var(--c-hex)}
 .lfeat{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;width:100%;text-align:left}
 .lfeat li{background:var(--field);border:1px solid var(--line);border-radius:14px;padding:14px 16px;line-height:1.4;color:var(--muted);font-size:.92rem}
 .lfeat b{display:block;color:var(--ink);font-weight:600;margin-bottom:2px}
@@ -632,21 +636,25 @@ textarea:disabled{pointer-events:none}
 .promo .setrow{margin-top:10px}
 .pdeal{font-size:.85rem;font-weight:600;color:var(--pc);background:color-mix(in srgb,var(--pc) 14%,transparent);border-radius:999px;padding:3px 10px;align-self:flex-start}
 /* Halloween orbs */
-.orb-spooks .o-hop{animation-delay:-2.7s}.orb-spooks .o-lids{animation-delay:-1.1s}
+.orb-spooks .o-hop{animation-delay:-2.7s}.orb-spooks .o-lids{animation-delay:-1.1s}.orb-spooks .o-eyes{animation-delay:-2.9s}
 .orb-spooks .o-glow{animation:o-flick 1.8s ease-in-out infinite}
-.orb-spooks .o-leaf{transform-origin:54px 30px;animation:o-leafw 3s ease-in-out infinite}
+.orb-spooks .o-bat{animation:o-batfly 4.8s ease-in-out infinite}
+.orb-spooks .o-bat .wl{transform-origin:82px 21px;animation:o-flapl .32s ease-in-out infinite alternate}
+.orb-spooks .o-bat .wr{transform-origin:82px 21px;animation:o-flapr .32s ease-in-out infinite alternate}
 .orb-hex .o-hop{animation:o-float 3.6s ease-in-out infinite}
-.orb-hex .o-squish{animation:o-wobble 2.4s ease-in-out infinite}
-.orb-hex .o-aura{transform-origin:50px 60px;animation:o-aura 3.6s ease-in-out infinite}
-.orb-hex .o-bow{transform-origin:66px 33px;animation:o-bowtilt 3.6s ease-in-out infinite}
-.orb-hex .o-ghost{filter:drop-shadow(0 0 3px #8fd0ff)}
-@keyframes o-flick{0%,100%{opacity:.5}30%{opacity:1}55%{opacity:.7}80%{opacity:1}}
-@keyframes o-leafw{0%,100%{transform:rotate(0)}50%{transform:rotate(-12deg)}}
+.orb-hex .o-lids{animation-delay:-2.2s}
+.orb-hex .o-arm.al{transform-origin:27px 61px;animation:o-wave 1.8s ease-in-out infinite}
+.orb-hex .o-arm.ar{transform-origin:73px 61px;animation:o-wave 1.8s ease-in-out infinite reverse}
+.orb-hex .o-bow{transform-origin:36px 34px;animation:o-bowtilt 3.6s ease-in-out infinite}
+.orb-hex .o-say{animation-duration:4.2s}
+@keyframes o-flick{0%,100%{opacity:.4}30%{opacity:1}55%{opacity:.65}80%{opacity:1}}
+@keyframes o-batfly{0%,100%{transform:translate(0,0)}25%{transform:translate(-6px,4px)}50%{transform:translate(-2px,-3px)}75%{transform:translate(3px,3px)}}
+@keyframes o-flapl{from{transform:rotate(18deg) scaleY(.7)}to{transform:rotate(-12deg)}}
+@keyframes o-flapr{from{transform:rotate(-18deg) scaleY(.7)}to{transform:rotate(12deg)}}
 @keyframes o-float{0%,100%{transform:translateY(2px)}50%{transform:translateY(-5px)}}
-@keyframes o-wobble{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
-@keyframes o-aura{0%,100%{opacity:.18;transform:scale(.96)}50%{opacity:.38;transform:scale(1.05)}}
-@keyframes o-bowtilt{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(8deg)}}
-@media (prefers-reduced-motion:reduce){.orb-hex .o-hop,.orb-hex .o-aura,.orb-hex .o-bow,.orb-spooks .o-glow,.orb-spooks .o-leaf{animation:none}}
+@keyframes o-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
+@keyframes o-bowtilt{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(7deg)}}
+@media (prefers-reduced-motion:reduce){.orb-hex .o-hop,.orb-hex .o-arm,.orb-hex .o-bow,.orb-spooks .o-glow,.orb-spooks .o-bat,.orb-spooks .o-bat path{animation:none}}
 .hw .lbody{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
 .hwrow{display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
 .hwcard{flex:1 1 200px;max-width:260px;border-radius:18px;padding:14px;border:1.5px solid color-mix(in srgb,var(--c) 45%,var(--line));background:color-mix(in srgb,var(--c) 8%,var(--field));display:flex;flex-direction:column;align-items:center;gap:6px}

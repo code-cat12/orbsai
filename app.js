@@ -214,18 +214,20 @@ const ORB = {
       <g class="o-stars" fill="#9b5cff"><circle cx="14" cy="22" r="1.9"/><circle cx="88" cy="28" r="1.5"/><circle cx="86" cy="90" r="1.9"/></g>`; },
     acc:`` }
 };
-// 🎃 Spooks (pumpkin) and 👻 Hex (blue ghost with a bow)
-ORB.spooks = { shape:`<ellipse cx="50" cy="64" rx="35" ry="27"/>`, ey:58, tilt:0,
-  acc:`<g fill="none" stroke="#c45200" stroke-width="2.4" stroke-linecap="round" opacity=".55"><path d="M50 38C40 46 40 82 50 90"/><path d="M50 38C60 46 60 82 50 90"/><path d="M34 41C22 52 24 80 36 88"/><path d="M66 41C78 52 76 80 64 88"/></g>
-    <path d="M47 39C47 32 49 28 53 25C54 24.5 56 25.5 55.5 27C53.5 30 53 34 53.5 39Z" fill="#3f8f2a"/>
-    <path class="o-leaf" d="M54 30C60 24 68 25 70 29C64 33 59 33 54 30Z" fill="#5bbf3a"/>
-    <path d="M35 69Q50 80 65 69L61 73L57 70L53 75L50 71L47 75L43 70L39 73Z" fill="#111"/>
-    <path class="o-glow" d="M41 71Q50 76 59 71" fill="none" stroke="#ffd34d" stroke-width="1.6" stroke-linecap="round"/>` };
-ORB.hex = { shape:`<path class="o-ghost" d="M23 62C23 41 35 30 50 30S77 41 77 62V86C77 90.5 73 91.5 70.5 88.5C68 85 65 85 62.5 88.5C60 92 56.5 92 54 88.5C51.5 85 48.5 85 46 88.5C43.5 92 40 92 37.5 88.5C35 85 32 85 29.5 88.5C27 91.5 23 90.5 23 86Z" fill-opacity=".92"/>`, ey:57, tilt:0,
-  back:() => `<ellipse cx="50" cy="60" rx="36" ry="34" fill="#8fd0ff" opacity=".28" class="o-aura"/>`,
-  acc:`<g class="o-bow"><path d="M66 33L56 26L57 39Z" fill="#ff5fb8"/><path d="M66 33L76 26L75 39Z" fill="#ff5fb8"/><circle cx="66" cy="33" r="3.6" fill="#ff8fcd"/></g>
-    <ellipse cx="38" cy="68" rx="4.5" ry="2.6" fill="#ff8fcd" opacity=".55"/><ellipse cx="62" cy="68" rx="4.5" ry="2.6" fill="#ff8fcd" opacity=".55"/>
-    <g class="o-stars" fill="#8fd0ff"><path d="M14 40l1.6 3.6 3.6 1.6-3.6 1.6L14 50.4l-1.6-3.6L8.8 45.2l3.6-1.6z"/><circle cx="88" cy="52" r="1.8"/><circle cx="84" cy="30" r="1.3"/></g>` };
+// 🎃 Spooks (pumpkin) and 👻 Hex (blue ghost with a bow), drawn in the same flat style as the others
+ORB.spooks = { shape:`<ellipse cx="33" cy="66" rx="20" ry="24"/><ellipse cx="67" cy="66" rx="20" ry="24"/>
+    <ellipse cx="33" cy="66" rx="20" ry="24" fill="#000" opacity=".13"/><ellipse cx="67" cy="66" rx="20" ry="24" fill="#000" opacity=".13"/>
+    <ellipse cx="50" cy="65" rx="22" ry="26"/>`, ey:57, tilt:14,
+  acc:`<path class="o-dk" d="M46.5 41C46 34 47.5 29 51.5 25.5L56.5 28C53.5 31.5 53 35.5 53.5 41Z" fill="#2f7d32"/>
+    <path class="o-vine" d="M55 29C59 23 67 23 67 29C67 33 62 33 62 30" fill="none" stroke="#2f7d32" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M37 71L41.5 74.5L45.5 71L50 75L54.5 71L58.5 74.5L63 71C61 80 39 80 37 71Z" fill="#111"/>
+    <path class="o-glow" d="M42 77C46 79 54 79 58 77" fill="none" stroke="#ffcf3d" stroke-width="2" stroke-linecap="round"/>
+    <g class="o-bat o-dk" fill="${INK}"><path class="wl" d="M82 20C78 15 73 15 71 18C74 18 75 20 75 22C77 21 79 21 82 23Z"/><path class="wr" d="M82 20C86 15 91 15 93 18C90 18 89 20 89 22C87 21 85 21 82 23Z"/><ellipse cx="82" cy="21" rx="2.6" ry="3.2"/></g>` };
+ORB.hex = { shape:`<path d="M26 58C26 41 37 31 50 31S74 41 74 58V77C74 84 78 88 85 87C82 93 72 94 66 90C62.5 92.5 58.5 92.5 55.5 89.5C52.5 92.5 47.5 92.5 44.5 89.5C41.5 92.5 36.5 92.5 33.5 89.5C30 91.5 26 89 26 84Z"/>
+    <path class="o-arm al" d="M27 64C21 64 16 60 15 55C19 56 23 57 27 58Z"/><path class="o-arm ar" d="M73 64C79 64 84 60 85 55C81 56 77 57 73 58Z"/>`, ey:55, tilt:0,
+  acc:`<ellipse cx="50" cy="69" rx="3.4" ry="4.3" fill="#111"/>
+    <g class="o-bow"><path class="o-dk" d="M36 33L25 26L27 41Z" fill="#ff5fb8"/><path class="o-dk" d="M36 33L47 27L45 41Z" fill="#ff5fb8"/><circle cx="36" cy="33.5" r="4" fill="#ff8fcd"/></g>
+    <g class="o-say"><rect class="o-dk" x="66" y="9" width="30" height="19" rx="8" fill="#fff"/><path d="M71 26l-3 7 9-5z" fill="#fff"/><text x="81" y="23.5" text-anchor="middle" font-size="11.5" font-weight="800" font-family="system-ui,sans-serif" fill="#111">BOO</text></g>` };
 let nebN = 0;
 function orbSVG(k){
   const o = ORB[k], y = o.ey;
@@ -1231,6 +1233,11 @@ for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () 
 $("aBack").onclick = () => showGate("home");
 $("lineup").innerHTML = ORDER.map(k => `<div class="lo"><div class="has-orb">${orbSVG(k)}</div><b></b><small></small></div>`).join("");
 $("lineup").querySelectorAll(".lo").forEach((el, i) => { el.querySelector("b").textContent = BOTS[ORDER[i]].name; el.querySelector("small").textContent = BOTS[ORDER[i]].role; });
+// October: show the 2 Halloween bonus orbs on the front page too
+if (IN_OCT) {
+  const note = el("p", "lbonus", "+2 bonus orbs for Halloween! 🎃👻"); $("lineup").before(note);
+  for (const k of ["spooks", "hex"]) { const d = el("div", "lo bonus"); const g = el("div", "has-orb"); g.innerHTML = orbSVG(k); d.append(g, el("b", null, BOTS[k].name), el("small", null, BOTS[k].role)); $("lineup").append(d); }
+}
 $("gGoogle").onclick = () => busyBtn($("gGoogle"), async () => {
   say("");
   try { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt:"select_account" }); await A.signInWithPopup(auth, p); }
