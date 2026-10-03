@@ -217,21 +217,23 @@ const ORB = {
 // 🎃 Spooks (pumpkin) and 👻 Hex (blue ghost with a bow), drawn in the same flat style as the others
 ORB.spooks = { shape:`<ellipse cx="33" cy="66" rx="20" ry="24"/><ellipse cx="67" cy="66" rx="20" ry="24"/>
     <ellipse cx="33" cy="66" rx="20" ry="24" fill="#000" opacity=".13"/><ellipse cx="67" cy="66" rx="20" ry="24" fill="#000" opacity=".13"/>
-    <ellipse cx="50" cy="65" rx="22" ry="26"/>`, ey:57, tilt:14,
+    <ellipse cx="50" cy="65" rx="22" ry="26"/>`, ey:60, tilt:14, eyeFill:"#ffd23f",
+  back:() => { const id = "spg" + (++nebN); return `<defs><radialGradient id="${id}"><stop offset="0" stop-color="#ffb02e" stop-opacity=".9"/><stop offset="1" stop-color="#ffb02e" stop-opacity="0"/></radialGradient></defs><ellipse class="o-candle" cx="50" cy="64" rx="46" ry="40" fill="url(#${id})"/>`; },
   acc:`<path class="o-dk" d="M46.5 41C46 34 47.5 29 51.5 25.5L56.5 28C53.5 31.5 53 35.5 53.5 41Z" fill="#2f7d32"/>
-    <path class="o-vine" d="M55 29C59 23 67 23 67 29C67 33 62 33 62 30" fill="none" stroke="#2f7d32" stroke-width="2.6" stroke-linecap="round"/>
-    <path d="M37 71L41.5 74.5L45.5 71L50 75L54.5 71L58.5 74.5L63 71C61 80 39 80 37 71Z" fill="#111"/>
-    <path class="o-glow" d="M42 77C46 79 54 79 58 77" fill="none" stroke="#ffcf3d" stroke-width="2" stroke-linecap="round"/>
+    <path d="M55 29C59 23 67 23 67 29C67 33 62 33 62 30" fill="none" stroke="#2f7d32" stroke-width="2.6" stroke-linecap="round"/>
+    <g class="o-spider"><path d="M22 8V38" stroke="${INK}" stroke-width="1" opacity=".55"/><g class="o-dk" fill="${INK}"><circle cx="22" cy="40" r="3.6"/><path d="M18.5 38l-4-3M18.5 41l-4.5 0M18.5 43l-4 3M25.5 38l4-3M25.5 41l4.5 0M25.5 43l4 3" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/></g></g>
     <g class="o-bat o-dk" fill="${INK}"><path class="wl" d="M82 20C78 15 73 15 71 18C74 18 75 20 75 22C77 21 79 21 82 23Z"/><path class="wr" d="M82 20C86 15 91 15 93 18C90 18 89 20 89 22C87 21 85 21 82 23Z"/><ellipse cx="82" cy="21" rx="2.6" ry="3.2"/></g>` };
-ORB.hex = { shape:`<path d="M26 58C26 41 37 31 50 31S74 41 74 58V77C74 84 78 88 85 87C82 93 72 94 66 90C62.5 92.5 58.5 92.5 55.5 89.5C52.5 92.5 47.5 92.5 44.5 89.5C41.5 92.5 36.5 92.5 33.5 89.5C30 91.5 26 89 26 84Z"/>
-    <path class="o-arm al" d="M27 64C21 64 16 60 15 55C19 56 23 57 27 58Z"/><path class="o-arm ar" d="M73 64C79 64 84 60 85 55C81 56 77 57 73 58Z"/>`, ey:55, tilt:0,
-  acc:`<ellipse cx="50" cy="69" rx="3.4" ry="4.3" fill="#111"/>
-    <g class="o-bow"><path class="o-dk" d="M36 33L25 26L27 41Z" fill="#ff5fb8"/><path class="o-dk" d="M36 33L47 27L45 41Z" fill="#ff5fb8"/><circle cx="36" cy="33.5" r="4" fill="#ff8fcd"/></g>
+ORB.hex = { shape:`<g class="o-ghostbody" fill-opacity=".62" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M26 58C26 41 37 31 50 31S74 41 74 58V77C74 84 78 88 85 87C82 93 72 94 66 90C62.5 92.5 58.5 92.5 55.5 89.5C52.5 92.5 47.5 92.5 44.5 89.5C41.5 92.5 36.5 92.5 33.5 89.5C30 91.5 26 89 26 84Z"/>
+    <path class="o-arm al" d="M27 64C21 64 16 60 15 55C19 56 23 57 27 58Z"/><path class="o-arm ar" d="M73 64C79 64 84 60 85 55C81 56 77 57 73 58Z"/></g>
+    <path d="M33 47C35 39 42 35 49 35" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/>`, ey:57, tilt:0,
+  acc:`<g class="o-bow"><path class="o-dk" d="M36 33L25 26L27 41Z" fill="#ff5fb8"/><path class="o-dk" d="M36 33L47 27L45 41Z" fill="#ff5fb8"/><circle cx="36" cy="33.5" r="4" fill="#ff8fcd"/></g>
+    <g class="o-wisp w1"><circle cx="12" cy="70" r="5" fill="#bfe6ff" opacity=".35"/><circle cx="12" cy="70" r="2.4" fill="#e8f6ff"/></g>
+    <g class="o-wisp w2"><circle cx="90" cy="40" r="4.4" fill="#bfe6ff" opacity=".35"/><circle cx="90" cy="40" r="2" fill="#e8f6ff"/></g>
     <g class="o-say"><rect class="o-dk" x="66" y="9" width="30" height="19" rx="8" fill="#fff"/><path d="M71 26l-3 7 9-5z" fill="#fff"/><text x="81" y="23.5" text-anchor="middle" font-size="11.5" font-weight="800" font-family="system-ui,sans-serif" fill="#111">BOO</text></g>` };
 let nebN = 0;
 function orbSVG(k){
   const o = ORB[k], y = o.ey;
-  const eye = x => `<rect x="${x-3}" y="${y-8.5}" width="6" height="17" rx="3" fill="${k === "neb" ? "var(--neb-eye)" : "#111"}" transform="rotate(${o.tilt} ${x} ${y})"/>`;
+  const eye = x => `<rect x="${x-3}" y="${y-8.5}" width="6" height="17" rx="3" fill="${o.eyeFill || (k === "neb" ? "var(--neb-eye)" : "#111")}" transform="rotate(${o.tilt} ${x} ${y})"/>`;
   return `<svg class="orb orb-${k}" viewBox="0 0 100 100" aria-hidden="true" style="color:var(${BOTS[k].color})">
     <g class="o-hop"><g class="o-extra"><g class="o-squish">
       ${o.back ? o.back() : ""}<g fill="var(${BOTS[k].color})">${o.shape}</g>
