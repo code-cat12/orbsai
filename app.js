@@ -1330,7 +1330,7 @@ function setMfaKind(k){
   const email = pending && pending.email || "your email";
   $("aTitle").textContent = "Two-step sign-in";
   $("aText").textContent = k === "totp" ? "Open your authenticator app and type the 6-digit code for Orbs AI."
-    : k === "email" ? `Tap "Email me a code", then type the 6-digit code we send to ${email}.` : "Type one of your backup codes (like abcd-1234). Each one works once.";
+    : k === "email" ? `Tap "Email me a code", then type the 6-digit code we send to ${email}. Can't find it? Check your spam or junk folder. It comes from Orbs AI.` : "Type one of your backup codes (like abcd-1234). Each one works once.";
   $("mfaMail").hidden = !(mfa && mfa.email && k !== "backup");
   $("mfaMail").textContent = k === "totp" ? "Email me a code instead" : "Email me a code";
   const c = $("mfaCode"); c.value = ""; c.placeholder = k === "backup" ? "abcd-1234" : "123456"; c.inputMode = k === "backup" ? "text" : "numeric";
@@ -1412,8 +1412,8 @@ async function mfaTotpStart(){
 }
 async function mfaEmailStart(){
   const j = await mfaApi(user, { action:"emailStart" }); if (!j.sent) return mfaSay(mfaErr(j));
-  const again = mfaBtn("Send it again", async () => { const r = await mfaApi(user, { action:"emailStart" }); mfaSay(r.sent ? "Sent again!" : mfaErr(r)); }, "linkbtn");
-  mfaShow(el("p", null, `We sent a 6-digit code to ${user.email}. Type it here. (Check spam if you don't see it.)`),
+  const again = mfaBtn("Send it again", async () => { const r = await mfaApi(user, { action:"emailStart" }); mfaSay(r.sent ? "Sent again! Check your spam folder too." : mfaErr(r)); }, "linkbtn");
+  mfaShow(el("p", null, `We sent a 6-digit code to ${user.email}. Type it here. Can't find it? Check your spam or junk folder. It comes from Orbs AI, so tap "Not spam" if it's there.`),
     mfaCodeForm("Turn on", async v => { const r = await mfaApi(user, { action:"emailConfirm", code: v }); if (!r.ok) return mfaSay(mfaErr(r)); await mfaTurnedOn(r, "Email codes"); }),
     again, mfaBtn("‹ Back", async () => mfaMain(), "linkbtn"));
 }
@@ -1426,7 +1426,7 @@ function mfaNeedCode(action, method){
     if (action === "newBackup") return mfaBackup(r.backup, "New backup codes made. The old ones don't work anymore.");
     await user.getIdToken(true); await mfaRefresh(); mfaMain(r.on ? "Turned off." : "Two-step sign-in is off.");
   });
-  const send = mfaBtn("Email me a code", async () => { const r = await mfaApi(user, { action:"sendCheck" }); mfaSay(r.sent ? "Sent! Check your inbox." : mfaErr(r)); });
+  const send = mfaBtn("Email me a code", async () => { const r = await mfaApi(user, { action:"sendCheck" }); mfaSay(r.sent ? "Sent! Check your inbox, and your spam folder too." : mfaErr(r)); });
   const pick = k => { kind = k; for (const b of seg.children) b.setAttribute("aria-pressed", String(b.dataset.k === k)); send.hidden = k !== "email"; form.querySelector("input").placeholder = k === "backup" ? "abcd-1234" : "123456"; form.querySelector("input").inputMode = k === "backup" ? "text" : "numeric"; };
   for (const [k, t] of kinds) { const b = el("button", null, t); b.type = "button"; b.dataset.k = k; b.onclick = () => pick(k); seg.append(b); }
   mfaShow(el("p", null, "To keep your account safe, type a code first."), seg, send, form, mfaBtn("‹ Back", async () => mfaMain(), "linkbtn"));
