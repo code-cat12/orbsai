@@ -1,7 +1,7 @@
 // Our own pretty "confirm your email" message, sent through Brevo.
 // Needs BREVO_API_KEY in Vercel. Without it the page falls back to Firebase's plain email.
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-export const MAIL_FROM = "contact-orbsai@proton.me";
+export const MAIL_FROM = "contact@orbsai.app";
 
 export function verifyEmail({ link, name, origin }) {
   const hi = name ? `Hi ${esc(name.slice(0, 40))}!` : "Hi there!";
