@@ -62,7 +62,7 @@ const BOTS = {
 };
 const ORDER = ["neb","tech","cook","game","web","write","study","music","lang"];
 // Halloween orbs show up in October (Eastern time)
-const IN_OCT = (() => { try { return new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric" }) === "10"; } catch(_) { return new Date().getMonth() === 9; } })();
+const IN_OCT = (() => { try { return new Date().toLocaleString("en-US", { timeZone:"America/New_York", month:"numeric", year:"numeric" }) === "10/2026"; } catch(_) { const n = new Date(); return n.getMonth() === 9 && n.getFullYear() === 2026; } })();   // October 2026 only, no yearly repeat
 let seasonOn = IN_OCT;   // the owner can force Halloween on or off in the admin panel
 const pickOrder = () => seasonOn ? [...ORDER, "spooks", "hex"] : ORDER;
 const seasonP = fetch("/api/season").then(r => r.ok ? r.json() : null).then(j => {
@@ -1839,7 +1839,7 @@ function renderAdmin(){
       sw("kidsForAll", "Kids Mode for everyone", "Turns on Kids Mode for every account on the site."),
       (() => { const r = el("label", "arow num"); const sel = el("select"); sel.name = "halloween";
         for (const [v, t] of [["auto", "Auto (October only)"], ["on", "On"], ["off", "Off"]]) { const o = el("option", null, t); o.value = v; if ((c.halloween || "auto") === v) o.selected = true; sel.append(o); }
-        r.append(el("span", null, "🎃 Halloween (Spooks and Hex)"), sel, el("small", "fine", "Auto = they show up in October and leave on November 1. On or Off overrides that.")); return r; })());
+        r.append(el("span", null, "🎃 Halloween (Spooks and Hex)"), sel, el("small", "fine", "Auto = they show up in October 2026 and leave on November 1, and they do not come back on their own. On or Off overrides that.")); return r; })());
     const go = el("button", "gbtn", "Save settings"); go.type = "submit"; const msg = el("small", "fine"); f.append(go, msg);
     f.onsubmit = e => { e.preventDefault(); busyBtn(go, async () => {
       const out = {};
