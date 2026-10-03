@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://orbsai.vercel.app/sitemap.xml
+Sitemap: https://orbsai.app/sitemap.xml

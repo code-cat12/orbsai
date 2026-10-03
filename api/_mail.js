@@ -26,7 +26,7 @@ Button not working? Copy this link into your browser:<br><a href="${esc(link)}" 
 <tr><td style="padding:22px 34px 30px;font-family:${hand};font-size:15px;line-height:1.5;color:#6e6b64">
 Didn't sign up? You can ignore this email and nothing will happen.</td></tr>
 <tr><td style="background:#f6f5f2;padding:18px 34px;font-family:${hand};font-size:14px;line-height:1.5;color:#8a867d;text-align:center">
-Orbs AI · made by The Abyss<br><a href="${origin}" style="color:#7b4dff">orbsai.vercel.app</a> · <a href="mailto:${MAIL_FROM}" style="color:#7b4dff">${MAIL_FROM}</a></td></tr>
+Orbs AI · made by The Abyss<br><a href="${origin}" style="color:#7b4dff">orbsai.app</a> · <a href="mailto:${MAIL_FROM}" style="color:#7b4dff">${MAIL_FROM}</a></td></tr>
 </table></td></tr></table></body></html>`;
   const text = `${name ? `Hi ${name.slice(0, 40)}!` : "Hi there!"} Thanks for joining Orbs AI.\n\nConfirm your email by opening this link:\n${link}\n\nDidn't sign up? You can ignore this email.\n\nOrbs AI, made by The Abyss\n${origin}`;
   return { subject: "Confirm your email for Orbs AI", html, text };
@@ -46,7 +46,7 @@ export function codeEmail({ code, origin }) {
 <tr><td style="padding:6px 34px 0;font-family:${hand};font-size:19px;line-height:1.5;color:#3b3934">Type this code into Orbs to finish signing in. It works for 10 minutes.</td></tr>
 <tr><td align="center" style="padding:24px 34px"><div style="display:inline-block;background:#f1e9ff;border-radius:16px;padding:14px 28px;font-family:Menlo,Consolas,monospace;font-size:36px;letter-spacing:8px;color:#1c1b19;font-weight:700">${code}</div></td></tr>
 <tr><td style="padding:0 34px 30px;font-family:${hand};font-size:15px;line-height:1.5;color:#6e6b64">Didn't try to sign in? Someone may know your password. Change it soon, and never share this code with anyone. Orbs will never ask you for it.</td></tr>
-<tr><td style="background:#f6f5f2;padding:18px 34px;font-family:${hand};font-size:14px;line-height:1.5;color:#8a867d;text-align:center">Orbs AI · made by The Abyss<br><a href="${origin}" style="color:#7b4dff">orbsai.vercel.app</a> · <a href="mailto:${MAIL_FROM}" style="color:#7b4dff">${MAIL_FROM}</a></td></tr>
+<tr><td style="background:#f6f5f2;padding:18px 34px;font-family:${hand};font-size:14px;line-height:1.5;color:#8a867d;text-align:center">Orbs AI · made by The Abyss<br><a href="${origin}" style="color:#7b4dff">orbsai.app</a> · <a href="mailto:${MAIL_FROM}" style="color:#7b4dff">${MAIL_FROM}</a></td></tr>
 </table></td></tr></table></body></html>`;
   const text = `Your Orbs AI sign-in code is ${code}\n\nIt works for 10 minutes. Didn't try to sign in? Change your password and never share this code.\n\n${origin}`;
   return { subject: `${code} is your Orbs AI sign-in code`, html, text };

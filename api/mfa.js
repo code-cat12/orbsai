@@ -4,7 +4,7 @@ import { makeMfaHandler } from "./_mfa.js";
 import { brevoSender, codeEmail } from "./_mail.js";
 
 const send = brevoSender(process.env.BREVO_API_KEY || "");
-const origin = () => (process.env.VERCEL_PROJECT_PRODUCTION_URL ? "https://" + process.env.VERCEL_PROJECT_PRODUCTION_URL : "https://orbsai.vercel.app");
+const origin = () => (process.env.VERCEL_PROJECT_PRODUCTION_URL ? "https://" + process.env.VERCEL_PROJECT_PRODUCTION_URL : "https://orbsai.app");
 
 const handler = makeMfaHandler({
   verifyToken: async (t) => {
