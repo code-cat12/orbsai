@@ -223,13 +223,13 @@ ORB.spooks = { shape:`<ellipse cx="33" cy="66" rx="20" ry="24"/><ellipse cx="67"
     <path d="M55 29C59 23 67 23 67 29C67 33 62 33 62 30" fill="none" stroke="#2f7d32" stroke-width="2.6" stroke-linecap="round"/>
     <g class="o-spider"><path d="M22 8V38" stroke="${INK}" stroke-width="1" opacity=".55"/><g class="o-dk" fill="${INK}"><circle cx="22" cy="40" r="3.6"/><path d="M18.5 38l-4-3M18.5 41l-4.5 0M18.5 43l-4 3M25.5 38l4-3M25.5 41l4.5 0M25.5 43l4 3" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/></g></g>
     <g class="o-bat o-dk" fill="${INK}"><path class="wl" d="M82 20C78 15 73 15 71 18C74 18 75 20 75 22C77 21 79 21 82 23Z"/><path class="wr" d="M82 20C86 15 91 15 93 18C90 18 89 20 89 22C87 21 85 21 82 23Z"/><ellipse cx="82" cy="21" rx="2.6" ry="3.2"/></g>` };
-ORB.hex = { shape:`<g class="o-ghostbody" fill-opacity=".62" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M26 58C26 41 37 31 50 31S74 41 74 58V77C74 84 78 88 85 87C82 93 72 94 66 90C62.5 92.5 58.5 92.5 55.5 89.5C52.5 92.5 47.5 92.5 44.5 89.5C41.5 92.5 36.5 92.5 33.5 89.5C30 91.5 26 89 26 84Z"/>
-    <path class="o-arm al" d="M27 64C21 64 16 60 15 55C19 56 23 57 27 58Z"/><path class="o-arm ar" d="M73 64C79 64 84 60 85 55C81 56 77 57 73 58Z"/></g>
-    <path d="M33 47C35 39 42 35 49 35" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".55"/>`, ey:57, tilt:0,
-  acc:`<g class="o-bow"><path class="o-dk" d="M36 33L25 26L27 41Z" fill="#ff5fb8"/><path class="o-dk" d="M36 33L47 27L45 41Z" fill="#ff5fb8"/><circle cx="36" cy="33.5" r="4" fill="#ff8fcd"/></g>
-    <g class="o-wisp w1"><circle cx="12" cy="70" r="5" fill="#bfe6ff" opacity=".35"/><circle cx="12" cy="70" r="2.4" fill="#e8f6ff"/></g>
-    <g class="o-wisp w2"><circle cx="90" cy="40" r="4.4" fill="#bfe6ff" opacity=".35"/><circle cx="90" cy="40" r="2" fill="#e8f6ff"/></g>
-    <g class="o-say"><rect class="o-dk" x="66" y="9" width="30" height="19" rx="8" fill="#fff"/><path d="M71 26l-3 7 9-5z" fill="#fff"/><text x="81" y="23.5" text-anchor="middle" font-size="11.5" font-weight="800" font-family="system-ui,sans-serif" fill="#111">BOO</text></g>` };
+ORB.hex = { shape:`<g class="o-ghostbody"><path d="M50 27C66 27 76 39 76 53C76 68 68 77 60 83C55 87 54 92 59 96C48 97 41 91 43 84C33 79 24 69 24 53C24 39 34 27 50 27Z" fill="url(#hexg)" stroke="currentColor" stroke-opacity=".55" stroke-width="1.2"/>
+    <ellipse cx="50" cy="52" rx="15" ry="14" fill="#fff" opacity=".22"/></g>`, ey:52, tilt:0,
+  back:() => `<defs><linearGradient id="hexg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".85"/><stop offset=".6" stop-color="currentColor" stop-opacity=".55"/><stop offset="1" stop-color="currentColor" stop-opacity=".05"/></linearGradient></defs>`,
+  acc:`<g class="o-bow"><path class="o-dk" d="M37 30L27 23L28.5 37Z" fill="#ff5fb8"/><path class="o-dk" d="M37 30L47 24.5L45 37Z" fill="#ff5fb8"/><circle cx="37" cy="30.5" r="3.6" fill="#ff8fcd"/></g>
+    <g class="o-wisp w1"><circle cx="16" cy="66" r="5" fill="#bfe6ff" opacity=".35"/><circle cx="16" cy="66" r="2.3" fill="#e8f6ff"/></g>
+    <g class="o-wisp w2"><circle cx="85" cy="38" r="4.4" fill="#bfe6ff" opacity=".35"/><circle cx="85" cy="38" r="2" fill="#e8f6ff"/></g>
+    <g class="o-wisp w3"><circle cx="80" cy="80" r="3.4" fill="#bfe6ff" opacity=".35"/><circle cx="80" cy="80" r="1.6" fill="#e8f6ff"/></g>` };
 let nebN = 0;
 function orbSVG(k){
   const o = ORB[k], y = o.ey;

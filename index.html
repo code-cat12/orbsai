@@ -647,9 +647,10 @@ textarea:disabled{pointer-events:none}
 .orb-spooks .o-bat .wr{transform-origin:82px 21px;animation:o-flapr .32s ease-in-out infinite alternate}
 .orb-hex .o-hop{animation:o-float 3.6s ease-in-out infinite}
 .orb-hex .o-lids{animation-delay:-2.2s}
-.orb-hex .o-arm.al{transform-origin:27px 61px;animation:o-wave 1.8s ease-in-out infinite}
-.orb-hex .o-arm.ar{transform-origin:73px 61px;animation:o-wave 1.8s ease-in-out infinite reverse}
-.orb-hex .o-bow{transform-origin:36px 34px;animation:o-bowtilt 3.6s ease-in-out infinite}
+.orb-hex .o-ghostbody{transform-origin:50px 30px}
+.orb-hex .o-squish{animation:o-sway 3.8s ease-in-out infinite}
+.orb-hex .o-wisp.w3{animation-delay:-.7s}
+.orb-hex .o-bow{transform-origin:37px 31px;animation:o-bowtilt 3.6s ease-in-out infinite}
 .orb-hex .o-say{animation-duration:4.2s}
 @keyframes o-flick{0%,100%{opacity:.35}30%{opacity:.75}55%{opacity:.5}80%{opacity:.8}}
 @keyframes o-dangle{0%,100%{transform:translateY(-6px)}50%{transform:translateY(4px)}}
@@ -659,7 +660,7 @@ textarea:disabled{pointer-events:none}
 @keyframes o-flapl{from{transform:rotate(18deg) scaleY(.7)}to{transform:rotate(-12deg)}}
 @keyframes o-flapr{from{transform:rotate(-18deg) scaleY(.7)}to{transform:rotate(12deg)}}
 @keyframes o-float{0%,100%{transform:translateY(2px)}50%{transform:translateY(-5px)}}
-@keyframes o-wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-14deg)}}
+@keyframes o-sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
 @keyframes o-bowtilt{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(7deg)}}
 @media (prefers-reduced-motion:reduce){.orb-hex .o-hop,.orb-hex .o-arm,.orb-hex .o-bow,.orb-spooks .o-candle,.orb-spooks .o-spider,.orb-hex .o-ghostbody,.orb-hex .o-wisp,.orb-spooks .o-bat,.orb-spooks .o-bat path{animation:none}}
 .hw .lbody{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
