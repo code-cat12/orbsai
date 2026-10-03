@@ -1428,11 +1428,11 @@ async function refreshStatus(){ if (!user) return; try { await kidsApi(user, { a
 const fmtDate = sec => sec ? new Date(sec * 1000).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }) : "";
 function renderPlan(){
   const p = kids.plan, on = !!kids.billing;
-  $("planTxt").textContent = p ? `Orbs ${p.name} (${p.interval === "year" ? "yearly" : "monthly"})` : "Free";
+  $("planTxt").textContent = p ? `Orbs ${p.name} (${p.interval === "year" ? "yearly" : "monthly"})` + (kids.owner ? " + Owner 👑" : "") : kids.owner ? "Owner 👑 (everything unlocked)" : "Free";
   $("planMore").textContent = p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
-    : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
+    : kids.owner ? "You get every model, 99,999 credits a day, no monthly cap, and as many web searches as the site allows. You can still test buying a plan." : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
-  $("upNav").hidden = !user || !on; $("upNavTxt").textContent = p ? `Orbs ${p.name}` : "Upgrade";
+  $("upNav").hidden = !user || !on; $("upNavTxt").textContent = p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
   $("limitUp").hidden = !on || (p && p.id === "plusplusplus");
 }
 $("planBtn").onclick = () => { if (kids.plan) billing({ action:"portal" }, $("planBtn"), $("setMsg")); else openPlans(); };

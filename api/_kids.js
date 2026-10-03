@@ -51,7 +51,7 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
       let credits = null;
       if (a.perUser > 0) { try { credits = creditsLeftFor(await getUsage(user.uid), a); } catch { credits = { limit: a.perUser, left: a.perUser }; } }
       return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, credits,
-        plan: publicPlan(sub), models: a.models, billing: !!env.STRIPE_SECRET_KEY });
+        plan: publicPlan(sub), models: a.models, billing: !!env.STRIPE_SECRET_KEY, owner: a.admin });
     }
 
     if (action === "age") {

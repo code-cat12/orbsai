@@ -54,7 +54,8 @@ export function allowance({ sub, cfg, env, user, now = Date.now() }) {
     perUser = free.perUser; month = perUser > 0 ? perUser * FREE_MONTH_DAYS : 0; monthKey = "m" + dayKey(new Date(now)).slice(0, 7);
     searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5; models = FREE_MODELS;
   }
-  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = 0; models = [0, 1, 2, 3]; }
+  // The owner gets everything: every model, 99,999 credits a day, no monthly cap, and lots of web searches
+  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = 0; models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); }
   return { admin, plan, perUser, month, monthKey, site: free.site, searches, models };
 }
 // What's left today and this month (null when there's no limit)
