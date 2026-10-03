@@ -38,8 +38,14 @@ export function planFor(model) { return PLAN_ORDER.find((p) => PLANS[p].models.i
 
 // Everything one person is allowed: credits per day and month, web searches, models.
 // perUser/month of 0 = unlimited.
-export function allowance({ sub, cfg, env, user, now = Date.now() }) {
-  const admin = isAdmin(user, env);
+// The owner can pretend to be on any plan to test it ("viewAs": free, plus, plusplus, plusplusplus; "owner" = normal)
+export const VIEW_AS = ["owner", "free", "plus", "plusplus", "plusplusplus"];
+export function testSub(viewAs) {
+  return PLANS[viewAs] ? { plan: viewAs, interval: "month", status: "active", periodStart: "test-" + viewAs, periodEnd: null, test: true } : null;
+}
+export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null }) {
+  let admin = isAdmin(user, env);
+  if (admin && viewAs && viewAs !== "owner" && VIEW_AS.includes(viewAs)) { admin = false; sub = testSub(viewAs); }
   const plan = activePlan(sub, now);
   const free = creditLimits(cfg, env);
   let perUser, month, monthKey, searches, models;
@@ -72,5 +78,5 @@ export function creditsLeftFor(usageDoc, a, day = dayKey()) {
 export function publicPlan(sub, now = Date.now()) {
   const plan = activePlan(sub, now);
   if (!plan) return null;
-  return { id: plan, name: PLANS[plan].name, interval: sub.interval || "month", status: sub.status, periodEnd: sub.periodEnd || null, cancelAtPeriodEnd: !!sub.cancelAtPeriodEnd };
+  return { id: plan, name: PLANS[plan].name, interval: sub.interval || "month", status: sub.status, periodEnd: sub.periodEnd || null, cancelAtPeriodEnd: !!sub.cancelAtPeriodEnd, test: !!sub.test };
 }

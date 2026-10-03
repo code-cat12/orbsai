@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { siteConfig, SITE_DEFAULTS } from "./_core.js";
 import { ORBS } from "./_orbs.js";
+import { VIEW_AS } from "./_plans.js";
 
 function json(status, body) {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -27,7 +28,7 @@ export function cleanSettings(input) {
 }
 
 // deps: verifyToken, load() -> panel data, saveSettings(obj), dismiss(kind, id), setBanned(uid, on)
-export function makeAdminHandler({ verifyToken, load, saveSettings, dismiss, setBanned, env = process.env }) {
+export function makeAdminHandler({ verifyToken, load, saveSettings, dismiss, setBanned, setViewAs = async () => {}, env = process.env }) {
   return async function POST(request) {
     const user = await who(request, verifyToken);
     if (!user) return json(401, { error: "unauthenticated" });
@@ -48,6 +49,12 @@ export function makeAdminHandler({ verifyToken, load, saveSettings, dismiss, set
       if (!["report", "flag", "feedback"].includes(body.kind) || typeof body.id !== "string" || !/^[\w-]{1,128}$/.test(body.id)) return json(400, { error: "bad_request" });
       await dismiss(body.kind, body.id);
       return json(200, { ok: true });
+    }
+    // Owner testing: pretend to be on a plan (nothing is charged)
+    if (action === "viewAs") {
+      if (!VIEW_AS.includes(body.plan)) return json(400, { error: "bad_request" });
+      await setViewAs(user.uid, body.plan === "owner" ? null : body.plan);
+      return json(200, { ok: true, viewAs: body.plan });
     }
     if (action === "ban" || action === "unban") {
       if (typeof body.uid !== "string" || !/^[\w-]{1,128}$/.test(body.uid)) return json(400, { error: "bad_request" });

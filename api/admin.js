@@ -63,6 +63,7 @@ const handler = makeAdminHandler({
   load,
   saveSettings: setConfig,
   dismiss: async (kind, id) => { const { db } = await admin(); await db.doc(`${kind === "report" ? "reports" : kind === "flag" ? "flags" : "feedback"}/${id}`).delete(); },
+  setViewAs: async (uid, plan) => { await setKids(uid, { viewAs: plan }); },
   setBanned: async (uid, on) => {
     const { auth } = await admin();
     await setKids(uid, { banned: on });

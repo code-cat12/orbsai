@@ -1428,13 +1428,23 @@ async function refreshStatus(){ if (!user) return; try { await kidsApi(user, { a
 const fmtDate = sec => sec ? new Date(sec * 1000).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }) : "";
 function renderPlan(){
   const p = kids.plan, on = !!kids.billing;
-  $("planTxt").textContent = p ? `Orbs ${p.name} (${p.interval === "year" ? "yearly" : "monthly"})` + (kids.owner ? " + Owner 👑" : "") : kids.owner ? "Owner 👑 (everything unlocked)" : "Free";
-  $("planMore").textContent = p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
+  const testing = kids.owner && kids.viewAs && kids.viewAs !== "owner";
+  $("planTxt").textContent = testing ? `Testing as ${p ? "Orbs " + p.name : "Free"} 🧪` : p ? `Orbs ${p.name} (${p.interval === "year" ? "yearly" : "monthly"})` + (kids.owner ? " + Owner 👑" : "") : kids.owner ? "Owner 👑 (everything unlocked)" : "Free";
+  $("viewBox").hidden = !kids.owner;
+  for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.v === (kids.viewAs || "owner")));
+  $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
     : kids.owner ? "You get every model, 99,999 credits a day, no monthly cap, and as many web searches as the site allows. You can still test buying a plan." : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
-  $("upNav").hidden = !user || !on; $("upNavTxt").textContent = p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
+  $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
+  $("planBtn").hidden = $("planBtn").hidden || testing;
   $("limitUp").hidden = !on || (p && p.id === "plusplusplus");
 }
+for (const b of document.querySelectorAll("#viewSeg button")) b.onclick = () => busyBtn(b, async () => {
+  $("viewMsg").textContent = "Switching…";
+  try { await adminApi({ action:"viewAs", plan: b.dataset.v }); await refreshStatus(); limitHit = !!credits && credits.left === 0; renderUsage();
+    $("viewMsg").textContent = b.dataset.v === "owner" ? "Back to Owner 👑. Everything unlocked." : `Now testing as ${b.textContent}. Nothing is charged.`; }
+  catch (_) { $("viewMsg").textContent = "Couldn't switch. Try again."; }
+});
 $("planBtn").onclick = () => { if (kids.plan) billing({ action:"portal" }, $("planBtn"), $("setMsg")); else openPlans(); };
 $("upNav").onclick = () => openPlans();
 $("limitUp").onclick = () => openPlans();
@@ -1454,7 +1464,8 @@ function renderPlans(){
     const price = el("div", "price", "$" + (planInterval === "year" ? pl.year : pl.month)); price.append(el("small", null, planInterval === "year" ? " / year" : " / month"));
     const ul = el("ul"); pl.perks.forEach(t => ul.append(el("li", null, t))); pl.soon.forEach(t => ul.append(el("li", "soon", t + " (coming soon)")));
     const b = el("button", "gbtn"); b.type = "button";
-    if (!on) { b.textContent = "Coming soon"; b.disabled = true; }
+    if (kids.plan && kids.plan.test) { b.textContent = pl.id === cur ? "Testing this 🧪" : "Switch to Owner to buy"; b.disabled = true; }
+    else if (!on) { b.textContent = "Coming soon"; b.disabled = true; }
     else if (pl.id === cur) { b.textContent = "Manage"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
     else if (cur) { b.textContent = "Switch"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
     else { b.textContent = "Upgrade"; b.onclick = () => billing({ action:"checkout", plan: pl.id, interval: planInterval }, b, $("planMsg")); }

@@ -3,7 +3,8 @@
 //  - 13 to 17: Kids Mode is on and locked (nobody can turn it off).
 //  - 18+: Kids Mode is optional, and turning it off needs the PIN that was set when it was turned on.
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
-import { allowance, creditsLeftFor, publicPlan } from "./_plans.js";
+import { allowance, creditsLeftFor, publicPlan, testSub } from "./_plans.js";
+import { isAdmin } from "./_limits.js";
 
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
@@ -47,11 +48,13 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
       // Today's credits, so the page can show them before the first message
       // ...plus their plan and what it unlocks
       let sub = null; try { sub = await getSub(user.uid); } catch {}
-      const a = allowance({ sub, cfg, env, user });
+      const owner = isAdmin(user, env), viewAs = owner ? (k.viewAs || "owner") : null;
+      const a = allowance({ sub, cfg, env, user, viewAs });
+      const shownSub = owner && viewAs !== "owner" ? testSub(viewAs) : sub;
       let credits = null;
       if (a.perUser > 0) { try { credits = creditsLeftFor(await getUsage(user.uid), a); } catch { credits = { limit: a.perUser, left: a.perUser }; } }
       return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, credits,
-        plan: publicPlan(sub), models: a.models, billing: !!env.STRIPE_SECRET_KEY, owner: a.admin });
+        plan: publicPlan(shownSub), models: a.models, billing: !!env.STRIPE_SECRET_KEY, owner, viewAs });
     }
 
     if (action === "age") {

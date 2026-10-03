@@ -181,7 +181,7 @@ export function makeChatHandler({
     // What this person's plan allows (free, Plus, Plus Plus, Plus Plus Plus)
     let sub = null;
     try { sub = await getSub(user.uid); } catch { sub = null; }
-    const allow = allowance({ sub, cfg, env, user });
+    const allow = allowance({ sub, cfg, env, user, viewAs: rawKids && rawKids.viewAs });
     if (!allow.models.includes(req.model)) { const need = planFor(req.model); return json(403, { error: "plan_model", need, needName: PLANS[need].name }); }
 
     const model = MODELS[req.model];

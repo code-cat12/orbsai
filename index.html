@@ -556,6 +556,8 @@ textarea:disabled{pointer-events:none}
 /* ---- Plans ---- */
 .card.plans{width:min(100%,980px)}
 .seg.two{grid-template-columns:1fr 1fr}
+.seg.five{grid-template-columns:repeat(5,1fr)}
+.seg.five button{font-size:.78rem;padding:6px 2px}
 .seg.two small{color:#2fa56b;font-size:.75rem}
 .pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding-top:14px}
 .pcard{border:1.5px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px;position:relative;background:color-mix(in srgb,var(--pc) 6%,var(--field))}
@@ -689,6 +691,11 @@ textarea:disabled{pointer-events:none}
     <div class="set-label">Plan</div>
     <div class="swrow"><span class="acct"><span class="dot2 ok"></span><span id="planTxt">Free</span></span><button class="outline small" id="planBtn" type="button">Upgrade</button></div>
     <small class="fine" id="planMore"></small>
+    <div class="vbox" id="viewBox" hidden>
+      <div class="set-label">Test as (only you can see this)</div>
+      <div class="seg five" id="viewSeg"><button type="button" data-v="owner">Owner</button><button type="button" data-v="free">Free</button><button type="button" data-v="plus">Plus</button><button type="button" data-v="plusplus">Plus Plus</button><button type="button" data-v="plusplusplus">Plus³</button></div>
+      <small class="fine" id="viewMsg">Try Orbs exactly like someone on that plan sees it: same models, credits, and web searches. Nothing is charged.</small>
+    </div>
     <div class="set-label">Credits</div>
     <div class="vbox usage" id="useBox">
       <div class="acct"><span class="dot2" id="useDot"></span><span id="useState"></span></div>
