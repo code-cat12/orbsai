@@ -1448,20 +1448,31 @@ function lvGo(i){
     .fromTo(to, { autoAlpha:0, y:50 * dir, filter:"blur(8px)" }, { autoAlpha:1, y:0, filter:"blur(0px)", duration:.7, ease:"power3.out" }, "-=.05")
     .from(bits, { autoAlpha:0, y:22 * dir, duration:.55, stagger:{ each:.035, from:dir > 0 ? "start" : "end" }, ease:"power3.out" }, "<.08");
 }
+const lvRoom = (sc, dir) => dir > 0 ? sc.scrollHeight - sc.clientHeight - sc.scrollTop > 40 : sc.scrollTop > 40; // a sliver of overflow doesn't need its own swipe
+const lvFree = () => !(lvBusy || gate.hidden || $("landing").hidden || $("landing").classList.contains("menu-open"));
 function lvStep(dir){
-  if (lvBusy || gate.hidden || $("landing").hidden || $("landing").classList.contains("menu-open")) return;
-  const sc = lvScenes[lvAt];
-  const room = dir > 0 ? sc.scrollHeight - sc.clientHeight - sc.scrollTop > 40 : sc.scrollTop > 40; // a sliver of overflow doesn't need its own swipe
-  // Let a tall scene scroll first, and don't jump while its scroll momentum is still going
+  if (!lvFree()) return;
+  const room = lvRoom(lvScenes[lvAt], dir);
+  // Let a tall scene scroll first, and don't jump while its wheel momentum is still going
   if (room || performance.now() - lvScrolledAt < 260) return room;
   lvGo(lvAt + dir);
 }
 if (window.Observer) Observer.create({ target:$("lvTop"), type:"wheel", wheelSpeed:-1, tolerance:14, onUp:() => lvStep(1), onDown:() => lvStep(-1) });
 else $("lvTop").addEventListener("wheel", e => { if (Math.abs(e.deltaY) > 14) lvStep(Math.sign(e.deltaY)); }, { passive:true });
-// Swipes: plain touch events, so the browser can still natively scroll a tall scene (pointer events get cancelled when it does)
-let lvTouchY = null;
-$("lvTop").addEventListener("touchstart", e => { lvTouchY = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive:true });
-$("lvTop").addEventListener("touchend", e => { if (lvTouchY == null) return; const dy = lvTouchY - e.changedTouches[0].clientY; lvTouchY = null; if (Math.abs(dy) > 48) lvStep(Math.sign(dy)); }, { passive:true });
+// Swipes: plain touch events, so the browser can still natively scroll a tall scene (pointer events get cancelled when it does).
+// Whether a swipe changes scenes depends on where the scene was when the finger went down: already at its end means "next",
+// otherwise the swipe was just scrolling. (Time-based checks fail on iPhones, where the edge bounce fires scroll events mid-swipe.)
+let lvTouch = null;
+$("lvTop").addEventListener("touchstart", e => {
+  const sc = lvScenes[lvAt];
+  lvTouch = e.touches.length === 1 ? { y:e.touches[0].clientY, down:!lvRoom(sc, 1), up:!lvRoom(sc, -1) } : null;
+}, { passive:true });
+$("lvTop").addEventListener("touchend", e => {
+  const t = lvTouch; lvTouch = null;
+  if (!t || !lvFree()) return;
+  const dy = t.y - e.changedTouches[0].clientY;
+  if (dy > 48 && t.down) lvGo(lvAt + 1); else if (dy < -48 && t.up) lvGo(lvAt - 1);
+}, { passive:true });
 document.addEventListener("keydown", e => {
   if (gate.hidden || $("landing").hidden || document.querySelector(".modal:not([hidden])") || e.target.closest("input, textarea, select, [contenteditable]")) return;
   const k = { ArrowDown:1, PageDown:1, ArrowUp:-1, PageUp:-1 }[e.key];
