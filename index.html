@@ -632,7 +632,7 @@ textarea:disabled{pointer-events:none}
 .vspam .li{width:1.05em;height:1.05em;vertical-align:-.18em;margin-right:6px}
 .mrow b .li{width:1.1em;height:1.1em;vertical-align:-.2em;margin-right:6px;color:var(--muted)}
 .pcode{display:flex;align-items:center;justify-content:space-between;gap:10px;border:2px dashed #9b5cff;border-radius:14px;padding:10px 14px;background:color-mix(in srgb,#9b5cff 8%,var(--field))}
-.pcode span{font:700 1.5rem ui-monospace,Menlo,Consolas,monospace;letter-spacing:.12em;user-select:all}
+.pcode span{font-family:var(--display);font-weight:600;font-size:1.6rem;letter-spacing:.08em;user-select:all}
 .promo .setrow{margin-top:10px}
 .pdeal{font-size:.85rem;font-weight:600;color:var(--pc);background:color-mix(in srgb,var(--pc) 14%,transparent);border-radius:999px;padding:3px 10px;align-self:flex-start}
 /* Halloween orbs */
@@ -717,7 +717,9 @@ textarea:disabled{pointer-events:none}
 .modetabs.top{display:none;width:min(100%,260px);margin:40px auto 10px}
 @media (max-width:760px){.app[data-view="home"] .modetabs.top{display:flex}}
 .teamnote{text-align:center;color:var(--muted);font-size:.9rem;margin:-4px 0 12px}
-.bot.lead .n::after{content:" 👑"}
+.bot.lead .n::after,.tchip .lb{content:"Lead";margin-left:6px;font-size:.68rem;font-weight:600;letter-spacing:.02em;padding:1px 6px;border-radius:999px;background:var(--c);color:#fff;vertical-align:1px}
+.teambox .tstep.go b{animation:tpulse 1.2s ease-in-out infinite}
+@keyframes tpulse{50%{opacity:.45}}
 .teambar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px;font-size:.84rem}
 .teambar .tl{color:var(--muted);margin-right:2px}
 .tchip{--c:var(--accent);display:inline-flex;align-items:center;gap:5px;padding:3px 4px 3px 4px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:inherit;font-size:.84rem}
@@ -745,7 +747,7 @@ textarea:disabled{pointer-events:none}
     <button class="icon-btn" id="hideBtn" type="button" aria-label="Hide sidebar" title="Hide sidebar"><svg class="nv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="5.5"/><rect class="nv-pane" x="6.2" y="7.2" width="4.2" height="9.6" rx="2.1" fill="currentColor" stroke="none"/><circle class="nv-dot" cx="15.6" cy="12" r="1.5" fill="currentColor" stroke="none" opacity=".45"/></svg></button>
     <span class="logo"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lg1)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lg1)" stroke-width="2.2" stroke-linecap="round"/><circle r="2" fill="#ff5fb8"><animateMotion dur="5s" repeatCount="indefinite" path="M30 16A14 5 0 0 1 2 16A14 5 0 0 1 30 16"/><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.49;.53;.97;1" dur="5s" repeatCount="indefinite"/></circle></g></svg>Orbs</span>
   </div>
-  <div class="modetabs" role="tablist" aria-label="Chat or Orb Teams"><button type="button" role="tab" data-tab="chat" aria-selected="true">💬 Chat</button><button type="button" role="tab" data-tab="team" aria-selected="false">👥 Teams</button></div>
+  <div class="modetabs" role="tablist" aria-label="Chat or Orb Teams"><button type="button" role="tab" data-tab="chat" aria-selected="true">Chat</button><button type="button" role="tab" data-tab="team" aria-selected="false">Teams</button></div>
   <button class="nav" id="sideNew" type="button"><span class="ic fill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>New</button>
   <button class="nav" id="setBtn" type="button" aria-expanded="false"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Settings</button>
   <button class="nav" id="searchNav" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span>Search chats<kbd class="kb">Ctrl K</kbd></button>
@@ -783,13 +785,13 @@ textarea:disabled{pointer-events:none}
     <button class="icon-btn star" id="pinTop" type="button" aria-label="Pin this orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button><button class="icon-btn delb" id="delTop" type="button" aria-label="Delete this chat" title="Delete this chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
   </div>
 
-  <div class="modetabs top" role="tablist" aria-label="Chat or Orb Teams"><button type="button" role="tab" data-tab="chat" aria-selected="true">💬 Chat</button><button type="button" role="tab" data-tab="team" aria-selected="false">👥 Teams</button></div>
+  <div class="modetabs top" role="tablist" aria-label="Chat or Orb Teams"><button type="button" role="tab" data-tab="chat" aria-selected="true">Chat</button><button type="button" role="tab" data-tab="team" aria-selected="false">Teams</button></div>
   <div class="hero">
     <span class="mark empty" id="mark" aria-hidden="true">?</span>
     <h1 id="greet">Good afternoon</h1>
     <button class="icon-btn star" id="pinHome" type="button" aria-label="Pin this orb" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button>
   </div>
-  <p class="teamnote" id="teamNote" hidden>Pick up to 5 orbs. Each one does its own part, then the lead 👑 builds the final result. <span id="teamLock" hidden>Orb Teams come with Plus and up ✨ <button class="linkbtn" type="button" id="teamUp">Upgrade</button></span></p>
+  <p class="teamnote" id="teamNote" hidden>Pick up to 5 orbs. Each one does its own part, then the lead builds the final result. <span id="teamLock" hidden>Orb Teams come with Plus and up. <button class="linkbtn" type="button" id="teamUp">Upgrade</button></span></p>
   <p class="inote" id="incogNote" hidden>🕶️ This chat won't be saved and won't show up in your chats.</p>
 
   <main id="log" aria-live="polite"></main>
@@ -1027,7 +1029,7 @@ textarea:disabled{pointer-events:none}
     <div class="lbody">
       <p class="lupd">October 2026</p>
       <ul>
-        <li><b>👥 Orb Teams (Plus and up):</b> open the new Teams tab and pick up to 5 orbs and they make something together. Each orb does its own part, then the lead orb builds the final result. Say "add Beat" or "remove Quill" any time.</li>
+        <li><b>Orb Teams (Plus and up):</b> open the new Teams tab and pick up to 5 orbs and they make something together. Each orb does its own part, then the lead orb builds the final result. Say "add Beat" or "remove Quill" any time.</li>
         <li><b>🎃 Spooks and 👻 Hex (October only):</b> two Halloween orbs! Spooks the pumpkin helps with costumes, carving, snacks, and parties. Hex the blue ghost tells spooky stories, riddles, and silly fortunes. They leave on November 1.</li>
         <li><b>7% off Plus and Plus Plus:</b> use code WELCOME7 at checkout for your first payment. Ends November 1.</li>
         <li><b>New home:</b> Orbs now lives at orbsai.app, and you can reach us at contact@orbsai.app.</li>

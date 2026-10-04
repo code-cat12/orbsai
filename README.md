@@ -76,7 +76,7 @@ Turn on the Customer portal (Settings → Billing → Customer portal) so people
 
 ## Orb teams (Plus and up)
 
-Orb Teams is its own tab (💬 Chat | 👥 Teams, at the top of the sidebar, and on the home screen on phones), with its own home screen and its own list of team chats. Tap up to 5 orbs (the first one is the lead 👑). In a team chat you can also just say "add Beat", "remove Quill" or "make Pixel the lead" (free, no Claude call).
+Orb Teams is its own tab (Chat | Teams, at the top of the sidebar, and on the home screen on phones), with its own home screen and its own list of team chats. Tap up to 5 orbs (the first one is the lead). In a team chat you can also just say "add Beat", "remove Quill" or "make Pixel the lead" (free, no Claude call).
 Each helper does its own part, one after another (each sees a short version of the earlier parts), then the lead gets every part and builds the final answer.
 Cost per run = the lead's normal message + 2 for the build + each helper at the model's cost (Lumina 3, no effort multiplier). Example: Pixel + Abyss, Quill, Beat on Lumina = 3 + 2 + 3×3 = 14.
 It's charged all at once, so it has to fit today's and this week's credits. Runs over 20 credits ask first. A helper that fails gives its credits back, and if the lead fails everything comes back. The logic is in `api/_core.js`.

@@ -512,13 +512,13 @@ function applyTeam(cmd){
     else if (t.helpers.includes(k)) { t.helpers = t.helpers.filter(x => x !== k); gone.push(k); }
     else out.push(`${BOTS[k].name} isn't on the team.`);
   }
-  if (cmd.lead && !t.lead) { t.lead = cmd.lead; out.unshift(`${BOTS[cmd.lead].name} is the lead now 👑`); }
+  if (cmd.lead && !t.lead) { t.lead = cmd.lead; out.unshift(`${BOTS[cmd.lead].name} is the lead now.`); }
   else if (cmd.lead && cmd.lead !== t.lead) {
     const k = cmd.lead;
     if (!t.helpers.includes(k) && t.helpers.length + 1 >= TEAM_MAX) out.push(`A team can have up to ${TEAM_MAX} orbs.`);
-    else { t.helpers = [t.lead, ...t.helpers.filter(x => x !== k)]; t.lead = k; out.unshift(`${BOTS[k].name} is the lead now 👑`); }
+    else { t.helpers = [t.lead, ...t.helpers.filter(x => x !== k)]; t.lead = k; out.unshift(`${BOTS[k].name} is the lead now.`); }
   }
-  if (added.length) out.unshift(`Added ${names(added)} to the team ✓`);
+  if (added.length) out.unshift(`Added ${names(added)} to the team.`);
   if (gone.length) out.unshift(`Removed ${names(gone)} from the team.`);
   active = t.lead;
   if (conv) { conv.orb = t.lead; conv.updated = Date.now(); save(); renderChat(); } else renderHome();
@@ -528,13 +528,13 @@ function applyTeam(cmd){
 function renderTeam(){
   const bar = $("teamBar"), t = curTeam(), home = app.dataset.view === "home";
   $("teamNote").hidden = !(home && teamMode); $("teamLock").hidden = teamAllowed();
-  $("pickLbl").textContent = home && teamMode ? "Pick your team (the first one you tap is the lead 👑)" : "Pick your orb";
+  $("pickLbl").textContent = home && teamMode ? "Pick your team (the first one you tap is the lead)" : "Pick your orb";
   if (!t || !t.lead || (home && !teamMode)) { bar.hidden = true; bar.replaceChildren(); return; }
-  bar.hidden = false; bar.replaceChildren(el("span", "tl", "👥 Team"));
+  bar.hidden = false; bar.replaceChildren(el("span", "tl", "Team"));
   for (const k of [t.lead, ...teamHelpers(t)]) {
     const chip = el("span", "tchip" + (k === t.lead ? " lead" : "")); chip.style.setProperty("--c", `var(${BOTS[k].color})`);
     const g = el("span", "g"); orbInto(g, k);
-    const n = el("button", "tn", BOTS[k].name + (k === t.lead ? " 👑" : "")); n.type = "button";
+    const n = el("button", "tn", BOTS[k].name); n.type = "button"; if (k === t.lead) n.append(el("span", "lb", "Lead"));
     n.title = k === t.lead ? "The lead builds the final result" : `Make ${BOTS[k].name} the lead`;
     n.onclick = () => { if (busy || k === t.lead) return; status.textContent = applyTeam({ lead: k }); };
     const x = el("button", "tx", "×"); x.type = "button"; x.title = `Remove ${BOTS[k].name}`; x.setAttribute("aria-label", `Remove ${BOTS[k].name}`);
@@ -559,18 +559,18 @@ $("teamUp").onclick = () => openPlans();
 function teamBox(list, live, lead){
   const d = el("details", "teambox"); if (live) d.open = true;
   const done = list.filter(x => x.s === "ok");
-  d.append(el("summary", null, live ? "👥 The team is working…" : `👥 Team notes: ${done.map(x => BOTS[x.k] ? BOTS[x.k].name : "").filter(Boolean).join(", ") || "none"}`));
+  d.append(el("summary", null, live ? "The team is working…" : `Team notes: ${done.map(x => BOTS[x.k] ? BOTS[x.k].name : "").filter(Boolean).join(", ") || "none"}`));
   for (const x of list) {
     const b = BOTS[x.k]; if (!b) continue;
     const step = el("div", "tstep"), name = el("b", null, b.name);
-    if (x.s === "go") step.append("⏳", name, " is doing their part…");
-    else if (x.s === "ok") step.append("✓", name, x.n ? " did their part:" : " did their part.");
-    else if (x.s === "fail") step.append("⚠️", name, " couldn't help this time (you got those credits back).");
-    else if (x.s === "skip") step.append("⏭️", name, " was skipped to save time (you got those credits back).");
+    if (x.s === "go") { step.classList.add("go"); step.append(name, " is doing their part…"); }
+    else if (x.s === "ok") step.append(name, x.n ? " did their part:" : " did their part.");
+    else if (x.s === "fail") step.append(name, " couldn't help this time (you got those credits back).");
+    else if (x.s === "skip") step.append(name, " was skipped to save time (you got those credits back).");
     d.append(step);
     if (x.s === "ok" && x.n) { const n = el("div", "tnote"); n.style.setProperty("--c", `var(${b.color})`); const m = el("div", "msg"); m.innerHTML = md(x.n); n.append(m); d.append(n); }
   }
-  if (live && lead && BOTS[lead]) { const step = el("div", "tstep"); step.append("🛠️", el("b", null, BOTS[lead].name), " is putting it all together…"); d.append(step); }
+  if (live && lead && BOTS[lead]) { const step = el("div", "tstep"); step.classList.add("go"); step.append(el("b", null, BOTS[lead].name), " is putting it all together…"); d.append(step); }
   return d;
 }
 
@@ -631,7 +631,7 @@ async function send(text, regen, filesOverride){
   const key = active, b = BOTS[key], mi = pf(key).m, model = MODELS[mi];
   if (lockedModel(mi)) { status.textContent = `${model.n} needs Orbs ${PLAN_NAMES[needPlan(mi)]}. Upgrade, or pick Koa or Lumina.`; openPlans(); return; }
   const helpers = teamHelpers(curTeam());
-  if (helpers.length && !teamAllowed()) { status.textContent = "Orb teams come with Plus and up ✨"; openPlans(); return; }
+  if (helpers.length && !teamAllowed()) { status.textContent = "Orb Teams come with Plus and up."; openPlans(); return; }
   const est = estimate(key, { regen, files: filesOverride }), total = teamCost(key, est);
   if (credits && credits.left < total) {
     if (!helpers.length) { creditShort(model); return; }
@@ -640,7 +640,7 @@ async function send(text, regen, filesOverride){
   // Big team runs ask first: press send again to go
   if (helpers.length && credits && total > TEAM_ASK) {
     const sig = (regen ? "\u0000redo" : text) + "|" + total;
-    if (teamOk !== sig) { teamOk = sig; status.textContent = `👥 This team run uses ${total} credits. Press send again to go!`; return; }
+    if (teamOk !== sig) { teamOk = sig; status.textContent = `This team run uses ${total} credits. Press send again to go!`; return; }
   }
   teamOk = null;
   // Start a new chat if none is open for this orb
@@ -750,7 +750,7 @@ async function send(text, regen, filesOverride){
     if (typeof (e && e.left) === "number") setCredits(e.left);
     if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
-    else if (code === "plan_team") { status.textContent = "Orb teams come with Plus and up ✨"; refreshStatus(); openPlans(); }
+    else if (code === "plan_team") { status.textContent = "Orb Teams come with Plus and up."; refreshStatus(); openPlans(); }
     else if (code === "plan_model") { status.textContent = `${model.n} needs Orbs ${e.needName || "Plus"}. Upgrade, or pick Koa or Lumina.`; refreshStatus(); openPlans(); }
     else if (code === "week_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this week. They come back Monday!" + (kids.billing ? " Upgrade for more!" : ""); }
     else if (code === "month_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this month." + (kids.billing ? " Upgrade for more!" : ""); }
@@ -1080,7 +1080,7 @@ function hint(){
   const parts = [`${what} ${est.base}`]; if (est.long) parts.push(`long chat ${est.long}`); if (est.files) parts.push(`big files ${est.files}`); if (est.web) parts.push(`web search ${est.web}`);
   // Orb team: "Team run: Pixel 3 + 3 helpers × 3 + team build 2 = 14 credits"
   if (th.length) { parts[0] = `${BOTS[active].name} ${est.base}`; parts.push(`${th.length} helper${th.length > 1 ? "s" : ""} × ${m.cost}`, `team build ${TEAM_BUILD}`); }
-  const cost1 = th.length ? `👥 Team run on ${what}: ${parts.join(" + ")} = ${creditWord(cost)}. You get credits back for any orb that can't help.`
+  const cost1 = th.length ? `Team run on ${what}: ${parts.join(" + ")} = ${creditWord(cost)}. You get credits back for any orb that can't help.`
     : parts.length > 1 ? `This message: ${parts.join(" + ")} = ${creditWord(cost)}${est.web ? " (you get the 2 back if it doesn't search)" : ""}.` : `${what} uses ${creditWord(cost)} per message.`;
   let msg = "", cls = "";
   if (left < cost && th.length && left > 0) { msg = `Not enough credits for this team run: it needs ${cost}, you have ${left}. Remove an orb or pick a cheaper model.`; cls = "warn"; }
