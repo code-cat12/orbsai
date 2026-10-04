@@ -59,7 +59,7 @@ Set `ADMIN_EMAILS` in Vercel, redeploy, then sign in to Orbs. **Admin** shows up
 
 ## Paid plans (Stripe)
 
-Plans live in `api/_plans.js`: Plus (140 credits/day, 800/week, Chrysalis), Plus Plus (255/day, 1,400/week, Mythos), Plus Plus Plus (625/day, 3,200/week). The weekly cap resets Monday at midnight New York time. Free gets Koa and Lumina with the daily credits set in the admin panel.
+Plans live in `api/_plans.js`: Plus (140 credits/day, 800/week, Chrysalis), Plus Plus (255/day, 1,400/week, Mythos), Plus Plus Plus (625/day, 3,200/week). The weekly cap resets Monday at midnight New York time. Free gets Koa and Lumina with the daily credits set in the admin panel, and a weekly cap of 5 days' worth (50 a day = 250 a week), also resetting Monday.
 
 Vercel variables:
 - `STRIPE_SECRET_KEY`: from Stripe → Developers → API keys (`sk_test_…` while testing, `sk_live_…` for real)

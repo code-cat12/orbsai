@@ -8,9 +8,8 @@ export const PLANS = {
 };
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 export const FREE_MODELS = [0, 1];       // Koa and Lumina
-export const FREE_MONTH_DAYS = 20;       // free monthly cap = 20 days' worth
-export const FREE_WEEK_DAYS = 7;
-export const ADMIN_WEEK = 99999999;      // the owner's weekly limit (so the weekly bar shows)         // paying people never get a weekly cap below free people's week
+export const FREE_WEEK_DAYS = 5;         // free weekly cap = 5 days' worth (50 a day -> 250 a week), resets Monday like paid plans
+export const ADMIN_WEEK = 99999999;      // the owner's weekly limit (so the weekly bar shows)
 
 // The Monday (New York time) that starts this week, e.g. "2026-10-05". Weekly credits come back then.
 export function weekKey(now = Date.now()) {
@@ -55,7 +54,7 @@ export function activePlan(sub, now = Date.now(), env = process.env) {
 // The cheapest plan that unlocks a model
 export function planFor(model) { return PLAN_ORDER.find((p) => PLANS[p].models.includes(model)) || "plusplus"; }
 
-// Everything one person is allowed: credits per day and per week (paid) or month (free), web searches, models.
+// Everything one person is allowed: credits per day and per week (free and paid), web searches, models.
 // perUser/month of 0 = unlimited. "month" and "monthKey" hold the longer cap whatever its period is ("week" for paid plans, "month" for free).
 // The owner can pretend to be on any plan to test it ("viewAs": free, plus, plusplus, plusplusplus; "owner" = normal)
 export const VIEW_AS = ["owner", "free", "plus", "plusplus", "plusplusplus"];
@@ -74,9 +73,9 @@ export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null
     // If free people have no credit limit right now, paying people shouldn't have one either
     if (!(free.perUser > 0)) { perUser = 0; month = 0; }
     // Paying people never get less than free people
-    else if (free.perUser > perUser) { perUser = free.perUser; month = Math.max(month, free.perUser * FREE_WEEK_DAYS); }
+    else if (free.perUser > perUser) { perUser = free.perUser; month = Math.max(month, free.perUser * FREE_WEEK_DAYS); }   // never less than free
   } else {
-    perUser = free.perUser; month = perUser > 0 ? perUser * FREE_MONTH_DAYS : 0; monthKey = "m" + dayKey(new Date(now)).slice(0, 7);
+    perUser = free.perUser; month = perUser > 0 ? perUser * FREE_WEEK_DAYS : 0; period = "week"; monthKey = "w" + weekKey(now);
     searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5; models = FREE_MODELS;
   }
   // The owner gets everything: every model, 99,999 credits a day, 99,999,999 a week, and lots of web searches

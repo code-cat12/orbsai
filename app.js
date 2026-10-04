@@ -1252,7 +1252,7 @@ function renderUsage(){
   const level = left <= 20 ? "out" : left <= 50 ? "low" : "";
   $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
   bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (level ? " " + level : ""); }
-  // the longer limit: this week (paid plans) or this month (free)
+  // the longer limit: this week (for everyone now)
   if (credits.monthLimit > 0 && typeof credits.monthLeft === "number") {
     const isWeek = credits.period === "week", ml = credits.monthLeft, mt = credits.monthLimit, pct = Math.max(0, Math.min(1, ml / mt));
     const wl = ml <= 0 ? "out" : pct <= 0.2 ? "low" : "";
