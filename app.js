@@ -993,7 +993,8 @@ function item(k, sub){
   return el;
 }
 const MODELS = [{n:"Koa",v:"1.01",cost:1,effort:false,base:"Claude Haiku 4.5",d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,effort:true,base:"Claude Sonnet 5.5",d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,effort:true,base:"Claude Opus 5.5",d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,effort:true,base:"Claude Fable 5.1",d:"the most careful, takes its time"}];
-const creditWord = n => n + (n === 1 ? " credit" : " credits");
+const commas = n => typeof n === "number" ? n.toLocaleString("en-US") : n;
+const creditWord = n => commas(n) + (n === 1 ? " credit" : " credits");
 let prefs = {};
 // Real effort levels (the server maps these to Claude's low/medium/high/xhigh/max). Koa (Haiku) has no effort setting.
 const EFFORTS = [{n:"Low",d:"quickest and cheapest, thinks a little",mult:1},{n:"Medium",d:"good balance for everyday chats",mult:1},{n:"High",d:"thinks things through more carefully",mult:2},{n:"Extra",d:"thinks a lot, slower and pricier",mult:3},{n:"Max",d:"thinks as hard as it can, slowest and most expensive",mult:4}];
@@ -1242,7 +1243,7 @@ function renderUsage(){
     return;
   }
   const { left, limit } = credits;
-  $("useState").textContent = limit ? `${left} of ${creditWord(limit)} left today` : `${creditWord(left)} left today`;
+  $("useState").textContent = limit ? `${commas(left)} of ${creditWord(limit)} left today` : `${creditWord(left)} left today`;
   // 20 or less = low (red), 21 to 50 = getting there (yellow), more = fine (green)
   const level = left <= 20 ? "out" : left <= 50 ? "low" : "";
   $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
@@ -1252,7 +1253,7 @@ function renderUsage(){
     const isWeek = credits.period === "week", ml = credits.monthLeft, mt = credits.monthLimit, pct = Math.max(0, Math.min(1, ml / mt));
     const wl = ml <= 0 ? "out" : pct <= 0.2 ? "low" : "";
     wk.hidden = false; $("useWeekBar").hidden = false;
-    $("useWeekTxt").textContent = `${ml} of ${creditWord(mt)} left this ${isWeek ? "week" : "month"}`;
+    $("useWeekTxt").textContent = `${commas(ml)} of ${creditWord(mt)} left this ${isWeek ? "week" : "month"}`;
     $("useWeekDot").className = "dot2 " + (wl === "out" ? "bad" : wl === "low" ? "mid" : "ok");
     $("useWeekBar").className = "ubar" + (wl ? " " + wl : ""); $("useWeekFill").style.width = pct * 100 + "%";
     $("useWeekMore").textContent = isWeek ? `Resets Monday at 12:00 am New York time (in ${untilMonday()}).` : "Resets on the 1st of the month.";
@@ -1887,7 +1888,7 @@ function renderPlan(){
   $("viewBox").hidden = !kids.owner;
   for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.v === (kids.viewAs || "owner")));
   $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
-    : kids.owner ? "You get every model, 99,999 credits a day, no monthly cap, and as many web searches as the site allows. You can still test buying a plan." : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
+    : kids.owner ? "You get every model, 99,999 credits a day, 99,999,999 a week, and as many web searches as the site allows. You can still test buying a plan." : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
   $("promoNav").hidden = !user || !on || !promoOn() || !!(p && !p.test);
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";

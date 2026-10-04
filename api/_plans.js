@@ -9,7 +9,8 @@ export const PLANS = {
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 export const FREE_MODELS = [0, 1];       // Koa and Lumina
 export const FREE_MONTH_DAYS = 20;       // free monthly cap = 20 days' worth
-export const FREE_WEEK_DAYS = 7;         // paying people never get a weekly cap below free people's week
+export const FREE_WEEK_DAYS = 7;
+export const ADMIN_WEEK = 99999999;      // the owner's weekly limit (so the weekly bar shows)         // paying people never get a weekly cap below free people's week
 
 // The Monday (New York time) that starts this week, e.g. "2026-10-05". Weekly credits come back then.
 export function weekKey(now = Date.now()) {
@@ -78,8 +79,8 @@ export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null
     perUser = free.perUser; month = perUser > 0 ? perUser * FREE_MONTH_DAYS : 0; monthKey = "m" + dayKey(new Date(now)).slice(0, 7);
     searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5; models = FREE_MODELS;
   }
-  // The owner gets everything: every model, 99,999 credits a day, no monthly cap, and lots of web searches
-  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = 0; models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); memory = true; }
+  // The owner gets everything: every model, 99,999 credits a day, 99,999,999 a week, and lots of web searches
+  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = ADMIN_WEEK; period = "week"; monthKey = "w" + weekKey(now); models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); memory = true; }
   return { admin, plan, perUser, month, monthKey, period, site: free.site, searches, models, memory };
 }
 // What's left today and this week/month (null when there's no limit)
