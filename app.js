@@ -268,7 +268,7 @@ function renderPicker(){
     wrap.appendChild(el);
   }
   const chips = $("chips"); chips.innerHTML = "";
-  if (active) for (const c of teamMode && teamHelpers(teamDraft).length ? TEAM_CHIPS : BOTS[active].chips) {
+  if (active) for (const c of teamMode ? TEAM_CHIPS : BOTS[active].chips) {
     const ch = document.createElement("button"); ch.type = "button"; ch.className = "chip"; ch.textContent = c;
     ch.onclick = () => send(c); chips.appendChild(ch);
   }
@@ -277,7 +277,7 @@ function renderPicker(){
 function renderHome(){
   app.dataset.view = "home"; log.innerHTML = "";
   const mark = $("mark");
-  $("greet").textContent = greeting();
+  $("greet").textContent = teamMode ? "Orb Teams" : greeting();
   if (active) {
     const b = BOTS[active];
     mark.className = "mark"; orbInto(mark, active);
@@ -297,7 +297,7 @@ function renderIncog(){
   btn.title = incogNext ? "Turn off incognito" : "Incognito chat (not saved)";
   app.classList.toggle("incog", home && incogNext);
   if (home) {
-    $("greet").textContent = incogNext ? "Incognito chat" : greeting();
+    $("greet").textContent = incogNext ? "Incognito chat" : teamMode ? "Orb Teams" : greeting();
     $("incogNote").hidden = !incogNext;
   }
 }
@@ -459,7 +459,9 @@ function dropIncog(keep){ for (const id of Object.keys(convs)) if (convs[id].inc
 
 // ---------- Orb teams (Plus and up): helpers each do their part, then the lead orb builds the final result ----------
 const TEAM_MAX = 5, TEAM_BUILD = 2, TEAM_ASK = 20;   // max orbs (lead included), extra credits for the build, ask first above this
-let teamMode = false, teamDraft = { lead: null, helpers: [] }, teamOk = null;
+// The Teams tab (like Chat and Code in the Claude app): its own home screen and its own list of chats
+let teamMode = false, teamDraft = { lead: null, helpers: [] }, teamOk = null, lastChatOrb = null;
+try { teamMode = localStorage.getItem("orbs-tab") === "team"; } catch(_) {}
 const teamAllowed = () => !!kids.plan || (!!kids.owner && (!kids.viewAs || kids.viewAs === "owner"));
 const TEAM_CHIPS = ["Make me a video game", "Plan a birthday party with food and music", "Make a comic with a story and songs"];
 // The team for what's on screen: the open chat's team, or the one being picked on the home screen
@@ -495,16 +497,13 @@ function teamCommand(text){
 }
 function applyTeam(cmd){
   const conv = app.dataset.view === "chat" ? curConv() : null;
-  let t = conv ? conv.team : teamMode ? teamDraft : null;
-  if (!t) {   // a normal chat (or orb) becomes a team
-    if (!active) return "Pick an orb first.";
-    t = { lead: active, helpers: [] };
-    if (conv) conv.team = t; else { teamMode = true; teamDraft = t; }
-  }
+  const t = conv ? conv.team : teamMode ? teamDraft : null;
+  if (!t) return "";
   const names = ks => ks.map(k => BOTS[k].name).join(" and ");
   const out = [], added = [], gone = [];
   for (const k of cmd.add || []) {
-    if (k === t.lead || t.helpers.includes(k)) out.push(`${BOTS[k].name} is already on the team.`);
+    if (!t.lead) { t.lead = k; added.push(k); }
+    else if (k === t.lead || t.helpers.includes(k)) out.push(`${BOTS[k].name} is already on the team.`);
     else if (t.helpers.length + 1 >= TEAM_MAX) { out.push(`A team can have up to ${TEAM_MAX} orbs.`); break; }
     else { t.helpers.push(k); added.push(k); }
   }
@@ -513,7 +512,8 @@ function applyTeam(cmd){
     else if (t.helpers.includes(k)) { t.helpers = t.helpers.filter(x => x !== k); gone.push(k); }
     else out.push(`${BOTS[k].name} isn't on the team.`);
   }
-  if (cmd.lead && cmd.lead !== t.lead) {
+  if (cmd.lead && !t.lead) { t.lead = cmd.lead; out.unshift(`${BOTS[cmd.lead].name} is the lead now 👑`); }
+  else if (cmd.lead && cmd.lead !== t.lead) {
     const k = cmd.lead;
     if (!t.helpers.includes(k) && t.helpers.length + 1 >= TEAM_MAX) out.push(`A team can have up to ${TEAM_MAX} orbs.`);
     else { t.helpers = [t.lead, ...t.helpers.filter(x => x !== k)]; t.lead = k; out.unshift(`${BOTS[k].name} is the lead now 👑`); }
@@ -527,9 +527,8 @@ function applyTeam(cmd){
 // The row of team members above the chat box
 function renderTeam(){
   const bar = $("teamBar"), t = curTeam(), home = app.dataset.view === "home";
-  $("teamBtn").hidden = !home || !user || kids.on && !teamAllowed();
-  $("teamBtn").setAttribute("aria-pressed", String(home && teamMode));
-  $("pickLbl").textContent = home && teamMode ? `Pick up to ${TEAM_MAX} orbs for your team (the first one is the lead 👑)` : "Pick your orb";
+  $("teamNote").hidden = !(home && teamMode); $("teamLock").hidden = teamAllowed();
+  $("pickLbl").textContent = home && teamMode ? "Pick your team (the first one you tap is the lead 👑)" : "Pick your orb";
   if (!t || !t.lead || (home && !teamMode)) { bar.hidden = true; bar.replaceChildren(); return; }
   bar.hidden = false; bar.replaceChildren(el("span", "tl", "👥 Team"));
   for (const k of [t.lead, ...teamHelpers(t)]) {
@@ -544,12 +543,18 @@ function renderTeam(){
   }
   bar.append(el("span", "ttip", teamHelpers(t).length ? 'Say "add Beat" or "remove Quill" any time. Tap a name to make it the lead.' : 'Add orbs to the team: say "add Quill and Beat"' + (home ? " or tap them below." : ".")));
 }
-$("teamBtn").onclick = () => {
+function setTab(team){
+  if (team !== teamMode) { if (team) lastChatOrb = active; teamMode = team; teamDraft = { lead: null, helpers: [] }; if (app.dataset.view !== "chat") active = team ? null : lastChatOrb; }
+  try { localStorage.setItem("orbs-tab", team ? "team" : "chat"); } catch(_) {}
+  for (const b of document.querySelectorAll("[data-tab]")) b.setAttribute("aria-selected", String((b.dataset.tab === "team") === teamMode));
+}
+for (const b of document.querySelectorAll("[data-tab]")) b.onclick = () => {
   if (busy) return;
-  if (!teamAllowed()) { status.textContent = "Orb teams come with Plus and up ✨"; openPlans(); return; }
-  teamMode = !teamMode; teamDraft = { lead: teamMode ? active : null, helpers: [] }; cur = null;
-  renderHome(); box.focus();
+  dropIncog(null); cur = null; webOn = false; teamOk = null; status.textContent = ""; box.value = ""; autosize();
+  app.dataset.view = "home"; setTab(b.dataset.tab === "team"); renderHome(); if (mobile()) setSide(false);
 };
+setTab(teamMode);
+$("teamUp").onclick = () => openPlans();
 // Team progress and notes that go with a reply
 function teamBox(list, live, lead){
   const d = el("details", "teambox"); if (live) d.open = true;
@@ -581,6 +586,7 @@ function pick(k){
 function openConv(id){
   if (busy || !convs[id]) return;
   dropIncog(id); stopSpeak();
+  if (!!convs[id].team !== teamMode) { app.dataset.view = "chat"; setTab(!!convs[id].team); }
   cur = id; active = convs[id].orb; status.textContent = ""; box.value = ""; autosize();
   renderChat(); if (mobile()) setSide(false);
 }
@@ -618,7 +624,7 @@ async function send(text, regen, filesOverride){
   if ((!text && !regen && !pendingFiles.length && !filesOverride) || busy) return;
   if (!user) return;
   // Team changes said in words ("add Beat", "remove Quill") are done right here, for free
-  if (!regen && !filesOverride && !pendingFiles.length && text && teamAllowed()) {
+  if (!regen && !filesOverride && !pendingFiles.length && text && curTeam() && teamAllowed()) {
     const cmd = teamCommand(text);
     if (cmd) { box.value = ""; autosize(); status.textContent = applyTeam(cmd); return; }
   }
@@ -908,7 +914,7 @@ setSide(sideOpen);
 $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
-$("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
+$("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; teamDraft = { lead: null, helpers: [] }; teamOk = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
 function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); renderMemSet(); }).catch(() => {}); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); renderMemSet(); }
 // ---------- Memory ----------
 function memChip(list){
@@ -1133,7 +1139,9 @@ function convItem(c, sub){
 function renderSide(){
   syncSel();
   const rec = $("recent"); rec.innerHTML = ""; const term = $("q").value.trim().toLowerCase();
-  const shown = Object.values(convs).filter(c => c.turns.length && !c.incog && (!term || (c.title || "").toLowerCase().includes(term) || BOTS[c.orb].name.toLowerCase().includes(term) || c.turns.some(m => m.content.toLowerCase().includes(term))))
+  const secs = document.querySelectorAll(".scroller .sec");
+  secs[0].hidden = $("pins").hidden = teamMode; secs[1].textContent = teamMode ? "Recent team chats" : "Recent chats";
+  const shown = Object.values(convs).filter(c => c.turns.length && !c.incog && !!c.team === teamMode && (!term || (c.title || "").toLowerCase().includes(term) || BOTS[c.orb].name.toLowerCase().includes(term) || c.turns.some(m => m.content.toLowerCase().includes(term))))
     .sort((a, b) => (b.updated || 0) - (a.updated || 0));
   for (const c of shown) {
     const row = document.createElement("div"); row.className = "rrow";
@@ -1147,7 +1155,7 @@ function renderSide(){
     del.onclick = e => { e.stopPropagation(); askDelete(c.id, del); };
     row.append(ren, del); rec.appendChild(row);
   }
-  if (!shown.length) { const d = document.createElement("div"); d.className = "pin-empty"; d.textContent = term ? "No chats match." : "Your chats will show up here."; rec.appendChild(d); }
+  if (!shown.length) { const d = document.createElement("div"); d.className = "pin-empty"; d.textContent = term ? "No chats match." : teamMode ? "Your team chats will show up here." : "Your chats will show up here."; rec.appendChild(d); }
   const wrap = $("pins"); wrap.innerHTML = "";
   for (const k of pins) {
     const b = BOTS[k], el = document.createElement("button");
@@ -1159,7 +1167,7 @@ function renderSide(){
   }
   if (!pins.length) { const d = document.createElement("div"); d.className = "pin-empty"; d.textContent = "Pick an orb, then tap the star to pin it here."; wrap.appendChild(d); }
   const on = active && pins.includes(active);
-  for (const id of ["pinTop","pinHome"]) { const e = $(id); e.classList.toggle("on", !!on); e.hidden = !active; e.setAttribute("aria-label", on ? "Unpin this orb" : "Pin this orb"); }
+  for (const id of ["pinTop","pinHome"]) { const e = $(id); e.classList.toggle("on", !!on); e.hidden = !active || teamMode; e.setAttribute("aria-label", on ? "Unpin this orb" : "Pin this orb"); }
 }
 function togglePin(){
   if (!active) return;
