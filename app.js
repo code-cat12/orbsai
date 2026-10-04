@@ -1423,7 +1423,9 @@ $("navSignin").onclick = () => setAuthMode("in");
 for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { lvMenu(false); lvGo(b.dataset.go === "top" ? 0 : lvScenes.findIndex(x => x.id === b.dataset.go)); };
 // Landing hero: phone menu, entrance animations, and only playing the video while the landing shows
 function lvMenu(open){ $("landing").classList.toggle("menu-open", open); $("lvBurger").setAttribute("aria-expanded", String(open)); $("lvBurger").setAttribute("aria-label", open ? "Close menu" : "Open menu"); }
-function lvVideo(on){ const v = $("lvVideo"); if (on) v.play().catch(() => {}); else v.pause(); }
+function lvVideo(on){ const v = $("lvVideo"); v.muted = true; if (on) v.play().catch(() => {}); else v.pause(); }
+// If autoplay was blocked (iPhone Low Power Mode, data saver), start the video on the first tap, swipe, or key
+for (const t of ["touchstart", "pointerdown", "keydown"]) document.addEventListener(t, () => { if (!$("landing").hidden && !gate.hidden && $("lvVideo").paused) lvVideo(true); }, { passive:true });
 $("lvBurger").onclick = () => lvMenu(!$("landing").classList.contains("menu-open"));
 // Landing scenes: the page doesn't scroll. Wheel, swipe, arrow keys, the dots, and the nav swap the content with GSAP while the video stays put.
 // A scene taller than the screen scrolls on its own first, then the next swipe at its edge moves on.
