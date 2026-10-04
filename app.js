@@ -1420,11 +1420,53 @@ $("goBtn").onclick = () => setAuthMode("up");
 $("goSignin").onclick = () => setAuthMode("in");
 $("navSignin").onclick = () => setAuthMode("in");
 // Landing nav: scroll to a section (or the top)
-for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { lvMenu(false); if (b.dataset.go === "top") gate.scrollTo({ top:0, behavior:"smooth" }); else $(b.dataset.go).scrollIntoView({ behavior:"smooth", block:"start" }); };
+for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { lvMenu(false); lvGo(b.dataset.go === "top" ? 0 : lvScenes.findIndex(x => x.id === b.dataset.go)); };
 // Landing hero: phone menu, entrance animations, and only playing the video while the landing shows
 function lvMenu(open){ $("landing").classList.toggle("menu-open", open); $("lvBurger").setAttribute("aria-expanded", String(open)); $("lvBurger").setAttribute("aria-label", open ? "Close menu" : "Open menu"); }
 function lvVideo(on){ const v = $("lvVideo"); if (on) v.play().catch(() => {}); else v.pause(); }
 $("lvBurger").onclick = () => lvMenu(!$("landing").classList.contains("menu-open"));
+// Landing scenes: the page doesn't scroll. Wheel, swipe, arrow keys, the dots, and the nav swap the content with GSAP while the video stays put.
+// A scene taller than the screen scrolls on its own first, then the next swipe at its edge moves on.
+const lvScenes = [...document.querySelectorAll("#lvStage .lv-scene")];
+let lvAt = 0, lvBusy = false, lvScrolledAt = 0;
+const lvCalm = () => !window.gsap || matchMedia("(prefers-reduced-motion: reduce)").matches;
+$("lvDots").append(...lvScenes.map((sc, i) => { const d = el("button"); d.type = "button"; d.setAttribute("aria-label", sc.dataset.name); d.onclick = () => lvGo(i); return d; }));
+function lvDots(){ [...$("lvDots").children].forEach((d, i) => d.setAttribute("aria-current", String(i === lvAt))); }
+lvDots();
+for (const sc of lvScenes) sc.addEventListener("scroll", () => { lvScrolledAt = performance.now(); }, { passive:true });
+function lvGo(i){
+  if (i < 0 || i >= lvScenes.length || i === lvAt || lvBusy) return;
+  const from = lvScenes[lvAt], to = lvScenes[i], dir = i > lvAt ? 1 : -1;
+  lvAt = i; lvDots();
+  to.scrollTop = dir > 0 ? 0 : to.scrollHeight;
+  if (lvCalm()) { from.classList.remove("on"); to.classList.add("on"); return; }
+  lvBusy = true;
+  const bits = to.querySelectorAll(".lv-badge, .lv-line > span, .lv-lede, .lv-actions, .lv-stat, .lv-panel h2, .lv-panel .lsub, .lbonus, .lo, .lfeat li, .pcard, .lv-panel > .lsec > p, .faq details, .legalnote");
+  gsap.timeline({ onComplete(){ from.classList.remove("on"); gsap.set([from, to, ...bits], { clearProps:"opacity,visibility,transform,filter" }); lvBusy = false; } })
+    .to(from, { autoAlpha:0, y:-50 * dir, scale:.98, filter:"blur(8px)", duration:.42, ease:"power2.in" })
+    .add(() => to.classList.add("on"))
+    .fromTo(to, { autoAlpha:0, y:50 * dir, filter:"blur(8px)" }, { autoAlpha:1, y:0, filter:"blur(0px)", duration:.7, ease:"power3.out" }, "-=.05")
+    .from(bits, { autoAlpha:0, y:22 * dir, duration:.55, stagger:{ each:.035, from:dir > 0 ? "start" : "end" }, ease:"power3.out" }, "<.08");
+}
+function lvStep(dir){
+  if (lvBusy || gate.hidden || $("landing").hidden || $("landing").classList.contains("menu-open")) return;
+  const sc = lvScenes[lvAt];
+  const room = dir > 0 ? sc.scrollHeight - sc.clientHeight - sc.scrollTop > 40 : sc.scrollTop > 40; // a sliver of overflow doesn't need its own swipe
+  // Let a tall scene scroll first, and don't jump while its scroll momentum is still going
+  if (room || performance.now() - lvScrolledAt < 260) return room;
+  lvGo(lvAt + dir);
+}
+if (window.Observer) Observer.create({ target:$("lvTop"), type:"wheel", wheelSpeed:-1, tolerance:14, onUp:() => lvStep(1), onDown:() => lvStep(-1) });
+else $("lvTop").addEventListener("wheel", e => { if (Math.abs(e.deltaY) > 14) lvStep(Math.sign(e.deltaY)); }, { passive:true });
+// Swipes: plain touch events, so the browser can still natively scroll a tall scene (pointer events get cancelled when it does)
+let lvTouchY = null;
+$("lvTop").addEventListener("touchstart", e => { lvTouchY = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive:true });
+$("lvTop").addEventListener("touchend", e => { if (lvTouchY == null) return; const dy = lvTouchY - e.changedTouches[0].clientY; lvTouchY = null; if (Math.abs(dy) > 48) lvStep(Math.sign(dy)); }, { passive:true });
+document.addEventListener("keydown", e => {
+  if (gate.hidden || $("landing").hidden || document.querySelector(".modal:not([hidden])") || e.target.closest("input, textarea, select, [contenteditable]")) return;
+  const k = { ArrowDown:1, PageDown:1, ArrowUp:-1, PageUp:-1 }[e.key];
+  if (k) { e.preventDefault(); const sc = lvScenes[lvAt]; if (lvStep(k)) sc.scrollBy({ top:k * sc.clientHeight * .7, behavior:"smooth" }); } else if (e.key === "Home") lvGo(0); else if (e.key === "End") lvGo(lvScenes.length - 1);
+});
 $("lvBackdrop").onclick = () => lvMenu(false);
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("landing").classList.contains("menu-open")) lvMenu(false); });
 matchMedia("(min-width:901px)").addEventListener("change", e => { if (e.matches) lvMenu(false); });

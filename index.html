@@ -723,15 +723,17 @@ textarea:disabled{pointer-events:none}
 .teambox .tnote .msg{font-size:.88rem}
 
 </style>
+<script src="/vendor/gsap.min.js" defer></script>
+<script src="/vendor/Observer.min.js" defer></script>
 <script type="module" src="/app.js"></script>
 <style>
 /* Landing hero: one full-screen frame over the background video, in the site's dark colors + orb gradient */
-.gate:has(#landing:not([hidden])){padding:0;background:#161616}
-.landing{width:100%;gap:0;padding-block:0}
-.lrest{width:min(100% - 32px,880px);display:flex;flex-direction:column;align-items:center;gap:28px;padding:56px 0 24px;background:var(--bg)}
-.gate:has(#landing:not([hidden])) .lrest{box-shadow:0 0 0 100vmax var(--bg);clip-path:inset(0 -100vmax)}
+.gate:has(#landing:not([hidden])){padding:0;background:#161616;overflow:hidden}
+.landing{width:100%;height:100vh;height:100dvh;gap:0;padding-block:0;overflow:hidden}
 .lv{
   --bg:#161616; --text:#ecebe7; --muted:#9a9891; --stat:#dcd9d2;
+  --panel:#1f1f1e; --field:#212120; --ink:#ecebe7; --line:#3a3936; --accent:#7aa7f2;
+  --c-tech:#4a8dff; --c-cook:#ff7d33; --c-game:#22d17a; --c-web:#a066ff; --c-write:#ffc233; --c-study:#1fd1c0; --c-music:#ff4f9d; --c-lang:#ff5a50; --c-spooks:#ff8f26; --c-hex:#7cc0ff; --c-neb:#f4f4f7; --neb-eye:#111111;
   --border:rgba(236,235,231,.16); --c1:#4f7bff; --c2:#9b5cff; --c3:#ff5fb8;
   --logo:15.5px; --logo-mark:22px; --nav:14px; --nav-h:40px; --btn:13.5px; --btn-h:40px; --hero-btn-h:42px;
   --h1:48px; --lede:15.5px; --badge:12.5px; --stat-size:13.5px;
@@ -745,7 +747,32 @@ textarea:disabled{pointer-events:none}
 .lv button{font-family:inherit;margin:0}
 .lv-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1;z-index:0;pointer-events:none;background:#161616}
 .lv-grain{position:absolute;inset:0;z-index:100;pointer-events:none;opacity:.06;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.lv-page{position:relative;z-index:1;display:grid;grid-template-rows:auto 1fr auto;height:100%}
+.lv-page{position:relative;z-index:1;display:grid;grid-template-rows:auto 1fr;height:100%}
+
+/* Scenes: the video and header stay, only the content in the stage swaps (GSAP in app.js) */
+.lv-stage{position:relative;min-height:0}
+.lv-scene{position:absolute;inset:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(236,235,231,.25) transparent;opacity:0;visibility:hidden}
+.lv-scene.on{opacity:1;visibility:visible}
+.lv-scene:not(.lv-scene-hero){padding:12px 72px 40px}
+.lv-panel{margin:auto;width:min(100%,960px);display:flex;flex-direction:column;align-items:center;gap:22px;padding:30px 32px;border-radius:20px;
+  background:rgba(22,22,22,.62);border:1px solid rgba(236,235,231,.12);box-shadow:0 20px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter:blur(18px) saturate(1.1);-webkit-backdrop-filter:blur(18px) saturate(1.1);font-size:18px;line-height:1.45;color:var(--ink)}
+.lv-panel .lsec,.lv-panel .faq{width:100%;max-width:none}
+.lv-panel h2{font:500 2rem/1.15 var(--display);letter-spacing:-.02em;margin:0 0 6px;text-align:center;color:#fff}
+.lv-panel .lsub{margin:0 auto 18px;max-width:52ch}
+.lv-panel .lineup{gap:22px 10px;padding-top:6px}
+.lv-panel .lbonus{display:table;margin:0 auto 22px}
+.lv-panel .faq{display:flex;flex-direction:column;gap:8px}
+.lv-panel .faq h2{margin-bottom:10px}
+.lv-panel .legalnote{text-align:center}
+.lv-panel .pgrid{padding-top:22px;gap:16px}
+.lv-panel .pcard{background:color-mix(in srgb,var(--pc) 10%,rgba(31,31,30,.85))}
+.lv-scene-hero{display:flex;flex-direction:column}
+.lv-scene-hero .lv-hero{flex:1}
+.lv-dots{position:absolute;right:22px;top:50%;transform:translateY(-50%);z-index:55;display:flex;flex-direction:column;gap:10px}
+.lv-dots button{width:10px;height:10px;padding:0;border-radius:50%;border:1px solid rgba(236,235,231,.6);background:transparent;cursor:pointer;transition:background .3s ease,transform .3s ease,border-color .3s ease}
+.lv-dots button:hover{border-color:#fff;transform:scale(1.2)}
+.lv-dots button[aria-current="true"]{background:linear-gradient(135deg,#4f7bff,#9b5cff 50%,#ff5fb8);border-color:transparent;transform:scale(1.25)}
 .lv-backdrop{display:none}
 
 /* Header */
@@ -849,9 +876,12 @@ textarea:disabled{pointer-events:none}
 
 /* Phones: menu becomes a full-screen sheet */
 @media (max-width:900px){
-  .lv{--logo:16px;--btn:15px;--btn-h:46px;--hero-btn-h:48px;--h1:36px;--lede:16.5px;--badge:13.5px;--stat-size:15px;--header-y:16px;--header-x:18px;--stats-x:20px;--stats-y:28px;--hero-gap:36px;--copy-max:100%;--lede-max:100%;height:auto;overflow:visible}
-  .lv-video{position:absolute}
-  .lv-page{min-height:100vh;min-height:100dvh}
+  .lv{--logo:16px;--btn:15px;--btn-h:46px;--hero-btn-h:48px;--h1:36px;--lede:16.5px;--badge:13.5px;--stat-size:15px;--header-y:16px;--header-x:18px;--stats-x:20px;--stats-y:28px;--hero-gap:36px;--copy-max:100%;--lede-max:100%}
+  .lv-scene:not(.lv-scene-hero){padding:8px 14px 44px}
+  .lv-panel{padding:22px 16px;border-radius:16px;font-size:17px}
+  .lv-panel h2{font-size:1.7rem}
+  .lv-dots{top:auto;bottom:max(14px,env(safe-area-inset-bottom));right:50%;transform:translateX(50%);flex-direction:row}
+  .lv-scene-hero .lv-stats{padding-bottom:max(44px,env(safe-area-inset-bottom))}
   .lv-head{grid-template-columns:1fr auto auto;gap:8px;padding-top:max(var(--header-y),env(safe-area-inset-top))}
   .lv-logo,.lv-cta,.lv-burger{position:relative;z-index:80}
   .lv-burger{display:grid}
@@ -1330,61 +1360,88 @@ textarea:disabled{pointer-events:none}
           <button class="lv-btn lv-solid lv-cta appear appear--scale" style="--d:.34s" type="button" id="navSignin">Sign in</button>
           <button class="lv-burger appear appear--scale" style="--d:.34s" type="button" id="lvBurger" aria-controls="lvNav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
         </header>
-        <main class="lv-hero">
-          <div class="lv-copy">
-            <span class="lv-badge appear appear--pop" style="--d:.22s"><svg class="lv-star" width="18" height="20" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><path fill="url(#lgS)" d="M12 2.6C12.55 2.6 12.88 3.15 13.08 4.7c.62 4.7 1.52 5.6 6.22 6.22 1.55.2 2.1.53 2.1 1.08s-.55.88-2.1 1.08c-4.7.62-5.6 1.52-6.22 6.22-.2 1.55-.53 2.1-1.08 2.1s-.88-.55-1.08-2.1c-.62-4.7-1.52-5.6-6.22-6.22C3.15 12.88 2.6 12.55 2.6 12s.55-.88 2.1-1.08c4.7-.62 5.6-1.52 6.22-6.22C11.12 3.15 11.45 2.6 12 2.6Z"/></svg>Powered by Claude</span>
-            <h1 class="lv-h1"><span class="lv-line"><span class="appear appear--mask" style="--d:.42s">Nine little <em>AI helpers</em></span></span><span class="lv-line"><span class="appear appear--mask" style="--d:.62s">in one chat.</span></span></h1>
-            <p class="lv-lede appear appear--soft" style="--d:.82s;animation-duration:1.25s">Tech, cooking, games and Roblox, websites, stories, homework, music, and languages. Pick an orb and ask away.</p>
-            <div class="lv-actions">
-              <button class="lv-btn lv-solid lv-big appear appear--btn" style="--d:.96s" id="goBtn" type="button">Get started free</button>
-              <button class="lv-btn lv-ghost lv-big appear appear--side" style="--d:1.10s" id="goSignin" type="button">I already have an account</button>
+        <div class="lv-stage" id="lvStage">
+          <div class="lv-scene lv-scene-hero on" data-name="Home">
+          <main class="lv-hero">
+            <div class="lv-copy">
+              <span class="lv-badge appear appear--pop" style="--d:.22s"><svg class="lv-star" width="18" height="20" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><path fill="url(#lgS)" d="M12 2.6C12.55 2.6 12.88 3.15 13.08 4.7c.62 4.7 1.52 5.6 6.22 6.22 1.55.2 2.1.53 2.1 1.08s-.55.88-2.1 1.08c-4.7.62-5.6 1.52-6.22 6.22-.2 1.55-.53 2.1-1.08 2.1s-.88-.55-1.08-2.1c-.62-4.7-1.52-5.6-6.22-6.22C3.15 12.88 2.6 12.55 2.6 12s.55-.88 2.1-1.08c4.7-.62 5.6-1.52 6.22-6.22C11.12 3.15 11.45 2.6 12 2.6Z"/></svg>Powered by Claude</span>
+              <h1 class="lv-h1"><span class="lv-line"><span class="appear appear--mask" style="--d:.42s">Nine little <em>AI helpers</em></span></span><span class="lv-line"><span class="appear appear--mask" style="--d:.62s">in one chat.</span></span></h1>
+              <p class="lv-lede appear appear--soft" style="--d:.82s;animation-duration:1.25s">Tech, cooking, games and Roblox, websites, stories, homework, music, and languages. Pick an orb and ask away.</p>
+              <div class="lv-actions">
+                <button class="lv-btn lv-solid lv-big appear appear--btn" style="--d:.96s" id="goBtn" type="button">Get started free</button>
+                <button class="lv-btn lv-ghost lv-big appear appear--side" style="--d:1.10s" id="goSignin" type="button">I already have an account</button>
+              </div>
+            </div>
+          </main>
+          <footer class="lv-stats">
+            <div class="lv-stat appear appear--stat" style="--d:1.12s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lvP1" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f7bff" stop-opacity=".75"/><stop offset="1" stop-color="#9b5cff" stop-opacity=".45"/></linearGradient><linearGradient id="lvP2" x1="13" y1="2" x2="24" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9b5cff" stop-opacity=".45"/><stop offset="1" stop-color="#ff5fb8" stop-opacity=".75"/></linearGradient></defs><rect x="3.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP1)"/><rect x="13.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP2)"/><rect x="9.2" y="10.9" width="5.6" height="2.2" rx="1.1" fill="#3a3936"/></svg><span>9 helper orbs in one chat</span></div>
+            <div class="lv-stat appear appear--stat" style="--d:1.28s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.4" y="2.4" width="19.2" height="19.2" rx="6.2" fill="#ecebe7"/><path fill="#161616" d="M12 6.3c.3 0 .47.3.58 1.15.34 2.6.84 3.1 3.44 3.44.85.11 1.15.29 1.15.6s-.3.49-1.15.6c-2.6.34-3.1.84-3.44 3.44-.11.85-.28 1.15-.58 1.15s-.47-.3-.58-1.15c-.34-2.6-.84-3.1-3.44-3.44-.85-.11-1.15-.29-1.15-.6s.3-.49 1.15-.6c2.6-.34 3.1-.84 3.44-3.44.11-.85.28-1.15.58-1.15Z"/></svg><span>Real Claude models, Koa to Mythos</span></div>
+            <div class="lv-stat appear appear--stat" style="--d:1.44s"><svg class="lv-ic lv-ic-wide" viewBox="0 0 40 22" aria-hidden="true"><circle cx="10.2" cy="11" r="9.2" fill="#4a8dff"/><rect x="7.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="11.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="20.2" cy="11" r="9.2" fill="#ff7d33" stroke="#161616" stroke-width="1"/><rect x="17.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="21.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="30.2" cy="11" r="9.2" fill="#22d17a" stroke="#161616" stroke-width="1"/><rect x="27.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="31.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/></svg><span>Free daily credits, Kids Mode for teens</span></div>
+          </footer>
+          </div>
+          <div class="lv-scene" id="lfeatures" data-name="Meet the orbs">
+            <div class="lv-panel">
+                <section class="lsec" aria-labelledby="lfTitle">
+                  <h2 id="lfTitle">Meet the orbs</h2>
+                  <p class="lsub">Each orb has its own personality and specialty. Nebula takes care of everything else.</p>
+                  <div class="lineup" id="lineup" aria-label="The orbs"></div>
+                </section>
             </div>
           </div>
-        </main>
-        <footer class="lv-stats">
-          <div class="lv-stat appear appear--stat" style="--d:1.12s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lvP1" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f7bff" stop-opacity=".75"/><stop offset="1" stop-color="#9b5cff" stop-opacity=".45"/></linearGradient><linearGradient id="lvP2" x1="13" y1="2" x2="24" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9b5cff" stop-opacity=".45"/><stop offset="1" stop-color="#ff5fb8" stop-opacity=".75"/></linearGradient></defs><rect x="3.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP1)"/><rect x="13.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP2)"/><rect x="9.2" y="10.9" width="5.6" height="2.2" rx="1.1" fill="#3a3936"/></svg><span>9 helper orbs in one chat</span></div>
-          <div class="lv-stat appear appear--stat" style="--d:1.28s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.4" y="2.4" width="19.2" height="19.2" rx="6.2" fill="#ecebe7"/><path fill="#161616" d="M12 6.3c.3 0 .47.3.58 1.15.34 2.6.84 3.1 3.44 3.44.85.11 1.15.29 1.15.6s-.3.49-1.15.6c-2.6.34-3.1.84-3.44 3.44-.11.85-.28 1.15-.58 1.15s-.47-.3-.58-1.15c-.34-2.6-.84-3.1-3.44-3.44-.85-.11-1.15-.29-1.15-.6s.3-.49 1.15-.6c2.6-.34 3.1-.84 3.44-3.44.11-.85.28-1.15.58-1.15Z"/></svg><span>Real Claude models, Koa to Mythos</span></div>
-          <div class="lv-stat appear appear--stat" style="--d:1.44s"><svg class="lv-ic lv-ic-wide" viewBox="0 0 40 22" aria-hidden="true"><circle cx="10.2" cy="11" r="9.2" fill="#4a8dff"/><rect x="7.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="11.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="20.2" cy="11" r="9.2" fill="#ff7d33" stroke="#161616" stroke-width="1"/><rect x="17.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="21.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="30.2" cy="11" r="9.2" fill="#22d17a" stroke="#161616" stroke-width="1"/><rect x="27.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="31.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/></svg><span>Free daily credits, Kids Mode for teens</span></div>
-        </footer>
+          <div class="lv-scene" data-name="What you get">
+            <div class="lv-panel">
+                <section class="lsec" aria-labelledby="lf2Title">
+                  <h2 id="lf2Title">What you get</h2>
+                  <p class="lsub">Everything that comes with Orbs, free plan included.</p>
+                  <ul class="lfeat">
+                    <li><b>A helper for everything.</b> Tech, cooking, games, websites, stories, homework, music, languages, and Nebula for the rest.</li>
+                    <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
+                    <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
+                    <li><b>Searches the web.</b> Tap the globe for news, prices, and scores, with the sites it used.</li>
+                    <li><b>Orb Teams.</b> On Plus and up, up to 5 orbs each do their part and the lead builds the final result.</li>
+                    <li><b>Safe and private.</b> Kids Mode for teens, memory you control, and incognito chats that are never saved.</li>
+                  </ul>
+                </section>
+            </div>
+          </div>
+          <div class="lv-scene" id="lpricing" data-name="Pricing">
+            <div class="lv-panel">
+                <section class="lsec" aria-labelledby="lpTitle">
+                  <h2 id="lpTitle">Pricing</h2>
+                  <p class="lsub">Start free. Upgrade anytime for more credits and stronger models. Pay yearly and get 2 months free.</p>
+                  <div class="pgrid" id="lpGrid"></div>
+                  <p class="fine">Plans renew automatically and you can cancel anytime. Payments are handled securely by Stripe.</p>
+                </section>
+            </div>
+          </div>
+          <div class="lv-scene" id="labout" data-name="About us">
+            <div class="lv-panel">
+                <section class="lsec" aria-labelledby="laTitle">
+                  <h2 id="laTitle">About us</h2>
+                  <p>Orbs AI is made by <b>The Abyss</b>, a small independent studio run by one young developer who wanted AI chat to feel less like a boring tool and more like a group of friends who each know different things.</p>
+                  <p>So instead of one AI for everything, Orbs has nine little helpers called orbs. Each one has its own personality and specialty, from coding and cooking to Roblox, stories, music, and homework.</p>
+                  <p>Orbs runs on Anthropic's Claude models and is built to be safe, simple, and fun, with Kids Mode for teens and private chats for everyone. Have an idea or found a bug? Email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a>. Every message gets read.</p>
+                </section>
+            </div>
+          </div>
+          <div class="lv-scene" id="lfaq" data-name="Questions">
+            <div class="lv-panel">
+                <section class="faq" aria-label="Questions">
+                  <h2>Questions</h2>
+                  <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>
+                  <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you daily credits with the Koa and Lumina models. Orbs Plus plans add more credits, the Chrysalis and Mythos models, more web searches, and memory.</p></details>
+                  <details><summary>What AI does Orbs use?</summary><p>Orbs runs on Anthropic's Claude models. Koa, Lumina, Chrysalis, and Mythos are each built on the newest Claude model in their family. Orbs is an independent project, not made by Anthropic.</p></details>
+                  <details><summary>Is it safe for kids and teens?</summary><p>Orbs is for ages 13 and up. Teens always use Kids Mode, which gives kid-safe answers, checks every message and reply with an AI safety check, and blocks sharing personal info.</p></details>
+                  <details><summary>Can Orbs search the web?</summary><p>Yes. Tap the globe and the orb can look up news, prices, scores, and other fresh info, and it shows the sites it used.</p></details>
+                  <details><summary>Are my chats private?</summary><p>Only you can see your chats. They save to your account so they follow you to any device, and you can delete them anytime. Incognito chats are never saved.</p></details>
+                  <details><summary>How do I contact Orbs?</summary><p>Email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a>.</p></details>
+                </section>
+                <p class="legalnote"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button> · <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button> · Orbs is AI and can make mistakes.</p>
+            </div>
+          </div>
+        </div>
+        <nav class="lv-dots" id="lvDots" aria-label="Sections"></nav>
       </div>
-    </div>
-    <div class="lrest">
-    <section class="lsec" id="lfeatures" aria-labelledby="lfTitle">
-      <h2 id="lfTitle">Meet the orbs</h2>
-      <p class="lsub">Each orb has its own personality and specialty. Nebula takes care of everything else.</p>
-      <div class="lineup" id="lineup" aria-label="The orbs"></div>
-      <ul class="lfeat">
-        <li><b>A helper for everything.</b> Tech, cooking, games, websites, stories, homework, music, languages, and Nebula for the rest.</li>
-        <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
-        <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
-        <li><b>Searches the web.</b> Tap the globe for news, prices, and scores, with the sites it used.</li>
-        <li><b>Orb Teams.</b> On Plus and up, up to 5 orbs each do their part and the lead builds the final result.</li>
-        <li><b>Safe and private.</b> Kids Mode for teens, memory you control, and incognito chats that are never saved.</li>
-      </ul>
-    </section>
-    <section class="lsec" id="lpricing" aria-labelledby="lpTitle">
-      <h2 id="lpTitle">Pricing</h2>
-      <p class="lsub">Start free. Upgrade anytime for more credits and stronger models. Pay yearly and get 2 months free.</p>
-      <div class="pgrid" id="lpGrid"></div>
-      <p class="fine">Plans renew automatically and you can cancel anytime. Payments are handled securely by Stripe.</p>
-    </section>
-    <section class="lsec" id="labout" aria-labelledby="laTitle">
-      <h2 id="laTitle">About us</h2>
-      <p>Orbs AI is made by <b>The Abyss</b>, a small independent studio run by one young developer who wanted AI chat to feel less like a boring tool and more like a group of friends who each know different things.</p>
-      <p>So instead of one AI for everything, Orbs has nine little helpers called orbs. Each one has its own personality and specialty, from coding and cooking to Roblox, stories, music, and homework.</p>
-      <p>Orbs runs on Anthropic's Claude models and is built to be safe, simple, and fun, with Kids Mode for teens and private chats for everyone. Have an idea or found a bug? Email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a>. Every message gets read.</p>
-    </section>
-    <section class="faq" id="lfaq" aria-label="Questions">
-      <h2>Questions</h2>
-      <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>
-      <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you daily credits with the Koa and Lumina models. Orbs Plus plans add more credits, the Chrysalis and Mythos models, more web searches, and memory.</p></details>
-      <details><summary>What AI does Orbs use?</summary><p>Orbs runs on Anthropic's Claude models. Koa, Lumina, Chrysalis, and Mythos are each built on the newest Claude model in their family. Orbs is an independent project, not made by Anthropic.</p></details>
-      <details><summary>Is it safe for kids and teens?</summary><p>Orbs is for ages 13 and up. Teens always use Kids Mode, which gives kid-safe answers, checks every message and reply with an AI safety check, and blocks sharing personal info.</p></details>
-      <details><summary>Can Orbs search the web?</summary><p>Yes. Tap the globe and the orb can look up news, prices, scores, and other fresh info, and it shows the sites it used.</p></details>
-      <details><summary>Are my chats private?</summary><p>Only you can see your chats. They save to your account so they follow you to any device, and you can delete them anytime. Incognito chats are never saved.</p></details>
-      <details><summary>How do I contact Orbs?</summary><p>Email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a>.</p></details>
-    </section>
-    <p class="legalnote"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button> · <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button> · Orbs is AI and can make mistakes.</p>
     </div>
   </div>
   <div class="gcard auth" id="authCard">

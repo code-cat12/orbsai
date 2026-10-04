@@ -675,3 +675,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 qrcode-generator 1.4.4 (vendor/qrcode.mjs) - Copyright (c) 2009 Kazuhiko Arase - MIT License
 
 Some icons are from Lucide (lucide.dev) - ISC License
+
+===== gsap-3.13.0 (gsap.min.js, Observer.min.js) =====
+GSAP by GreenSock (https://gsap.com). Copyright 2025, GreenSock. All rights reserved.
+Free to use, including commercially, under the GSAP Standard "No Charge" License:
+https://gsap.com/standard-license

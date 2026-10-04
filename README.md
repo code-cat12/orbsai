@@ -12,7 +12,7 @@ Nine helper orbs in one chat. People make an account (Google or email + password
 | `api/chat.js` | The server part. Checks who's signed in, counts credits, talks to Claude | No (the key is in Vercel, not here) |
 | `api/_core.js`, `api/_orbs.js` | Server helpers: message checks and each orb's instructions | No |
 | `api/admin.js`, `api/feedback.js` | The admin panel and thumbs up/down | No |
-| `vendor/` | Free libraries for nicer formatting (Markdown, code colors, math). Licenses in `vendor/LICENSES.txt` | No |
+| `vendor/` | Free libraries for nicer formatting (Markdown, code colors, math) and GSAP for the front page animations. Licenses in `vendor/LICENSES.txt` | No |
 | `vercel.json` | Security settings for the site | No |
 | `package.json` | Tells Vercel to install Firebase's server tools | No |
 | `firestore.rules` | Who can read what in your database (paste into Firebase) | No |
