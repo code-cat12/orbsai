@@ -1390,7 +1390,7 @@ function authErr(e){ const c = e && e.code; if (c === "auth/popup-closed-by-user
 function say(msg, ok){ const el = $("aErr"); el.textContent = msg || ""; el.classList.toggle("aok", !!ok); }
 function showGate(mode, email){
   gate.hidden = false; say("");
-  $("landing").hidden = mode !== "home"; $("authCard").hidden = mode === "home";
+  $("landing").hidden = mode !== "home"; $("authCard").hidden = mode === "home"; lvVideo(mode === "home");
   $("aBack").hidden = mode !== "signin";
   if (mode === "home") { gate.scrollTop = 0; return; }
   $("aMain").hidden = mode !== "signin"; $("aVerify").hidden = mode !== "verify";
@@ -1420,7 +1420,23 @@ $("goBtn").onclick = () => setAuthMode("up");
 $("goSignin").onclick = () => setAuthMode("in");
 $("navSignin").onclick = () => setAuthMode("in");
 // Landing nav: scroll to a section (or the top)
-for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { if (b.dataset.go === "top") gate.scrollTo({ top:0, behavior:"smooth" }); else $(b.dataset.go).scrollIntoView({ behavior:"smooth", block:"start" }); };
+for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { lvMenu(false); if (b.dataset.go === "top") gate.scrollTo({ top:0, behavior:"smooth" }); else $(b.dataset.go).scrollIntoView({ behavior:"smooth", block:"start" }); };
+// Landing hero: phone menu, entrance animations, and only playing the video while the landing shows
+function lvMenu(open){ $("landing").classList.toggle("menu-open", open); $("lvBurger").setAttribute("aria-expanded", String(open)); $("lvBurger").setAttribute("aria-label", open ? "Close menu" : "Open menu"); }
+function lvVideo(on){ const v = $("lvVideo"); if (on) v.play().catch(() => {}); else v.pause(); }
+$("lvBurger").onclick = () => lvMenu(!$("landing").classList.contains("menu-open"));
+$("lvBackdrop").onclick = () => lvMenu(false);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("landing").classList.contains("menu-open")) lvMenu(false); });
+matchMedia("(min-width:901px)").addEventListener("change", e => { if (e.matches) lvMenu(false); });
+(function lvAppear(){
+  const els = [...document.querySelectorAll("#lvTop .appear")];
+  for (const el of els) el.addEventListener("animationend", function done(e){ if (e.target !== el) return; el.classList.add("is-in"); el.removeEventListener("animationend", done); });
+  // If animations never start (old browser, hidden tab), show everything right away
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const ran = els.some(el => el.getAnimations && el.getAnimations().some(a => a.playState === "running" || a.playState === "finished"));
+    if (!ran) els.forEach(el => el.classList.add("is-in"));
+  }));
+})();
 $("aBack").onclick = () => showGate("home");
 $("lineup").innerHTML = ORDER.map(k => `<div class="lo"><div class="has-orb">${orbSVG(k)}</div><b></b><small></small></div>`).join("");
 $("lineup").querySelectorAll(".lo").forEach((el, i) => { el.querySelector("b").textContent = BOTS[ORDER[i]].name; el.querySelector("small").textContent = BOTS[ORDER[i]].role; });
@@ -1538,7 +1554,7 @@ async function enter(u){
   if (kids.banned) { showGate("banned"); return; }
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
-  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; renderHome();
+  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; lvVideo(false); renderHome();
   cloudSave(); // finishes moving any old-style chats
   checkAdmin(); afterBilling(); maybePromo();
 }

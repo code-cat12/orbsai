@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Orbs AI","alternateName":"Orbs","url":"https://orbsai.app/"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Base reset (the Claude viewer used to add this for us) */
 [hidden]{display:none!important}
@@ -265,13 +265,6 @@ button{font:inherit;color:inherit}
 .bot-row .msg:empty{display:none}
 .gate{overflow-y:auto;align-items:safe center}
 .landing{width:min(100%,880px);display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center;padding-block:24px}
-.lhero{display:flex;flex-direction:column;align-items:center;gap:10px}
-.lg.lbig{width:84px;height:84px;overflow:visible}
-.ltitle{font:400 clamp(3rem,10vw,4.6rem)/1 var(--display);margin:0;letter-spacing:-.02em}
-.ltag{margin:0;color:var(--muted);font-size:1.2rem;max-width:30ch;text-wrap:balance}
-.lbtns{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px}
-.gbtn.lgo{padding:14px 34px;border-radius:999px;font-size:1.2rem;background:var(--ink);color:var(--bg)}
-.gbtn.lgo:hover{transform:translateY(-1px)}
 .lineup{display:flex;flex-wrap:wrap;justify-content:center;gap:16px 8px;width:100%}
 .lineup .lo{flex:0 0 92px}
 @media (max-width:520px){.lineup .lo{flex-basis:calc(33% - 8px)}.lbonus{font-size:1rem}}
@@ -593,15 +586,7 @@ textarea:disabled{pointer-events:none}
 .upnav .ic{color:#9b5cff}
 .mitem.locked b{color:var(--muted)}
 .lock{font-size:.75rem;color:#9b5cff;border:1px solid #9b5cff;border-radius:999px;padding:1px 8px;margin-left:8px;font-weight:500;float:right}
-.lnav{position:sticky;top:-24px;z-index:2;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:10px 4px;background:color-mix(in srgb,var(--bg) 96%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.lbrand{display:flex;align-items:center;gap:8px;background:none;border:0;color:var(--ink);font:500 1.3rem var(--display);cursor:pointer;padding:0}
-.lbrand .lg{width:30px;height:30px;overflow:visible}
-.llinks{display:flex;align-items:center;gap:2px;flex-wrap:wrap}
-.llinks button,.llinks a{background:none;border:0;color:var(--ink);font:inherit;font-size:1.05rem;padding:6px 10px;border-radius:999px;cursor:pointer;text-decoration:none}
-.llinks button:hover,.llinks a:hover{background:var(--field)}
-.llinks .lsign{background:var(--ink);color:var(--bg);margin-left:4px}
-.llinks .lsign:hover{background:var(--ink);opacity:.85}
-.lsec{width:100%;max-width:880px;text-align:left;scroll-margin-top:70px}
+.lsec{width:100%;max-width:880px;text-align:left;scroll-margin-top:16px}
 .lsec h2{font:400 1.6rem var(--display);margin:0 0 4px;text-align:center}
 .lsub{text-align:center;color:var(--muted);margin:0 0 4px}
 .lsec p{line-height:1.55}
@@ -611,8 +596,8 @@ textarea:disabled{pointer-events:none}
 .lsec .fine{text-align:center;margin-top:16px}
 .lsec .pgrid{padding-top:18px}
 .lsec .pcard{text-align:left}
-.faq{scroll-margin-top:70px}
-@media (max-width:520px){.lsec,.faq{scroll-margin-top:110px}.lnav{justify-content:center}.llinks{justify-content:center}.llinks button,.llinks a{padding:6px 8px;font-size:1rem}}
+.faq{scroll-margin-top:16px}
+@media (max-width:520px){.lsec,.faq{scroll-margin-top:16px}}
 .vspam{margin:6px 0 0;padding:10px 12px;border-radius:12px;background:var(--field);border:1px solid var(--line);color:var(--muted);font-size:.92rem;line-height:1.45;text-align:left}
 .mfacode{font:600 1.6rem/1.2 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.3em;text-align:center}
 .mfam{display:flex;flex-direction:column;gap:12px}
@@ -739,6 +724,151 @@ textarea:disabled{pointer-events:none}
 
 </style>
 <script type="module" src="/app.js"></script>
+<style>
+/* Landing hero: one full-screen frame over the background video, in the site's dark colors + orb gradient */
+.gate:has(#landing:not([hidden])){padding:0;background:#161616}
+.landing{width:100%;gap:0;padding-block:0}
+.lrest{width:min(100% - 32px,880px);display:flex;flex-direction:column;align-items:center;gap:28px;padding:56px 0 24px;background:var(--bg)}
+.gate:has(#landing:not([hidden])) .lrest{box-shadow:0 0 0 100vmax var(--bg);clip-path:inset(0 -100vmax)}
+.lv{
+  --bg:#161616; --text:#ecebe7; --muted:#9a9891; --stat:#dcd9d2;
+  --border:rgba(236,235,231,.16); --c1:#4f7bff; --c2:#9b5cff; --c3:#ff5fb8;
+  --logo:15.5px; --logo-mark:22px; --nav:14px; --nav-h:40px; --btn:13.5px; --btn-h:40px; --hero-btn-h:42px;
+  --h1:48px; --lede:15.5px; --badge:12.5px; --stat-size:13.5px;
+  --header-y:22px; --header-x:40px; --stats-x:72px; --stats-y:36px; --hero-gap:85px; --copy-max:860px; --lede-max:470px;
+  position:relative;width:100%;min-height:100vh;min-height:100dvh;height:100vh;height:100dvh;overflow:hidden;
+  background:#161616;color:var(--text);text-align:left;
+  font-family:var(--body);font-size:16px;line-height:1.3;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;color-scheme:dark
+}
+.lv *,.lv *::before,.lv *::after{box-sizing:border-box}
+.lv button{font-family:inherit;margin:0}
+.lv-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1;z-index:0;pointer-events:none;background:#161616}
+.lv-grain{position:absolute;inset:0;z-index:100;pointer-events:none;opacity:.06;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.lv-page{position:relative;z-index:1;display:grid;grid-template-rows:auto 1fr auto;height:100%}
+.lv-backdrop{display:none}
+
+/* Header */
+.lv-head{position:relative;z-index:50;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:var(--header-y) var(--header-x) 10px}
+.lv .lv-logo{display:inline-flex;align-items:center;gap:9px;justify-self:start;background:none;border:0;padding:0;cursor:pointer;font:500 calc(var(--logo) * 1.25) var(--display);letter-spacing:-.01em;color:#fff}
+.lv-logo .lg{width:var(--logo-mark);height:var(--logo-mark);overflow:visible}
+.lv-suffix{font-weight:400}
+.lv-nav{display:flex;align-items:center;gap:8px;justify-self:center}
+.lv-nav button{position:relative;overflow:hidden;display:inline-flex;align-items:center;height:var(--nav-h);padding:0 18px;border-radius:7px;cursor:pointer;white-space:nowrap;
+  border:1px solid rgba(236,235,231,.4);background:linear-gradient(105deg,#161616 0%,#2c2c2a 48%,#3a3936 100%);
+  color:#ecebe7;font-size:calc(var(--nav) * 1.18);font-weight:400;letter-spacing:.01em;transition:background .35s ease,border-color .35s ease,box-shadow .35s ease}
+.lv-nav button::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.16) 50%,transparent 70%);transform:translateX(-120%);transition:transform .6s ease;pointer-events:none}
+.lv-nav button:hover{border-color:rgba(236,235,231,.85);background:linear-gradient(105deg,#1f1f1e,#3a3936 45%,#55534e);box-shadow:0 0 18px rgba(155,92,255,.28)}
+.lv-nav button:hover::before{transform:translateX(120%)}
+.lv-cta{justify-self:end}
+.lv-burger{display:none;width:42px;height:42px;place-content:center;gap:5px;border-radius:6px;border:1px solid var(--border);background:rgba(22,22,22,.55);cursor:pointer;z-index:60;padding:0}
+.lv-burger span{display:block;width:16px;height:1.5px;border-radius:1px;background:#fff;transition:transform .25s ease,opacity .2s ease}
+.lv-burger:hover{border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.05)}
+.landing.menu-open .lv-burger span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.landing.menu-open .lv-burger span:nth-child(2){opacity:0}
+.landing.menu-open .lv-burger span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+
+/* Buttons */
+.lv-btn{position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;height:var(--btn-h);padding:0 16px;border-radius:6px;
+  font-size:calc(var(--btn) * 1.2);font-weight:400;letter-spacing:.01em;line-height:1;white-space:nowrap;cursor:pointer;
+  transition:background .35s ease,border-color .35s ease,box-shadow .35s ease,color .35s ease,filter .35s ease}
+.lv-btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.45) 48%,transparent 76%);transform:translateX(-130%);transition:transform .65s ease;pointer-events:none}
+.lv-btn:hover::after{transform:translateX(130%)}
+.lv-solid{background:linear-gradient(180deg,#ffffff 0%,#ecebe7 48%,#d6d4cf 100%);color:#161616;border:1px solid #fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.95)}
+.lv-solid:hover{background:linear-gradient(180deg,#fff,#f4f1ff 42%,#ddd3f5);border-color:#f6f2ff;box-shadow:inset 0 1px 0 #fff,0 0 22px rgba(155,92,255,.38),0 8px 18px rgba(255,255,255,.12)}
+.lv-ghost{color:#fff;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(22,22,22,.5) 46%,rgba(79,123,255,.1));border:1px solid rgba(236,235,231,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.lv-ghost:hover{background:linear-gradient(135deg,rgba(122,167,242,.2),rgba(22,22,22,.35) 48%,rgba(255,95,184,.16));border-color:rgba(230,225,255,.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 24px rgba(79,123,255,.3)}
+.lv-big{height:var(--hero-btn-h);padding:0 18px}
+.lv-solid.lv-big:hover{box-shadow:inset 0 1px 0 #fff,0 0 26px rgba(155,92,255,.45),0 8px 18px rgba(255,255,255,.14)}
+
+/* Hero copy (sits at the bottom, not the middle) */
+.lv-hero{display:flex;align-items:flex-end;justify-content:center;padding:8px 24px var(--hero-gap);min-height:0}
+.lv-copy{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center;max-width:var(--copy-max);width:100%}
+.lv-badge{display:inline-flex;align-items:center;gap:8px;margin-bottom:22px;padding:9px 15px;border-radius:5px;
+  background:linear-gradient(90deg,#55534e 0%,#2c2c2a 52%,#161616 100%);color:#ecebe7;font-size:calc(var(--badge) * 1.18);font-weight:400;letter-spacing:.01em}
+.lv-star{filter:drop-shadow(0 0 3px rgba(255,95,184,.55));animation:lv-star .9s cubic-bezier(.16,1,.3,1) .28s both}
+.lv-h1{display:flex;flex-direction:column;align-items:center;margin:0;font-family:var(--display);font-size:var(--h1);font-weight:500;letter-spacing:-.025em;line-height:1.12;color:#fff}
+.lv-line{display:block;overflow:hidden;padding:.06em .15em .14em}
+.lv-line > span{display:block}
+.lv-h1 em{font-family:var(--display);font-style:italic;font-weight:500;font-size:1em;letter-spacing:-.02em;padding-right:.06em;
+  color:#9b5cff;background:linear-gradient(90deg,#7aa7f2,#9b5cff 50%,#ff5fb8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:lv-em 1.2s cubic-bezier(.16,1,.3,1) .72s both}
+.lv-lede,.lv-stat{text-shadow:0 1px 14px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.5)}
+.lv-lede{max-width:var(--lede-max);margin:18px 0 0;color:var(--muted);font-size:calc(var(--lede) * 1.18);font-weight:400;line-height:1.45;letter-spacing:.01em}
+.lv-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:26px}
+
+/* Stats */
+.lv-stats{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 var(--stats-x) var(--stats-y);padding-bottom:max(var(--stats-y),env(safe-area-inset-bottom));color:var(--stat)}
+.lv-stat{display:inline-flex;align-items:center;gap:14px;font-size:calc(var(--stat-size) * 1.18);letter-spacing:.01em;white-space:nowrap}
+.lv-ic{width:20px;height:20px;flex:none}
+.lv-ic-wide{width:38px;height:21px}
+
+/* Entrance motion: resting state is visible, so nothing stays hidden if animations don't run */
+.lv .appear{opacity:1;animation-duration:1.05s;animation-fill-mode:both;animation-timing-function:cubic-bezier(.16,1,.3,1);animation-delay:var(--d,.08s)}
+.lv .appear--scale{animation-name:lv-scale}
+.lv .appear--soft{animation-name:lv-soft}
+.lv .appear--mask{animation-name:lv-mask}
+.lv .appear--pop{animation-name:lv-pop}
+.lv .appear--btn{animation-name:lv-btn}
+.lv .appear--side{animation-name:lv-side}
+.lv .appear--stat{animation-name:lv-stat}
+.lv .appear.is-in{animation:none;opacity:1;transform:none;clip-path:none;filter:none}
+@keyframes lv-scale{from{opacity:0;transform:scale(.84)}to{opacity:1;transform:none}}
+@keyframes lv-soft{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes lv-mask{from{opacity:0;transform:translateY(40%)}to{opacity:1;transform:none}}
+@keyframes lv-pop{0%{opacity:0;transform:scale(.9)}70%{opacity:1;transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
+@keyframes lv-btn{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes lv-side{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@keyframes lv-stat{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes lv-star{0%{transform:scale(.2) rotate(-50deg)}65%{transform:scale(1.2) rotate(8deg)}100%{transform:none}}
+@keyframes lv-em{from{opacity:.35;filter:blur(4px)}to{opacity:1;filter:none}}
+@media (prefers-reduced-motion:reduce){
+  .lv *,.lv *::before,.lv *::after{transition:none!important;animation:none!important}
+  .lv .appear,.lv-h1 em,.lv-star{opacity:1;transform:none;clip-path:none;filter:none}
+}
+
+/* Bigger screens */
+@media (min-width:1280px) and (max-width:1599px){.lv{--h1:54px;--lede:16px;--header-x:48px;--stats-x:80px;--copy-max:900px}}
+@media (min-width:1600px){
+  .lv{--logo:17px;--logo-mark:24px;--nav:15px;--nav-h:44px;--btn:15px;--btn-h:44px;--hero-btn-h:48px;--h1:64px;--lede:18px;--badge:13.5px;--stat-size:15px;--header-y:28px;--header-x:64px;--stats-x:96px;--stats-y:44px;--copy-max:980px;--lede-max:540px}
+  .lv-nav button{padding:0 20px}.lv-badge{margin-bottom:26px}.lv-lede{margin-top:22px}.lv-actions{margin-top:30px;gap:12px}
+  .lv-ic{width:22px;height:22px}.lv-ic-wide{width:45px;height:24px}
+}
+@media (min-width:1920px){
+  .lv{--logo:18px;--logo-mark:26px;--nav:16px;--nav-h:48px;--btn:16px;--btn-h:48px;--hero-btn-h:52px;--h1:76px;--lede:20px;--badge:14.5px;--stat-size:16px;--header-y:32px;--header-x:80px;--stats-x:120px;--stats-y:52px;--copy-max:1120px;--lede-max:620px}
+  .lv-nav{gap:10px}.lv-nav button{padding:0 22px}.lv-btn{padding:0 22px}.lv-badge{padding:10px 15px}.lv-ic-wide{width:48px;height:26px}
+}
+@media (min-width:2560px){.lv{--h1:88px;--lede:22px;--header-x:120px;--stats-x:160px;--copy-max:1280px;--lede-max:680px}}
+/* Small laptops */
+@media (min-width:901px) and (max-width:1279px){
+  .lv{--logo:15px;--nav:13px;--nav-h:36px;--btn:13px;--btn-h:38px;--hero-btn-h:40px;--h1:42px;--lede:15px;--badge:12px;--stat-size:12.5px;--header-y:16px;--header-x:28px;--stats-x:36px;--stats-y:28px;--hero-gap:64px;--copy-max:760px;--lede-max:440px}
+  .lv-nav button{padding:0 14px}.lv-badge{margin-bottom:16px}.lv-lede{margin-top:14px}.lv-actions{margin-top:20px}
+}
+@media (min-width:901px) and (max-height:850px){.lv{--header-y:14px;--stats-y:24px;--hero-gap:48px;--h1:40px}.lv-badge{margin-bottom:12px}.lv-lede{margin-top:12px}.lv-actions{margin-top:16px}}
+@media (min-width:901px) and (max-height:720px){.lv{--h1:34px;--lede:14px;--hero-gap:32px;--stats-y:18px;--nav-h:30px;--btn-h:34px;--hero-btn-h:36px}.lv-badge{margin-bottom:8px}}
+
+/* Phones: menu becomes a full-screen sheet */
+@media (max-width:900px){
+  .lv{--logo:16px;--btn:15px;--btn-h:46px;--hero-btn-h:48px;--h1:36px;--lede:16.5px;--badge:13.5px;--stat-size:15px;--header-y:16px;--header-x:18px;--stats-x:20px;--stats-y:28px;--hero-gap:36px;--copy-max:100%;--lede-max:100%;height:auto;overflow:visible}
+  .lv-video{position:absolute}
+  .lv-page{min-height:100vh;min-height:100dvh}
+  .lv-head{grid-template-columns:1fr auto auto;gap:8px;padding-top:max(var(--header-y),env(safe-area-inset-top))}
+  .lv-logo,.lv-cta,.lv-burger{position:relative;z-index:80}
+  .lv-burger{display:grid}
+  .lv-cta{--btn-h:42px;--btn:14px}
+  .lv-backdrop{display:block;position:fixed;inset:0;z-index:40;background:rgba(22,22,22,.42);opacity:0;visibility:hidden;transition:opacity .28s ease,visibility .28s ease,backdrop-filter .28s ease}
+  .landing.menu-open .lv-backdrop{opacity:1;visibility:visible;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+  .lv-nav{position:fixed;inset:0;z-index:45;flex-direction:column;justify-content:center;align-items:stretch;justify-self:stretch;gap:12px;padding:96px 22px 32px;padding-top:max(96px,calc(env(safe-area-inset-top) + 88px));background:transparent;opacity:0;visibility:hidden;transition:opacity .28s ease,visibility .28s ease}
+  .landing.menu-open .lv-nav{opacity:1;visibility:visible}
+  .lv-nav button{width:100%;height:56px;font-size:19px;border-radius:10px;justify-content:center}
+  .lv-hero{padding:20px 20px 64px}
+  .lv-lede{color:#d6d4cf}
+  .lv-stats{flex-direction:column;justify-content:center;gap:16px}
+  .lv-stat{white-space:normal}
+  .gate:has(.landing.menu-open){overflow:hidden}
+}
+@media (max-width:560px){.lv{--h1:34px;--lede:16px;--header-x:16px}.lv-actions{flex-direction:column;width:100%}.lv-actions .lv-btn{width:100%}}
+</style>
 </head>
 <body>
 <div class="shell" id="shell">
@@ -1184,30 +1314,54 @@ textarea:disabled{pointer-events:none}
 </div>
 <div class="gate" id="gate">
   <div class="landing" id="landing" hidden>
-    <nav class="lnav" aria-label="Main">
-      <button class="lbrand" type="button" data-go="top"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgN" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgN)" stroke-width="2.4" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgN)" stroke-width="2.4" stroke-linecap="round"/></g></svg><span>Orbs AI</span></button>
-      <div class="llinks">
-        <button type="button" data-go="lpricing">Pricing</button>
-        <button type="button" data-go="labout">About us</button>
-        <a href="mailto:contact@orbsai.app">Contact</a>
-        <button type="button" class="lsign" id="navSignin">Sign in</button>
-      </div>
-    </nav>
-    <div class="lhero">
-      <svg class="lg lbig" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgL" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgL)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgL)" stroke-width="2.2" stroke-linecap="round"/><circle r="2" fill="#ff5fb8"><animateMotion dur="5s" repeatCount="indefinite" path="M30 16A14 5 0 0 1 2 16A14 5 0 0 1 30 16"/><animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.49;.53;.97;1" dur="5s" repeatCount="indefinite"/></circle></g></svg>
-      <h1 class="ltitle">Orbs</h1>
-      <p class="ltag">Nine little AI helpers in one chat. Pick an orb and ask away.</p>
-      <div class="lbtns">
-        <button class="gbtn lgo" id="goBtn" type="button">Get started</button>
-        <button class="linkbtn" id="goSignin" type="button">I already have an account</button>
+    <div class="lv" id="lvTop">
+      <video class="lv-video" id="lvVideo" autoplay muted loop playsinline preload="auto" aria-hidden="true" src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260818_072341_50851634-bbc3-4c33-9acc-7647d4db44aa.mp4"></video>
+      <div class="lv-grain" aria-hidden="true"></div>
+      <div class="lv-page">
+        <div class="lv-backdrop" id="lvBackdrop"></div>
+        <header class="lv-head">
+          <button class="lv-logo appear appear--scale" style="--d:.08s" type="button" data-go="top" aria-label="Orbs AI"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgV)" stroke-width="2.4" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="#ecebe7"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="#161616"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="#161616"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgV)" stroke-width="2.4" stroke-linecap="round"/></g></svg><span>Orbs<span class="lv-suffix"> AI</span></span></button>
+          <nav class="lv-nav" id="lvNav" aria-label="Main">
+            <button class="appear appear--scale" style="--d:.16s" type="button" data-go="lfeatures">Features</button>
+            <button class="appear appear--soft" style="--d:.28s" type="button" data-go="lpricing">Pricing</button>
+            <button class="appear appear--scale" style="--d:.40s" type="button" data-go="labout">About us</button>
+            <button class="appear appear--soft" style="--d:.52s" type="button" data-go="lfaq">FAQs</button>
+          </nav>
+          <button class="lv-btn lv-solid lv-cta appear appear--scale" style="--d:.34s" type="button" id="navSignin">Sign in</button>
+          <button class="lv-burger appear appear--scale" style="--d:.34s" type="button" id="lvBurger" aria-controls="lvNav" aria-expanded="false" aria-label="Open menu"><span></span><span></span><span></span></button>
+        </header>
+        <main class="lv-hero">
+          <div class="lv-copy">
+            <span class="lv-badge appear appear--pop" style="--d:.22s"><svg class="lv-star" width="18" height="20" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><path fill="url(#lgS)" d="M12 2.6C12.55 2.6 12.88 3.15 13.08 4.7c.62 4.7 1.52 5.6 6.22 6.22 1.55.2 2.1.53 2.1 1.08s-.55.88-2.1 1.08c-4.7.62-5.6 1.52-6.22 6.22-.2 1.55-.53 2.1-1.08 2.1s-.88-.55-1.08-2.1c-.62-4.7-1.52-5.6-6.22-6.22C3.15 12.88 2.6 12.55 2.6 12s.55-.88 2.1-1.08c4.7-.62 5.6-1.52 6.22-6.22C11.12 3.15 11.45 2.6 12 2.6Z"/></svg>Powered by Claude</span>
+            <h1 class="lv-h1"><span class="lv-line"><span class="appear appear--mask" style="--d:.42s">Nine little <em>AI helpers</em></span></span><span class="lv-line"><span class="appear appear--mask" style="--d:.62s">in one chat.</span></span></h1>
+            <p class="lv-lede appear appear--soft" style="--d:.82s;animation-duration:1.25s">Tech, cooking, games and Roblox, websites, stories, homework, music, and languages. Pick an orb and ask away.</p>
+            <div class="lv-actions">
+              <button class="lv-btn lv-solid lv-big appear appear--btn" style="--d:.96s" id="goBtn" type="button">Get started free</button>
+              <button class="lv-btn lv-ghost lv-big appear appear--side" style="--d:1.10s" id="goSignin" type="button">I already have an account</button>
+            </div>
+          </div>
+        </main>
+        <footer class="lv-stats">
+          <div class="lv-stat appear appear--stat" style="--d:1.12s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lvP1" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f7bff" stop-opacity=".75"/><stop offset="1" stop-color="#9b5cff" stop-opacity=".45"/></linearGradient><linearGradient id="lvP2" x1="13" y1="2" x2="24" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9b5cff" stop-opacity=".45"/><stop offset="1" stop-color="#ff5fb8" stop-opacity=".75"/></linearGradient></defs><rect x="3.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP1)"/><rect x="13.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP2)"/><rect x="9.2" y="10.9" width="5.6" height="2.2" rx="1.1" fill="#3a3936"/></svg><span>9 helper orbs in one chat</span></div>
+          <div class="lv-stat appear appear--stat" style="--d:1.28s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.4" y="2.4" width="19.2" height="19.2" rx="6.2" fill="#ecebe7"/><path fill="#161616" d="M12 6.3c.3 0 .47.3.58 1.15.34 2.6.84 3.1 3.44 3.44.85.11 1.15.29 1.15.6s-.3.49-1.15.6c-2.6.34-3.1.84-3.44 3.44-.11.85-.28 1.15-.58 1.15s-.47-.3-.58-1.15c-.34-2.6-.84-3.1-3.44-3.44-.85-.11-1.15-.29-1.15-.6s.3-.49 1.15-.6c2.6-.34 3.1-.84 3.44-3.44.11-.85.28-1.15.58-1.15Z"/></svg><span>Real Claude models, Koa to Mythos</span></div>
+          <div class="lv-stat appear appear--stat" style="--d:1.44s"><svg class="lv-ic lv-ic-wide" viewBox="0 0 40 22" aria-hidden="true"><circle cx="10.2" cy="11" r="9.2" fill="#4a8dff"/><rect x="7.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="11.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="20.2" cy="11" r="9.2" fill="#ff7d33" stroke="#161616" stroke-width="1"/><rect x="17.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="21.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="30.2" cy="11" r="9.2" fill="#22d17a" stroke="#161616" stroke-width="1"/><rect x="27.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="31.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/></svg><span>Free daily credits, Kids Mode for teens</span></div>
+        </footer>
       </div>
     </div>
-    <div class="lineup" id="lineup" aria-label="The orbs"></div>
-    <ul class="lfeat">
-      <li><b>A helper for everything.</b> Tech, cooking, games, websites, stories, homework, music, languages, and Nebula for the rest.</li>
-      <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
-      <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
-    </ul>
+    <div class="lrest">
+    <section class="lsec" id="lfeatures" aria-labelledby="lfTitle">
+      <h2 id="lfTitle">Meet the orbs</h2>
+      <p class="lsub">Each orb has its own personality and specialty. Nebula takes care of everything else.</p>
+      <div class="lineup" id="lineup" aria-label="The orbs"></div>
+      <ul class="lfeat">
+        <li><b>A helper for everything.</b> Tech, cooking, games, websites, stories, homework, music, languages, and Nebula for the rest.</li>
+        <li><b>Real Claude models.</b> Pick fast or deep thinking, from Koa up to Mythos.</li>
+        <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
+        <li><b>Searches the web.</b> Tap the globe for news, prices, and scores, with the sites it used.</li>
+        <li><b>Orb Teams.</b> On Plus and up, up to 5 orbs each do their part and the lead builds the final result.</li>
+        <li><b>Safe and private.</b> Kids Mode for teens, memory you control, and incognito chats that are never saved.</li>
+      </ul>
+    </section>
     <section class="lsec" id="lpricing" aria-labelledby="lpTitle">
       <h2 id="lpTitle">Pricing</h2>
       <p class="lsub">Start free. Upgrade anytime for more credits and stronger models. Pay yearly and get 2 months free.</p>
@@ -1220,7 +1374,7 @@ textarea:disabled{pointer-events:none}
       <p>So instead of one AI for everything, Orbs has nine little helpers called orbs. Each one has its own personality and specialty, from coding and cooking to Roblox, stories, music, and homework.</p>
       <p>Orbs runs on Anthropic's Claude models and is built to be safe, simple, and fun, with Kids Mode for teens and private chats for everyone. Have an idea or found a bug? Email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a>. Every message gets read.</p>
     </section>
-    <section class="faq" aria-label="Questions">
+    <section class="faq" id="lfaq" aria-label="Questions">
       <h2>Questions</h2>
       <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>
       <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you daily credits with the Koa and Lumina models. Orbs Plus plans add more credits, the Chrysalis and Mythos models, more web searches, and memory.</p></details>
@@ -1231,6 +1385,7 @@ textarea:disabled{pointer-events:none}
       <details><summary>How do I contact Orbs?</summary><p>Email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a>.</p></details>
     </section>
     <p class="legalnote"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button> · <button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button> · Orbs is AI and can make mistakes.</p>
+    </div>
   </div>
   <div class="gcard auth" id="authCard">
     <button class="linkbtn aback" id="aBack" type="button" hidden>‹ Back</button>
