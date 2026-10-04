@@ -1229,9 +1229,15 @@ function untilMonday(){
 function renderUsage(){
   $("limit").hidden = !limitHit;
   const bar = $("useBar"), more = $("useMore"), costs = $("useCost"), det = $("useDet"), wk = $("useWeek");
+  // The weekly row always shows, even when there's no weekly limit (like for the owner)
+  const noWeek = () => {
+    wk.hidden = false; $("useWeekBar").hidden = true; $("useWeekDot").className = "dot2 ok";
+    $("useWeekTxt").textContent = "No weekly limit";
+    $("useWeekMore").textContent = kids.owner ? "You're the owner, so you don't have a weekly limit. Pick a plan under \"Test as\" to see its weekly bar." : "There's no weekly limit on your account right now.";
+  };
   if (!credits) {
     $("useState").textContent = "Unlimited"; $("useDot").className = "dot2 ok";
-    bar.hidden = true; det.hidden = true; wk.hidden = true;
+    bar.hidden = true; det.hidden = true; noWeek();
     more.textContent = "There's no daily credit limit right now, so every model is free to use as much as you want.";
     return;
   }
@@ -1245,12 +1251,12 @@ function renderUsage(){
   if (credits.monthLimit > 0 && typeof credits.monthLeft === "number") {
     const isWeek = credits.period === "week", ml = credits.monthLeft, mt = credits.monthLimit, pct = Math.max(0, Math.min(1, ml / mt));
     const wl = ml <= 0 ? "out" : pct <= 0.2 ? "low" : "";
-    wk.hidden = false;
+    wk.hidden = false; $("useWeekBar").hidden = false;
     $("useWeekTxt").textContent = `${ml} of ${creditWord(mt)} left this ${isWeek ? "week" : "month"}`;
     $("useWeekDot").className = "dot2 " + (wl === "out" ? "bad" : wl === "low" ? "mid" : "ok");
     $("useWeekBar").className = "ubar" + (wl ? " " + wl : ""); $("useWeekFill").style.width = pct * 100 + "%";
     $("useWeekMore").textContent = isWeek ? `Resets Monday at 12:00 am New York time (in ${untilMonday()}).` : "Resets on the 1st of the month.";
-  } else wk.hidden = true;
+  } else noWeek();
   let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
   if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
   more.textContent = txt;
