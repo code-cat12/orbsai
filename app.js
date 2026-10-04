@@ -256,8 +256,9 @@ function renderPicker(){
   const wrap = $("bots"); wrap.innerHTML = "";
   for (const k of pickOrder()) {
     const b = BOTS[k], el = document.createElement("button");
-    el.type = "button"; el.className = "bot" + (b.season ? " spooky" : ""); el.id = "pick-" + k;
-    el.setAttribute("aria-pressed", String(k === active));
+    const inTeam = teamMode && (teamDraft.lead === k || teamDraft.helpers.includes(k));
+    el.type = "button"; el.className = "bot" + (b.season ? " spooky" : "") + (teamMode && teamDraft.lead === k ? " lead" : ""); el.id = "pick-" + k;
+    el.setAttribute("aria-pressed", String(teamMode ? inTeam : k === active));
     el.style.setProperty("--c", `var(${b.color})`);
     el.innerHTML = `<span class="g"></span><span class="n"></span><span class="r"></span>`;
     orbInto(el.querySelector(".g"), k);
@@ -267,7 +268,7 @@ function renderPicker(){
     wrap.appendChild(el);
   }
   const chips = $("chips"); chips.innerHTML = "";
-  if (active) for (const c of BOTS[active].chips) {
+  if (active) for (const c of teamMode && teamHelpers(teamDraft).length ? TEAM_CHIPS : BOTS[active].chips) {
     const ch = document.createElement("button"); ch.type = "button"; ch.className = "chip"; ch.textContent = c;
     ch.onclick = () => send(c); chips.appendChild(ch);
   }
@@ -281,13 +282,13 @@ function renderHome(){
     const b = BOTS[active];
     mark.className = "mark"; orbInto(mark, active);
     box.disabled = false; form.classList.remove("locked");
-    box.placeholder = b.ask;
+    box.placeholder = teamMode && teamHelpers(teamDraft).length ? "What should the team make?" : b.ask;
   } else {
     mark.className = "mark empty"; mark.innerHTML = ""; mark.textContent = "?";
     box.disabled = true; form.classList.add("locked");
-    box.placeholder = "Pick an orb below to start…";
+    box.placeholder = teamMode ? "Pick orbs below for your team…" : "Pick an orb below to start…";
   }
-  stopSpeak(); setAccent(); renderPicker(); updateSend(); snap(); renderSide(); renderIncog();
+  stopSpeak(); setAccent(); renderPicker(); updateSend(); snap(); renderSide(); renderIncog(); renderTeam();
 }
 // Incognito switch (top right on the home screen)
 function renderIncog(){
@@ -380,6 +381,7 @@ function bubble(role, turn, idx, isLast){
     }
     m.textContent = turn.content; col.appendChild(m);
   } else {
+    if (Array.isArray(turn.tn) && turn.tn.length) col.appendChild(teamBox(turn.tn, false));
     if (turn.th) col.appendChild(thinkBox(turn.th, turn.tm));
     if (Array.isArray(turn.q) && turn.q.length) col.appendChild(searchedLine(turn.q));
     m.innerHTML = md(splitOptions(turn.content).body); col.appendChild(m);
@@ -417,10 +419,10 @@ function bubble(role, turn, idx, isLast){
 function liveReply(){
   const b = BOTS[active];
   const row = el("div", "row bot-row"); row.style.setProperty("--c", `var(${b.color})`);
-  const col = el("div", "col"), think = thinkBox("", 0, true), searched = el("div", "searched"), msg = el("div", "msg"), src = el("div");
+  const col = el("div", "col"), team = el("div"), think = thinkBox("", 0, true), searched = el("div", "searched"), msg = el("div", "msg"), src = el("div");
   think.hidden = true; searched.hidden = true;
-  col.append(think, searched, msg, src); row.appendChild(col); log.appendChild(row);
-  return { row, think, searched, msg, src };
+  col.append(team, think, searched, msg, src); row.appendChild(col); log.appendChild(row);
+  return { row, team, think, searched, msg, src };
 }
 // The orb sits under the newest reply (like the Claude app); older replies stay still.
 function tailOrb(thinking){
@@ -435,10 +437,10 @@ function renderChat(){
   active = c.orb; webOn = !!c.web;
   app.dataset.view = "chat";
   const b = BOTS[active];
-  orbInto($("topGlyph"), active); $("topName").textContent = b.name; $("topRole").textContent = c.incog ? "Incognito chat" : c.title || b.role;
+  orbInto($("topGlyph"), active); $("topName").textContent = teamName(active, c.team); $("topRole").textContent = c.incog ? "Incognito chat" : c.title || b.role;
   $("incogTag").hidden = !c.incog;
   box.disabled = false; form.classList.remove("locked");
-  box.placeholder = `Reply to ${b.name}…`;
+  box.placeholder = `Reply to ${teamName(active, c.team)}…`;
   setAccent();
   log.innerHTML = "";
   if (c.incog) log.appendChild(el("div", "incognote", "🕶️ Incognito chat. It won't be saved, and it disappears when you leave."));
@@ -449,15 +451,129 @@ function renderChat(){
   });
   if (turns.length && turns[turns.length - 1].role === "assistant" && !busy) tailOrb(false);
   log.scrollTop = log.scrollHeight;
-  updateSend(); snap(); renderSide(); renderIncog();
+  updateSend(); snap(); renderSide(); renderIncog(); renderTeam();
 }
 
 // Incognito chats are never saved and vanish when you leave them
 function dropIncog(keep){ for (const id of Object.keys(convs)) if (convs[id].incog && id !== keep) delete convs[id]; }
+
+// ---------- Orb teams (Plus and up): helpers each do their part, then the lead orb builds the final result ----------
+const TEAM_MAX = 5, TEAM_BUILD = 2, TEAM_ASK = 20;   // max orbs (lead included), extra credits for the build, ask first above this
+let teamMode = false, teamDraft = { lead: null, helpers: [] }, teamOk = null;
+const teamAllowed = () => !!kids.plan || (!!kids.owner && (!kids.viewAs || kids.viewAs === "owner"));
+const TEAM_CHIPS = ["Make me a video game", "Plan a birthday party with food and music", "Make a comic with a story and songs"];
+// The team for what's on screen: the open chat's team, or the one being picked on the home screen
+function curTeam(){ if (app.dataset.view === "chat") { const c = curConv(); return c && c.team || null; } return teamMode ? teamDraft : null; }
+const teamHelpers = t => t ? t.helpers.filter(k => k !== t.lead && pickOrder().includes(k)) : [];
+const teamName = (k, t) => BOTS[k].name + (t && teamHelpers(t).length ? "'s team" : "");
+function teamCost(k, est){ const h = teamHelpers(curTeam()); return h.length ? est.total + TEAM_BUILD + h.length * MODELS[pf(k).m].cost : est.total; }
+function teamToggle(k){
+  const t = teamDraft;
+  if (t.lead === k) t.lead = t.helpers.shift() || null;
+  else if (t.helpers.includes(k)) t.helpers = t.helpers.filter(x => x !== k);
+  else if (!t.lead) t.lead = k;
+  else if (t.helpers.length + 1 >= TEAM_MAX) { status.textContent = `A team can have up to ${TEAM_MAX} orbs.`; return; }
+  else t.helpers.push(k);
+  status.textContent = "";
+}
+// "add Beat", "remove Quill and Abyss", "make Pixel the lead": only when the whole message is that (no Claude call, free)
+const TEAM_ALIAS = { cook: ["miso", "chef"] };
+function teamCommand(text){
+  const s = String(text).toLowerCase().replace(/[.!?,;:]+/g, " ").replace(/\s+/g, " ").trim();
+  if (s.length > 80) return null;
+  const m = s.match(/^(?:please |pls |can you |hey )*(add|invite|bring in|bring|remove|kick out|kick|drop|take out|take off|make|set)\b(.*)$/);
+  if (!m) return null;
+  const words = [];
+  for (const k of pickOrder()) { words.push([BOTS[k].name.toLowerCase(), k]); for (const a of TEAM_ALIAS[k] || []) words.push([a, k]); }
+  words.sort((a, b) => b[0].length - a[0].length);
+  let rest = " " + m[2] + " "; const found = [];
+  for (const [w, k] of words) { const re = new RegExp("(^|\\s)" + w + "(?=\\s|$)", "g"); if (re.test(rest)) { if (!found.includes(k)) found.push(k); rest = rest.replace(re, " "); } }
+  const left = rest.replace(/(^|\s)(and|&|also|too|the|to|from|in|into|out|of|on|my|our|this|team|teams|orb|orbs|as|be|lead|leader|boss|main|one|please|pls|back|again|now)(?=\s|$)/g, " ").trim();
+  if (!found.length || left) return null;
+  if (m[1] === "make" || m[1] === "set") return found.length === 1 && /(^|\s)(lead|leader|boss|main)(\s|$)/.test(s) ? { lead: found[0] } : null;
+  return /^(add|invite|bring)/.test(m[1]) ? { add: found } : { remove: found };
+}
+function applyTeam(cmd){
+  const conv = app.dataset.view === "chat" ? curConv() : null;
+  let t = conv ? conv.team : teamMode ? teamDraft : null;
+  if (!t) {   // a normal chat (or orb) becomes a team
+    if (!active) return "Pick an orb first.";
+    t = { lead: active, helpers: [] };
+    if (conv) conv.team = t; else { teamMode = true; teamDraft = t; }
+  }
+  const names = ks => ks.map(k => BOTS[k].name).join(" and ");
+  const out = [], added = [], gone = [];
+  for (const k of cmd.add || []) {
+    if (k === t.lead || t.helpers.includes(k)) out.push(`${BOTS[k].name} is already on the team.`);
+    else if (t.helpers.length + 1 >= TEAM_MAX) { out.push(`A team can have up to ${TEAM_MAX} orbs.`); break; }
+    else { t.helpers.push(k); added.push(k); }
+  }
+  for (const k of cmd.remove || []) {
+    if (k === t.lead) { if (!t.helpers.length) { out.push("A team needs at least one orb."); continue; } t.lead = t.helpers.shift(); gone.push(k); }
+    else if (t.helpers.includes(k)) { t.helpers = t.helpers.filter(x => x !== k); gone.push(k); }
+    else out.push(`${BOTS[k].name} isn't on the team.`);
+  }
+  if (cmd.lead && cmd.lead !== t.lead) {
+    const k = cmd.lead;
+    if (!t.helpers.includes(k) && t.helpers.length + 1 >= TEAM_MAX) out.push(`A team can have up to ${TEAM_MAX} orbs.`);
+    else { t.helpers = [t.lead, ...t.helpers.filter(x => x !== k)]; t.lead = k; out.unshift(`${BOTS[k].name} is the lead now 👑`); }
+  }
+  if (added.length) out.unshift(`Added ${names(added)} to the team ✓`);
+  if (gone.length) out.unshift(`Removed ${names(gone)} from the team.`);
+  active = t.lead;
+  if (conv) { conv.orb = t.lead; conv.updated = Date.now(); save(); renderChat(); } else renderHome();
+  return out.join(" ");
+}
+// The row of team members above the chat box
+function renderTeam(){
+  const bar = $("teamBar"), t = curTeam(), home = app.dataset.view === "home";
+  $("teamBtn").hidden = !home || !user || kids.on && !teamAllowed();
+  $("teamBtn").setAttribute("aria-pressed", String(home && teamMode));
+  $("pickLbl").textContent = home && teamMode ? `Pick up to ${TEAM_MAX} orbs for your team (the first one is the lead 👑)` : "Pick your orb";
+  if (!t || !t.lead || (home && !teamMode)) { bar.hidden = true; bar.replaceChildren(); return; }
+  bar.hidden = false; bar.replaceChildren(el("span", "tl", "👥 Team"));
+  for (const k of [t.lead, ...teamHelpers(t)]) {
+    const chip = el("span", "tchip" + (k === t.lead ? " lead" : "")); chip.style.setProperty("--c", `var(${BOTS[k].color})`);
+    const g = el("span", "g"); orbInto(g, k);
+    const n = el("button", "tn", BOTS[k].name + (k === t.lead ? " 👑" : "")); n.type = "button";
+    n.title = k === t.lead ? "The lead builds the final result" : `Make ${BOTS[k].name} the lead`;
+    n.onclick = () => { if (busy || k === t.lead) return; status.textContent = applyTeam({ lead: k }); };
+    const x = el("button", "tx", "×"); x.type = "button"; x.title = `Remove ${BOTS[k].name}`; x.setAttribute("aria-label", `Remove ${BOTS[k].name}`);
+    x.onclick = () => { if (busy) return; status.textContent = applyTeam({ remove: [k] }); };
+    chip.append(g, n); if (t.helpers.length) chip.append(x); bar.append(chip);
+  }
+  bar.append(el("span", "ttip", teamHelpers(t).length ? 'Say "add Beat" or "remove Quill" any time. Tap a name to make it the lead.' : 'Add orbs to the team: say "add Quill and Beat"' + (home ? " or tap them below." : ".")));
+}
+$("teamBtn").onclick = () => {
+  if (busy) return;
+  if (!teamAllowed()) { status.textContent = "Orb teams come with Plus and up ✨"; openPlans(); return; }
+  teamMode = !teamMode; teamDraft = { lead: teamMode ? active : null, helpers: [] }; cur = null;
+  renderHome(); box.focus();
+};
+// Team progress and notes that go with a reply
+function teamBox(list, live, lead){
+  const d = el("details", "teambox"); if (live) d.open = true;
+  const done = list.filter(x => x.s === "ok");
+  d.append(el("summary", null, live ? "👥 The team is working…" : `👥 Team notes: ${done.map(x => BOTS[x.k] ? BOTS[x.k].name : "").filter(Boolean).join(", ") || "none"}`));
+  for (const x of list) {
+    const b = BOTS[x.k]; if (!b) continue;
+    const step = el("div", "tstep"), name = el("b", null, b.name);
+    if (x.s === "go") step.append("⏳", name, " is doing their part…");
+    else if (x.s === "ok") step.append("✓", name, x.n ? " did their part:" : " did their part.");
+    else if (x.s === "fail") step.append("⚠️", name, " couldn't help this time (you got those credits back).");
+    else if (x.s === "skip") step.append("⏭️", name, " was skipped to save time (you got those credits back).");
+    d.append(step);
+    if (x.s === "ok" && x.n) { const n = el("div", "tnote"); n.style.setProperty("--c", `var(${b.color})`); const m = el("div", "msg"); m.innerHTML = md(x.n); n.append(m); d.append(n); }
+  }
+  if (live && lead && BOTS[lead]) { const step = el("div", "tstep"); step.append("🛠️", el("b", null, BOTS[lead].name), " is putting it all together…"); d.append(step); }
+  return d;
+}
+
 function pick(k){
   if (busy) return;
   dropIncog(null);
-  active = k; cur = null; status.textContent = ""; webOn = false;
+  if (teamMode) { teamToggle(k); k = teamDraft.lead; }
+  active = k; cur = null; if (!teamMode) status.textContent = ""; webOn = false;
   renderHome();
   const mark = $("mark"); mark.classList.remove("pop"); void mark.offsetWidth; mark.classList.add("pop"); setTimeout(() => mark.classList.remove("pop"), 600);
   box.focus();
@@ -501,13 +617,31 @@ async function send(text, regen, filesOverride){
   if (!active) { nudge(); return; }
   if ((!text && !regen && !pendingFiles.length && !filesOverride) || busy) return;
   if (!user) return;
+  // Team changes said in words ("add Beat", "remove Quill") are done right here, for free
+  if (!regen && !filesOverride && !pendingFiles.length && text && teamAllowed()) {
+    const cmd = teamCommand(text);
+    if (cmd) { box.value = ""; autosize(); status.textContent = applyTeam(cmd); return; }
+  }
   const key = active, b = BOTS[key], mi = pf(key).m, model = MODELS[mi];
   if (lockedModel(mi)) { status.textContent = `${model.n} needs Orbs ${PLAN_NAMES[needPlan(mi)]}. Upgrade, or pick Koa or Lumina.`; openPlans(); return; }
-  if (credits && credits.left < estimate(key, { regen, files: filesOverride }).total) { creditShort(model); return; }
+  const helpers = teamHelpers(curTeam());
+  if (helpers.length && !teamAllowed()) { status.textContent = "Orb teams come with Plus and up ✨"; openPlans(); return; }
+  const est = estimate(key, { regen, files: filesOverride }), total = teamCost(key, est);
+  if (credits && credits.left < total) {
+    if (!helpers.length) { creditShort(model); return; }
+    status.textContent = `Not enough credits for this team run: it needs ${total}, you have ${credits.left}. Remove an orb or pick a cheaper model.`; return;
+  }
+  // Big team runs ask first: press send again to go
+  if (helpers.length && credits && total > TEAM_ASK) {
+    const sig = (regen ? "\u0000redo" : text) + "|" + total;
+    if (teamOk !== sig) { teamOk = sig; status.textContent = `👥 This team run uses ${total} credits. Press send again to go!`; return; }
+  }
+  teamOk = null;
   // Start a new chat if none is open for this orb
   if (!curConv() || curConv().orb !== key) {
     const id = (incogNext ? "x_" : "") + newId(), now = Date.now();
-    convs[id] = { id, orb:key, title:"", turns:[], created:now, updated:now, web:webOn, ...(incogNext ? { incog:true } : {}) };
+    convs[id] = { id, orb:key, title:"", turns:[], created:now, updated:now, web:webOn, ...(incogNext ? { incog:true } : {}),
+      ...(teamMode && teamDraft.lead === key ? { team: { lead:key, helpers:[...teamDraft.helpers] } } : {}) };
     cur = id; incogNext = false;
   }
   const cid = cur, conv = convs[cid];
@@ -531,7 +665,7 @@ async function send(text, regen, filesOverride){
   ctl = new AbortController();
   const ctx = conv.turns.slice(-30).map(t => ({ role:t.role, content:t.content }));
   while (ctx.length && ctx[0].role !== "user") ctx.shift();
-  let reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0, memSaved = [];
+  let reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0, memSaved = [], teamSteps = [], leadAt = null;
   const paint = () => {
     raf = 0;
     if (thinking) { live.think.hidden = false; live.think.querySelector(".thinktext").innerHTML = md(thinking); }
@@ -545,6 +679,7 @@ async function send(text, regen, filesOverride){
     if (queries.length) o.q = queries.slice(0, 5);
     if (sources.length) o.src = sources.slice(0, 10);
     if (memSaved.length) o.mem = memSaved;
+    if (teamSteps.length) o.tn = teamSteps.filter(x => x.s !== "go");
     return o;
   };
   try {
@@ -554,7 +689,7 @@ async function send(text, regen, filesOverride){
       res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
-        body: JSON.stringify({ orb:key, model:mi, effort:pf(key).e, messages:ctx, think: opts.think !== false, web: !!webOn,
+        body: JSON.stringify({ orb:key, model:mi, effort:pf(key).e, messages:ctx, think: opts.think !== false, web: !!webOn, ...(helpers.length ? { team: helpers } : {}),
           ...(ctx.length === 1 && !conv.incog && !conv.renamed ? { title: true } : {}),
           ...(kids.memory && opts.memory !== false && !conv.incog ? { memory: true } : {}),
           ...(files.length ? { attachments: files.map(f => f.kind === "text" ? { kind:"text", name:f.name, text:f.text } : { kind:f.kind, name:f.name, media_type:f.media_type, data:f.data }) } : {}) }),
@@ -577,6 +712,7 @@ async function send(text, regen, filesOverride){
           let ev; try { ev = JSON.parse(line); } catch(_) { continue; }
           if (typeof ev.d === "string") {
             if (!reply && thinking && live.think.open) { thinkSecs = Math.max(1, Math.round((Date.now() - thinkStart) / 1000)); live.think.open = false; live.think.querySelector("summary").textContent = `Thought for ${thinkSecs}s`; }
+            if (!reply && teamSteps.length) live.team.replaceChildren(teamBox(teamSteps.filter(x => x.s !== "go"), false));
             reply += ev.d; tail.classList.remove("think"); later();
           }
           else if (typeof ev.t === "string") { if (!thinking) thinkStart = Date.now(); thinking += ev.t; later(); }
@@ -584,6 +720,12 @@ async function send(text, regen, filesOverride){
           else if (Array.isArray(ev.src)) { for (const x of ev.src) if (x && typeof x.u === "string" && sources.length < 10 && !sources.some(y => y.u === x.u)) sources.push({ u: x.u, t: String(x.t || "") }); live.src.replaceChildren(sourcesBox(sources)); }
           else if (typeof ev.nosearch === "string") noSearch = ev.nosearch;
           else if (Array.isArray(ev.mem)) { memSaved = ev.mem.filter(x => typeof x === "string").slice(0, 3); live.src.after(memChip(memSaved)); }
+          else if (ev.tm && typeof ev.tm === "object" && typeof ev.tm.k === "string") {
+            const x = ev.tm;
+            if (x.s === "lead") leadAt = x.k;
+            else if (BOTS[x.k]) { const i = teamSteps.findIndex(y => y.k === x.k), step = { k: x.k, s: String(x.s), ...(typeof x.n === "string" ? { n: x.n.slice(0, 6000) } : {}) }; if (i >= 0) teamSteps[i] = step; else teamSteps.push(step); }
+            live.team.replaceChildren(teamBox(teamSteps, !reply, leadAt)); stickBottom();
+          }
           else if (typeof ev.title === "string") { if (!conv.renamed && ev.title.trim()) { conv.title = ev.title.trim().slice(0, 80); if (cur === cid) $("topRole").textContent = conv.title; renderSide(); } }
           else end = ev;
         }
@@ -602,6 +744,7 @@ async function send(text, regen, filesOverride){
     if (typeof (e && e.left) === "number") setCredits(e.left);
     if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
+    else if (code === "plan_team") { status.textContent = "Orb teams come with Plus and up ✨"; refreshStatus(); openPlans(); }
     else if (code === "plan_model") { status.textContent = `${model.n} needs Orbs ${e.needName || "Plus"}. Upgrade, or pick Koa or Lumina.`; refreshStatus(); openPlans(); }
     else if (code === "week_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this week. They come back Monday!" + (kids.billing ? " Upgrade for more!" : ""); }
     else if (code === "month_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this month." + (kids.billing ? " Upgrade for more!" : ""); }
@@ -924,20 +1067,24 @@ function hint(){
   // Web search note (it costs the site owner a little)
   const web = active && webOn ? `🌐 Web search is on (up to 3 searches per message, ${Number.isInteger(kids.webPerDay) ? kids.webPerDay : 5} per day).` : "";
   if (!active || !credits) return show(web);
-  const p = pf(active), m = MODELS[p.m], est = estimate(active), cost = est.total, left = credits.left;
+  const p = pf(active), m = MODELS[p.m], est = estimate(active), cost = teamCost(active, est), left = credits.left, th = teamHelpers(curTeam());
   const what = m.n + (hasEffort(p.m) && EFFORTS[p.e].mult > 1 ? " on " + EFFORTS[p.e].n : "");
-  const koaTip = p.m !== 0 ? " Koa uses just 1." : "";
+  const koaTip = p.m !== 0 && !th.length ? " Koa uses just 1." : "";
   // "This message: Lumina 3 + web search 2 = 5 credits"
   const parts = [`${what} ${est.base}`]; if (est.long) parts.push(`long chat ${est.long}`); if (est.files) parts.push(`big files ${est.files}`); if (est.web) parts.push(`web search ${est.web}`);
-  const cost1 = parts.length > 1 ? `This message: ${parts.join(" + ")} = ${creditWord(cost)}${est.web ? " (you get the 2 back if it doesn't search)" : ""}.` : `${what} uses ${creditWord(cost)} per message.`;
+  // Orb team: "Team run: Pixel 3 + 3 helpers × 3 + team build 2 = 14 credits"
+  if (th.length) { parts[0] = `${BOTS[active].name} ${est.base}`; parts.push(`${th.length} helper${th.length > 1 ? "s" : ""} × ${m.cost}`, `team build ${TEAM_BUILD}`); }
+  const cost1 = th.length ? `👥 Team run on ${what}: ${parts.join(" + ")} = ${creditWord(cost)}. You get credits back for any orb that can't help.`
+    : parts.length > 1 ? `This message: ${parts.join(" + ")} = ${creditWord(cost)}${est.web ? " (you get the 2 back if it doesn't search)" : ""}.` : `${what} uses ${creditWord(cost)} per message.`;
   let msg = "", cls = "";
-  if (left < cost) {
+  if (left < cost && th.length && left > 0) { msg = `Not enough credits for this team run: it needs ${cost}, you have ${left}. Remove an orb or pick a cheaper model.`; cls = "warn"; }
+  else if (left < cost) {
     const ex = cost - est.base, cheaper = MODELS.filter(x => x.cost + ex <= left).pop();
     msg = left > 0 ? `Not enough credits: this message needs ${cost}, you have ${left}. ${cheaper ? "Switch to " + cheaper.n + " to keep chatting." : "They refill at midnight."}` : "You're out of credits for today. They refill at midnight.";
     cls = "warn";
   } else if (left <= 20) { msg = `Low on credits: ${left} left today. ${cost1}` + koaTip; cls = "warn"; }
   else if (left <= 50) { msg = `${creditWord(left)} left today. ${cost1}`; cls = "mid"; }
-  else if (parts.length > 1 || cost > 3) msg = cost1 + (cost > 3 ? ` (${left} left today)` : "");
+  else if (th.length || parts.length > 1 || cost > 3) msg = cost1 + (cost > 3 ? ` (${left} left today)` : "");
   // Say plainly when an extra kicks in
   const why = [];
   if (est.long) why.push("💬 This chat is long now, so each message costs 1 extra credit. Start a new chat to save credits.");
@@ -978,7 +1125,7 @@ function convItem(c, sub){
   el.type = "button"; el.className = "nav" + (c.id === cur ? " on" : ""); el.style.setProperty("--c", `var(${b.color})`);
   el.innerHTML = '<span class="g"></span><span class="tx"><b></b><small></small></span>';
   orbInto(el.querySelector(".g"), c.orb); el.querySelector("b").textContent = c.title || "New chat";
-  el.querySelector("small").textContent = sub || b.name;
+  el.querySelector("small").textContent = sub || teamName(c.orb, c.team);
   el.onclick = () => openConv(c.id);
   el.ondblclick = e => { e.preventDefault(); startRename(c.id, el.parentNode); };
   return el;
@@ -1143,6 +1290,7 @@ function cleanTurns(v){
         if (m.fb === "up" || m.fb === "down") o.fb = m.fb;
         if (Array.isArray(m.q)) o.q = m.q.filter(q => typeof q === "string").slice(0, 5).map(q => q.slice(0, 200));
         if (Array.isArray(m.mem)) o.mem = m.mem.filter(x => typeof x === "string").slice(0, 3).map(x => x.slice(0, 160));
+        if (Array.isArray(m.tn)) o.tn = m.tn.filter(x => x && Object.hasOwn(BOTS, x.k) && ["ok","fail","skip"].includes(x.s)).slice(0, 4).map(x => ({ k: x.k, s: x.s, ...(typeof x.n === "string" ? { n: x.n.slice(0, 6000) } : {}) }));
         if (Array.isArray(m.src)) o.src = m.src.filter(x => x && typeof x.u === "string" && /^https?:\/\//i.test(x.u)).slice(0, 10).map(x => ({ u: x.u.slice(0, 500), t: String(x.t || "").slice(0, 200) }));
       }
       return o; }) : [];
@@ -1153,7 +1301,7 @@ async function flush(){
   try {
     for (const c of Object.values(convs)) {
       if (!c.turns.length || c.incog) continue;
-      const data = { orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created || Date.now(), updated:c.updated || Date.now() };
+      const data = { orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created || Date.now(), updated:c.updated || Date.now(), ...(c.team ? { team: { lead: c.team.lead, helpers: c.team.helpers.slice(0, TEAM_MAX - 1) } } : {}) };
       const js = JSON.stringify(data);
       if (lastSent["c_" + c.id] !== js) { await F.setDoc(F.doc(db, "users", uid, "chats", c.id), data); lastSent["c_" + c.id] = js; }
     }
@@ -1173,8 +1321,11 @@ async function loadAccount(u){
     const c = { id:d.id, orb:v.orb, title: typeof v.title === "string" ? v.title.slice(0, 80) : "", turns: cleanTurns(v.turns),
       created: typeof v.created === "number" ? v.created : Date.now(), updated: typeof v.updated === "number" ? v.updated : Date.now() };
     if (!c.turns.length) return;
+    // An orb team chat keeps its team
+    if (v.team && typeof v.team === "object" && v.team.lead === v.orb && Array.isArray(v.team.helpers))
+      c.team = { lead: v.orb, helpers: v.team.helpers.filter((k, i, a) => Object.hasOwn(BOTS, k) && k !== v.orb && a.indexOf(k) === i).slice(0, TEAM_MAX - 1) };
     convs[c.id] = c;
-    lastSent["c_" + c.id] = JSON.stringify({ orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created, updated:c.updated });
+    lastSent["c_" + c.id] = JSON.stringify({ orb:c.orb, title:c.title || "New chat", turns:fitTurns(c.turns), created:c.created, updated:c.updated, ...(c.team ? { team: c.team } : {}) });
   });
   let migrate = false;
   snap.forEach(d => {
@@ -1692,9 +1843,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["140 credits a day (800 a week)", "Chrysalis unlocked", "10 web searches a day"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["255 credits a day (1,400 a week)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["625 credits a day (3,200 a week)", "Every model", "50 web searches a day", "Memory: orbs remember you", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["140 credits a day (800 a week)", "Chrysalis unlocked", "10 web searches a day", "Orb teams: up to 5 orbs work together"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["255 credits a day (1,400 a week)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you", "Orb teams: up to 5 orbs work together"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["625 credits a day (3,200 a week)", "Every model", "50 web searches a day", "Memory: orbs remember you", "Orb teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){

@@ -709,6 +709,28 @@ textarea:disabled{pointer-events:none}
 .ucost b{display:block;font-size:1.05rem}
 .ucost small{color:var(--muted)}
 .ucost p{grid-column:1/-1;margin:0;font-size:.8rem;color:var(--muted)}
+/* Orb teams */
+.teamtog{white-space:nowrap;flex-shrink:0;align-self:flex-start;font:inherit;font-size:.8rem;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer}
+.teamtog:hover{border-color:var(--muted);color:var(--ink)}
+.teamtog[aria-pressed="true"]{color:var(--ink);border-color:var(--c-active,var(--accent));background:color-mix(in srgb,var(--c-active,var(--accent)) 12%,transparent)}
+.bot.lead .n::after{content:" 👑"}
+.teambar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px;font-size:.84rem}
+.teambar .tl{color:var(--muted);margin-right:2px}
+.tchip{--c:var(--accent);display:inline-flex;align-items:center;gap:5px;padding:3px 4px 3px 4px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:inherit;font-size:.84rem}
+.tchip.lead{border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,var(--panel))}
+.tchip .g{width:20px;height:20px;display:grid;place-items:center}
+.tchip .g svg{width:20px;height:20px}
+.tchip .tn{background:none;border:0;padding:0 2px;font:inherit;color:inherit;cursor:pointer}
+.tchip .tx{background:none;border:0;padding:0 5px;font:inherit;color:var(--muted);cursor:pointer;border-radius:50%}
+.tchip .tx:hover{color:var(--ink)}
+.teambar .ttip{color:var(--muted);font-size:.78rem;flex-basis:100%}
+.teambox{border:1px solid var(--line);border-radius:12px;padding:6px 10px;margin:0 0 8px;font-size:.88rem;background:var(--panel)}
+.teambox summary{cursor:pointer;color:var(--muted)}
+.teambox .tstep{display:flex;gap:6px;align-items:baseline;margin:4px 0;color:var(--muted)}
+.teambox .tstep b{color:var(--ink);font-weight:500}
+.teambox .tnote{margin:4px 0 10px;padding-left:10px;border-left:3px solid var(--c,var(--line))}
+.teambox .tnote .msg{font-size:.88rem}
+
 </style>
 <script type="module" src="/app.js"></script>
 </head>
@@ -767,6 +789,7 @@ textarea:disabled{pointer-events:none}
 
   <div class="composer-wrap">
     <div class="limit" id="limit" hidden>No more usage!! 😤💢 You used up all your credits for today, baka! They refill at midnight. N-not that I'm worried about you or anything! <button class="linkbtn" type="button" id="limitUp" hidden>Get more with Plus ✨</button></div>
+    <div class="teambar" id="teamBar" hidden></div>
     <form class="composer locked" id="form">
       <label for="box" hidden>Message</label>
       <div class="atts" id="atts" hidden></div>
@@ -795,7 +818,7 @@ textarea:disabled{pointer-events:none}
   </div>
 
   <div class="picker" id="picker">
-    <div class="pick-label"><span>Pick your orb</span></div>
+    <div class="pick-label"><span id="pickLbl">Pick your orb</span><button type="button" class="teamtog" id="teamBtn" aria-pressed="false" title="Make an orb team" hidden>👥 Orb team</button></div>
     <div class="bots" id="bots"></div>
     <div class="chips" id="chips"></div>
   </div>
@@ -997,6 +1020,7 @@ textarea:disabled{pointer-events:none}
     <div class="lbody">
       <p class="lupd">October 2026</p>
       <ul>
+        <li><b>👥 Orb teams (Plus and up):</b> pick up to 5 orbs and they make something together. Each orb does its own part, then the lead orb builds the final result. Say "add Beat" or "remove Quill" any time.</li>
         <li><b>🎃 Spooks and 👻 Hex (October only):</b> two Halloween orbs! Spooks the pumpkin helps with costumes, carving, snacks, and parties. Hex the blue ghost tells spooky stories, riddles, and silly fortunes. They leave on November 1.</li>
         <li><b>7% off Plus and Plus Plus:</b> use code WELCOME7 at checkout for your first payment. Ends November 1.</li>
         <li><b>New home:</b> Orbs now lives at orbsai.app, and you can reach us at contact@orbsai.app.</li>

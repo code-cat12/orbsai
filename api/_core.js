@@ -83,12 +83,18 @@ export function cleanRequest(body) {
   if (!turns.length || turns[turns.length - 1].role !== "user") return { error: "bad_request" };
   const att = cleanAttachments(body.attachments);
   if (att.error) return { error: att.error };
+  // Orb team: the helpers, in order (the lead is "orb"). Up to 5 orbs in total.
+  let team = [];
+  if (body.team !== undefined) {
+    if (!Array.isArray(body.team) || body.team.length > MAX_TEAM - 1) return { error: "bad_request" };
+    for (const k of body.team) if (typeof k !== "string" || !Object.hasOwn(ORBS, k) || k === orb || team.includes(k)) return { error: "bad_request" }; else team.push(k);
+  }
   let total = turns.reduce((n, t) => n + t.content.length, 0);
   while (total > MAX_TOTAL_CHARS && turns.length > 1) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, effort, turns, files: att.files, think: body.think === true, web: body.web === true, count: messages.length,
+  return { orb, model, effort, turns, files: att.files, team, think: body.think === true, web: body.web === true, count: messages.length,
     wantTitle: body.title === true && messages.length === 1, memory: body.memory === true };
 }
 
@@ -160,6 +166,38 @@ export function systemPrompt(orb, model, seasonMode = "auto") {
     .filter(Boolean).join(" ");
 }
 
+// ---------- Orb teams (Plus and up) ----------
+// The helpers each do their own part, one after another, then the lead orb puts it all together.
+// Cost: each helper = the model's cost (they always think a little, so no effort multiplier),
+//       the lead = a normal message + TEAM_BUILD for the big build at the end.
+export const MAX_TEAM = 5;            // orbs in a team, lead included
+export const TEAM_BUILD = 2;
+const HELPER_TOKENS = 1500;           // a helper's part stays short
+const PEEK_CHARS = 1500;              // how much of earlier helpers' parts the next helper sees
+const NOTE_CHARS = 6000;              // how much of each part the lead sees
+const HELPERS_TIME = 150000;          // after 2.5 minutes of helpers, skip the rest so the lead has time to build
+const HELPER_CONTEXT = 6;             // helpers only see the latest few messages
+const teamNames = (lead, team) => [`${ORBS[lead].name} (${ORBS[lead].role}, the lead)`, ...team.map((k) => `${ORBS[k].name} (${ORBS[k].role})`)].join(", ");
+export function helperPrompt(key, lead, team, kidsOn) {
+  const o = ORBS[key];
+  return [o.rules,
+    `TEAM MODE: right now you're one orb on an Orbs team working on the person's request together. The team: ${teamNames(lead, team)}.`,
+    `Do only YOUR part: the piece of the request that fits your specialty (${o.role}). ${ORBS[lead].name} will put everyone's parts together into the finished result, so don't build the whole thing.`,
+    "Ignore any rule about sending them to another orb: in team mode you just do your part. Don't ask questions; make smart guesses. No intro or sign-off.",
+    "Keep it short and useful: under 300 words, or the actual piece itself (like a plot, lore, a song plan, a list of features).",
+    FORMAT, `Write as ${o.name}.`, kidsOn ? KIDS_RULES : ""].filter(Boolean).join(" ");
+}
+export function leadRules(lead, team) {
+  return `TEAM MODE: you're the lead of an Orbs team: ${teamNames(lead, team)}. Your teammates already did their parts, ` +
+    "which are in <team_notes> at the end of the person's newest message (the person can open the notes, but your reply is what they really see). " +
+    "Use their work to make ONE finished result: you're the one who builds it. Keep the good parts, fix anything that doesn't fit together, " +
+    "and add one short line saying who did what (like \"Plot by Abyss, lore by Quill\"). If a teammate's part is missing, do that part yourself.";
+}
+const noteTag = (k, text, max) => `<note orb="${ORBS[k].name}">\n${String(text).slice(0, max).replace(/<\/?(team_notes|note)\b[^>]*>/gi, "")}\n</note>`;
+export function notesBlock(notes, max = NOTE_CHARS) {
+  return notes.length ? `\n\n<team_notes>\n${notes.map((n) => noteTag(n.k, n.text, max)).join("\n")}\n</team_notes>` : "";
+}
+
 // deps: verifyToken(idToken) -> decoded token, charge(uid, cost, limits, day) -> {ok, left, reason},
 //       refund(uid, cost, day), getKids(uid) -> kids settings, flag(uid, info) -> safety log,
 //       getConfig() -> site switches, searchesLeft(uid, day, cfg) -> number, countSearches(uid, n, day),
@@ -188,7 +226,7 @@ export function makeChatHandler({
     let cfg;
     try { cfg = siteConfig(await getConfig()); } catch { cfg = siteConfig(null); }
     if (cfg.paused) return json(503, { error: "paused", msg: cfg.pausedMsg });
-    if (!inSeason(req.orb, Date.now(), cfg.halloween)) return json(400, { error: "season_over" });
+    if ([req.orb, ...req.team].some((k) => !inSeason(k, Date.now(), cfg.halloween))) return json(400, { error: "season_over" });
     const siteEnv = cfg.kidsForAll ? { ...env, KIDS_MODE: "all" } : env;
 
     // Age check and Kids Mode, decided on the server so nobody can switch it off from the page
@@ -204,6 +242,9 @@ export function makeChatHandler({
     try { sub = await getSub(user.uid); } catch { sub = null; }
     const allow = allowance({ sub, cfg, env, user, viewAs: rawKids && rawKids.viewAs });
     if (!allow.models.includes(req.model)) { const need = planFor(req.model); return json(403, { error: "plan_model", need, needName: PLANS[need].name }); }
+    // Orb teams come with Plus and up
+    const team = req.team;
+    if (team.length && !allow.plan && !allow.admin) return json(403, { error: "plan_team", need: "plus", needName: PLANS.plus.name });
 
     const model = MODELS[req.model];
     const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
@@ -240,7 +281,10 @@ export function makeChatHandler({
     const extraLong = req.count > LONG_CHAT ? EXTRAS.longChat : 0;
     const extraFiles = isBigFiles(req.files) ? EXTRAS.bigFiles : 0;
     const extraWeb = searchCap ? EXTRAS.web : 0;
-    const cost = model.cost * (effort ? effort.mult : 1) + extraLong + extraFiles + extraWeb;
+    const leadCost = model.cost * (effort ? effort.mult : 1) + extraLong + extraFiles + extraWeb + (team.length ? TEAM_BUILD : 0);
+    const helperCost = model.cost;
+    // A team run is charged all at once (so it has to fit today's AND this week's credits), and failed parts come back
+    const cost = leadCost + helperCost * team.length;
 
     // Credit limits: paid plans use their own numbers; free uses the admin panel's (then Vercel's). 0 = unlimited.
     const perUser = allow.perUser, site = allow.site;
@@ -252,8 +296,8 @@ export function makeChatHandler({
       if (!paid.ok) return json(429, { error: paid.reason, left: paid.left });
       if (perUser <= 0) paid.left = null; // only a site-wide cap: don't show a personal count
     }
-    const giveBack = async () => { if (limited) await refund(user.uid, cost, day, limits.monthKey).catch(() => {}); };
-    const leftAfterRefund = () => (limited && paid.left !== null ? paid.left + cost : null);
+    const giveBack = async (n = cost) => { if (limited && n > 0) await refund(user.uid, n, day, limits.monthKey).catch(() => {}); };
+    const leftAfterRefund = (n = cost) => (limited && paid.left !== null ? paid.left + n : null);
 
     // Memory (Plus Plus and up, never in Kids Mode): use what they told Orbs before, and save new things from this message
     const memOn = req.memory && allow.memory && !kidsOn;
@@ -272,55 +316,112 @@ export function makeChatHandler({
 
     // Summarized thinking costs nothing extra on these models (the thinking happens either way); Kids Mode never shows it.
     const showThinking = req.think && !kidsOn && live.effort;
-    let upstream;
-    try {
-      upstream = await fetchImpl("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
+    const headers = { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" };
+    // An anonymous id (not the email) so Anthropic can spot abuse from one person
+    const metadata = { user_id: createHash("sha256").update(user.uid).digest("hex").slice(0, 32) };
+    // The lead orb's (or the only orb's) streamed reply. notes = the team's parts, added to the newest message.
+    const askLead = async (notes = []) => {
+      try {
+        return await fetchImpl("https://api.anthropic.com/v1/messages", {
+          method: "POST", headers,
+          body: JSON.stringify({
+            model: live.id,
+            max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
+            ...(effort ? { output_config: { effort: effort.id } } : {}),
+            ...(showThinking ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
+            ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
+            // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
+            cache_control: { type: "ephemeral" },
+            system: [systemPrompt(req.orb, req.model, cfg.halloween), team.length ? leadRules(req.orb, team) : "", memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
+            messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content + notesBlock(notes), req.files) } : t)),
+            stream: true,
+            metadata,
+          }),
+          signal: request.signal,
+        });
+      } catch { return null; }
+    };
+    const upstreamError = async (up) => {
+      let detail = "";
+      try { detail = up ? await up.text() : ""; } catch {}
+      const broke = /credit balance|billing|spend limit|spending limit/i.test(detail);
+      const busy = up && (up.status === 429 || up.status === 529);
+      return broke ? "out_of_funds" : busy ? "overloaded" : "upstream_error";
+    };
+    // One helper's part (not streamed, kept short). Earlier helpers' parts come along so they build on each other.
+    const askHelper = async (k, notes) => {
+      const recent = req.turns.slice(-HELPER_CONTEXT);
+      while (recent.length > 1 && recent[0].role !== "user") recent.shift();
+      const fileNote = req.files.length ? `\n\n(The person also sent files: ${req.files.map((f) => f.name).join(", ")}. Only ${ORBS[req.orb].name} can open them.)` : "";
+      const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers,
         body: JSON.stringify({
           model: live.id,
-          max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
-          ...(effort ? { output_config: { effort: effort.id } } : {}),
-          ...(showThinking ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
-          ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
-          // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
-          cache_control: { type: "ephemeral" },
-          system: [systemPrompt(req.orb, req.model, cfg.halloween), memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
-          messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content, req.files) } : t)),
-          stream: true,
-          // An anonymous id (not the email) so Anthropic can spot abuse from one person
-          metadata: { user_id: createHash("sha256").update(user.uid).digest("hex").slice(0, 32) },
+          max_tokens: Math.min(HELPER_TOKENS, live.maxTokens || Infinity),
+          ...(live.effort ? { output_config: { effort: "low" } } : {}),
+          system: helperPrompt(k, req.orb, team, kidsOn),
+          messages: recent.map((t, i) => (i === recent.length - 1 ? { role: t.role, content: t.content + fileNote + notesBlock(notes, PEEK_CHARS) } : t)),
+          metadata,
         }),
         signal: request.signal,
       });
-    } catch { upstream = null; }
+      if (!res.ok) throw new Error("helper");
+      const j = await res.json();
+      const u = j.usage || {};
+      record(day, { family: familyOf(live.id), input: u.input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0, cacheRead: u.cache_read_input_tokens || 0,
+        output: u.output_tokens || 0, searches: 0, cents: costCents(live.id, { input: u.input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0, cacheRead: u.cache_read_input_tokens || 0, output: u.output_tokens || 0 }) }).catch(() => {});
+      const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text || "").join("").trim();
+      if (!text) throw new Error("empty");
+      return text;
+    };
 
-    if (!upstream || !upstream.ok || !upstream.body) {
-      await giveBack();
-      let detail = "";
-      try { detail = upstream ? await upstream.text() : ""; } catch {}
-      const broke = /credit balance|billing|spend limit|spending limit/i.test(detail);
-      const busy = upstream && (upstream.status === 429 || upstream.status === 529);
-      return json(502, { error: broke ? "out_of_funds" : busy ? "overloaded" : "upstream_error", left: leftAfterRefund() });
+    // Just one orb: start Claude now, so a failure can still answer with a normal error
+    let upstream = null;
+    if (!team.length) {
+      upstream = await askLead();
+      if (!upstream || !upstream.ok || !upstream.body) {
+        await giveBack();
+        return json(502, { error: await upstreamError(upstream), left: leftAfterRefund() });
+      }
     }
 
     // Re-send Claude's reply to the browser as one small JSON object per line:
     //   {d:"text"}  {t:"thinking"}  {q:"search words"}  {src:[{u,t}]}  {nosearch:"limit"}  then {done:...} or {error:...}
     const enc = new TextEncoder(), dec = new TextDecoder();
     // In Kids Mode the reply is held back until the safety check has read the whole thing.
-    let wroteText = false, stop = null, failed = null, held = "";
+    let wroteText = false, stop = null, failed = null, held = "", teamBack = 0;
     const usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, searches: 0 };
     const blocks = {}; // index -> { type, json }
     let lastType = null;
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (o) => controller.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+        const send = (o) => { try { controller.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch {} };
         if (searchNote) send({ nosearch: searchNote });
         const text = (t) => { wroteText = true; if (kidsOn) held += t; else send({ d: t }); };
+        // Orb team: helpers go one by one ({tm:{k, s:"go"|"ok"|"fail"|"skip", n:part}}), then the lead builds the final answer
+        if (team.length) {
+          const notes = [], t0 = Date.now();
+          for (const k of team) {
+            if (request.signal?.aborted) { teamBack += helperCost; continue; }
+            if (Date.now() - t0 > HELPERS_TIME) { teamBack += helperCost; send({ tm: { k, s: "skip" } }); continue; }
+            send({ tm: { k, s: "go" } });
+            try {
+              const part = await askHelper(k, notes);
+              notes.push({ k, text: part });
+              send({ tm: { k, s: "ok", ...(kidsOn ? {} : { n: part.slice(0, NOTE_CHARS) }) } });
+            } catch { teamBack += helperCost; send({ tm: { k, s: "fail" } }); }
+          }
+          send({ tm: { k: req.orb, s: "lead" } });
+          upstream = request.signal?.aborted ? null : await askLead(notes);
+          if (!upstream || !upstream.ok || !upstream.body) {
+            // Nothing to show for it, so every credit comes back
+            const err = await upstreamError(upstream);
+            await giveBack();
+            send({ error: err, left: leftAfterRefund() });
+            try { controller.close(); } catch {}
+            return;
+          }
+        }
         const reader = upstream.body.getReader();
         let buf = "";
         try {
@@ -373,10 +474,10 @@ export function makeChatHandler({
         } catch { failed = failed || "upstream_error"; }
         let left = paid.left;
         if (failed && !wroteText) { await giveBack(); left = leftAfterRefund(); }
-        else if (extraWeb && !usage.searches && limited) {
-          // It didn't end up searching, so the web search credits come back
-          await refund(user.uid, extraWeb, day, limits.monthKey).catch(() => {});
-          if (left !== null) left += extraWeb;
+        else {
+          // It didn't end up searching, so the web search credits come back. Team parts that failed come back too.
+          const back = (extraWeb && !usage.searches ? extraWeb : 0) + teamBack;
+          if (back && limited) { await giveBack(back); if (left !== null) left += back; }
         }
         if (!failed && kidsOn && held) {
           let label = null;
@@ -389,8 +490,8 @@ export function makeChatHandler({
         if (!failed && memP) { const added = await memP; if (added && added.length) send({ mem: added }); }
         if (failed) send({ error: failed, left });
         else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0,
-          cost: limited ? cost - (extraWeb && !usage.searches ? extraWeb : 0) : null });
-        controller.close();
+          cost: limited ? cost - (extraWeb && !usage.searches ? extraWeb : 0) - teamBack : null });
+        try { controller.close(); } catch {}
         // Bookkeeping after the reply is done (never blocks or breaks the chat)
         if (usage.searches) await countSearches(user.uid, usage.searches, day).catch(() => {});
         await record(day, { family: familyOf(live.id), ...usage, cents: costCents(live.id, usage) }).catch(() => {});

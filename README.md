@@ -74,6 +74,13 @@ Webhook events: `checkout.session.completed`, `customer.subscription.created/upd
 Turn on the Customer portal (Settings → Billing → Customer portal) so people can cancel or switch plans.
 `/api/health` shows whether the Stripe keys are set and if you're in test or live mode.
 
+## Orb teams (Plus and up)
+
+Pick "Orb team" on the home screen and tap up to 5 orbs (the first one is the lead 👑). You can also just say "add Beat", "remove Quill" or "make Pixel the lead" in any chat (free, no Claude call).
+Each helper does its own part, one after another (each sees a short version of the earlier parts), then the lead gets every part and builds the final answer.
+Cost per run = the lead's normal message + 2 for the build + each helper at the model's cost (Lumina 3, no effort multiplier). Example: Pixel + Abyss, Quill, Beat on Lumina = 3 + 2 + 3×3 = 14.
+It's charged all at once, so it has to fit today's and this week's credits. Runs over 20 credits ask first. A helper that fails gives its credits back, and if the lead fails everything comes back. The logic is in `api/_core.js`.
+
 ## Web search
 
 Off unless someone taps the globe. Up to 3 searches per message, 5 per person per day, and 100 per day for the whole site (change these in the admin panel). Each search costs about 1 cent. Never used in Kids Mode.
