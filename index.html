@@ -689,6 +689,17 @@ textarea:disabled{pointer-events:none}
 .memchip .linkbtn{font-size:.82rem;padding:0}
 .plantag{font-size:.7rem;color:#fff;background:#9b5cff;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:2px}
 #settings .card{max-height:calc(100dvh - 32px);overflow-y:auto}
+/* Settings, grouped */
+.sg{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:2px 14px}
+.sg-t{font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:12px 0 0}
+.sg .sr{display:flex;flex-direction:column;gap:7px;padding:11px 0;border-top:1px solid var(--line)}
+.sg .sg-t + .sr{border-top:none}
+.sg .fine{margin-top:0}
+.sr-t{font-weight:600;font-size:.92rem}.sr-s{color:var(--muted);font-size:.85rem}
+.sg .acct{flex-wrap:wrap}
+.sg .dz{flex-direction:row;gap:8px}.sg .dz .danger{flex:1}
+.uweek{display:flex;flex-direction:column;gap:7px;padding-top:10px;border-top:1px dashed var(--line)}
+.udet summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .ubar{height:8px;border-radius:999px;background:var(--me);overflow:hidden}
 .ubar i{display:block;height:100%;background:#2fa56b;border-radius:999px;transition:width .3s}
 .ubar.low i{background:#e0a020}.ubar.out i{background:#c4452f}
@@ -795,48 +806,63 @@ textarea:disabled{pointer-events:none}
 <div class="modal" id="settings" hidden>
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="mh"><h2 id="setTitle">Settings</h2><button class="icon-btn" id="setClose" type="button" aria-label="Close settings">✕</button></div>
-    <div class="set-label">Theme</div>
-    <div class="seg" id="themeSeg"><button type="button" data-t="system">System</button><button type="button" data-t="light">Light</button><button type="button" data-t="dark">Dark</button></div>
-    <div class="set-label">Account</div>
-    <div class="acct"><span class="dot2 ok"></span><span id="acctTxt"></span></div>
-    <small class="fine" id="syncTxt">Your chats and settings save to your account, so they follow you to any device.</small>
-    <div class="set-label">Plan</div>
-    <div class="swrow"><span class="acct"><span class="dot2 ok"></span><span id="planTxt">Free</span></span><button class="outline small" id="planBtn" type="button">Upgrade</button></div>
-    <small class="fine" id="planMore"></small>
-    <div class="vbox" id="viewBox" hidden>
-      <div class="set-label">Test as (only you can see this)</div>
-      <div class="seg five" id="viewSeg"><button type="button" data-v="owner">Owner</button><button type="button" data-v="free">Free</button><button type="button" data-v="plus">Plus</button><button type="button" data-v="plusplus">Plus Plus</button><button type="button" data-v="plusplusplus">Plus³</button></div>
-      <small class="fine" id="viewMsg">Try Orbs exactly like someone on that plan sees it: same models, credits, and web searches. Nothing is charged.</small>
-    </div>
-    <div class="set-label">Credits</div>
-    <div class="vbox usage" id="useBox">
-      <div class="acct"><span class="dot2" id="useDot"></span><span id="useState"></span></div>
-      <div class="ubar" id="useBar" hidden><i id="useFill"></i></div>
-      <small class="fine" id="useMore"></small>
-      <div class="ucost" id="useCost" hidden></div>
-    </div>
-    <div class="set-label">Show thinking</div>
-    <div class="swrow"><span class="acct"><span id="thinkTxt">On</span></span><button class="switch" id="thinkSw" type="button" role="switch" aria-checked="true" aria-label="Show thinking"></button></div>
-    <small class="fine">See a short summary of how the orb thought about your question (Lumina, Chrysalis, and Mythos). It's free. Hidden in Kids Mode.</small>
-    <div class="set-label">Memory</div>
-    <div class="swrow"><span class="acct"><span id="memTxt">On</span></span><span class="setrow" style="flex:none"><button class="outline small" id="memManage" type="button">Manage</button><button class="switch" id="memSw" type="button" role="switch" aria-checked="true" aria-label="Memory"></button></span></div>
-    <small class="fine" id="memHelp">Orbs remember things you tell them (like your name, hobbies, and projects) so you don't have to repeat yourself. You can see and delete everything in Manage.</small>
-    <div class="set-label">Kids Mode</div>
-    <div class="acct"><span class="dot2" id="kidsDot"></span><span id="kidsTxt">Off</span></div>
-    <small class="fine" id="kidsHelp">Extra safety for kids and teens: kid-safe answers, an AI safety check on every message and reply, and a block on sharing personal info.</small>
-    <form class="kidsform" id="kidsForm" hidden>
-      <label for="kidsPin" hidden>Parent PIN</label><input id="kidsPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Parent PIN (4 to 8 numbers)">
-      <label for="kidsPin2" hidden>Confirm PIN</label><input id="kidsPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Type the PIN again">
-      <button class="outline" id="kidsGo" type="submit">Turn on Kids Mode</button>
-    </form>
-    <div class="setrow"><button class="outline" id="kidsBtn" type="button" hidden>Turn on Kids Mode</button><button class="outline" type="button" data-open="safetyModal">Safety tips</button></div>
-    <small class="fine" id="kidsMsg" role="status"></small>
-    <div class="set-label">Two-step sign-in</div>
-    <div class="swrow"><span class="acct"><span class="dot2" id="mfaDot"></span><span id="mfaTxt">Off</span></span><button class="outline small" id="mfaBtn" type="button">Set up</button></div>
-    <small class="fine">After your password, Orbs also asks for a code from an authenticator app or your email. Your account stays safe even if someone learns your password.</small>
-    <div class="setrow"><button class="outline" id="outBtn" type="button">Sign out</button></div>
-    <button class="danger" id="wipeBtn" type="button">Delete all chats</button>
-    <button class="danger" id="killBtn" type="button">Delete my account</button>
+
+    <section class="sg">
+      <div class="sg-t">Account and plan</div>
+      <div class="sr"><div class="acct"><span class="dot2 ok"></span><span id="acctTxt"></span></div><small class="fine" id="syncTxt">Your chats and settings save to your account, so they follow you to any device.</small></div>
+      <div class="sr"><div class="swrow"><span class="acct"><span class="dot2 ok"></span><span id="planTxt">Free</span></span><button class="outline small" id="planBtn" type="button">Upgrade</button></div><small class="fine" id="planMore"></small></div>
+      <div class="sr vbox" id="viewBox" hidden>
+        <b class="sr-t">Test as (only you can see this)</b>
+        <div class="seg five" id="viewSeg"><button type="button" data-v="owner">Owner</button><button type="button" data-v="free">Free</button><button type="button" data-v="plus">Plus</button><button type="button" data-v="plusplus">Plus Plus</button><button type="button" data-v="plusplusplus">Plus³</button></div>
+        <small class="fine" id="viewMsg">Try Orbs exactly like someone on that plan sees it: same models, credits, and web searches. Nothing is charged.</small>
+      </div>
+    </section>
+
+    <section class="sg">
+      <div class="sg-t">Credits</div>
+      <div class="sr vbox usage" id="useBox">
+        <div class="acct"><span class="dot2" id="useDot"></span><span id="useState"></span></div>
+        <div class="ubar" id="useBar" hidden><i id="useFill"></i></div>
+        <small class="fine" id="useMore"></small>
+        <div class="uweek" id="useWeek" hidden>
+          <div class="acct"><span class="dot2" id="useWeekDot"></span><span id="useWeekTxt"></span></div>
+          <div class="ubar" id="useWeekBar"><i id="useWeekFill"></i></div>
+          <small class="fine" id="useWeekMore"></small>
+        </div>
+        <details class="udet" id="useDet" hidden><summary>What each message costs</summary><div class="ucost" id="useCost"></div></details>
+      </div>
+    </section>
+
+    <section class="sg">
+      <div class="sg-t">Look and chat</div>
+      <div class="sr"><b class="sr-t">Theme</b><div class="seg" id="themeSeg"><button type="button" data-t="system">System</button><button type="button" data-t="light">Light</button><button type="button" data-t="dark">Dark</button></div></div>
+      <div class="sr"><div class="swrow"><span class="acct"><b class="sr-t">Show thinking</b><span class="sr-s" id="thinkTxt">On</span></span><button class="switch" id="thinkSw" type="button" role="switch" aria-checked="true" aria-label="Show thinking"></button></div>
+        <small class="fine">A short summary of how the orb thought (Lumina, Chrysalis, Mythos). Free. Hidden in Kids Mode.</small></div>
+      <div class="sr"><div class="swrow"><span class="acct"><b class="sr-t">Memory</b><span class="sr-s" id="memTxt">On</span></span><span class="setrow" style="flex:none"><button class="outline small" id="memManage" type="button">Manage</button><button class="switch" id="memSw" type="button" role="switch" aria-checked="true" aria-label="Memory"></button></span></div>
+        <small class="fine" id="memHelp">Orbs remember things you tell them, like your name and projects, so you don't repeat yourself. See and delete everything in Manage.</small></div>
+    </section>
+
+    <section class="sg">
+      <div class="sg-t">Safety</div>
+      <div class="sr"><div class="acct"><b class="sr-t">Kids Mode</b><span class="dot2" id="kidsDot"></span><span class="sr-s" id="kidsTxt">Off</span></div>
+        <small class="fine" id="kidsHelp">Extra safety for kids and teens: kid-safe answers, an AI safety check on every message and reply, and a block on sharing personal info.</small>
+        <form class="kidsform" id="kidsForm" hidden>
+          <label for="kidsPin" hidden>Parent PIN</label><input id="kidsPin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Parent PIN (4 to 8 numbers)">
+          <label for="kidsPin2" hidden>Confirm PIN</label><input id="kidsPin2" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="Type the PIN again">
+          <button class="outline" id="kidsGo" type="submit">Turn on Kids Mode</button>
+        </form>
+        <div class="setrow"><button class="outline" id="kidsBtn" type="button" hidden>Turn on Kids Mode</button><button class="outline" type="button" data-open="safetyModal">Safety tips</button></div>
+        <small class="fine" id="kidsMsg" role="status"></small></div>
+      <div class="sr"><div class="swrow"><span class="acct"><b class="sr-t">Two-step sign-in</b><span class="dot2" id="mfaDot"></span><span class="sr-s" id="mfaTxt">Off</span></span><button class="outline small" id="mfaBtn" type="button">Set up</button></div>
+        <small class="fine">After your password, Orbs also asks for a code from an authenticator app or your email.</small></div>
+    </section>
+
+    <section class="sg">
+      <div class="sg-t">Your data</div>
+      <div class="sr"><div class="setrow"><button class="outline" id="outBtn" type="button">Sign out</button></div></div>
+      <div class="sr dz"><button class="danger" id="wipeBtn" type="button">Delete all chats</button><button class="danger" id="killBtn" type="button">Delete my account</button></div>
+    </section>
+
     <div class="setlinks"><button class="linkbtn" type="button" data-open="tosModal">Terms of Service</button><button class="linkbtn" type="button" data-open="privModal">Privacy Policy</button></div>
     <small class="fine" id="setMsg" role="status"></small>
   </div>

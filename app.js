@@ -591,7 +591,7 @@ async function send(text, regen, filesOverride){
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network", text: reply }; }
     if (!end) throw { code:"upstream_error", text: reply };
     if (end.error) throw { code:end.error, left:end.left, text: reply };
-    setCredits(end.left);
+    setCredits(end.left, end.cost);
     if (end.refused && !reply.trim()) throw { code:"refused" };
     conv.turns.push({ role:"assistant", content:reply, t:Date.now(), ...extras() }); conv.updated = Date.now(); save(); limitHit = false; renderUsage();
     if (end.truncated) status.textContent = "That answer got cut off. Ask for a shorter one.";
@@ -1051,8 +1051,11 @@ function creditsFromDoc(d){
   limitHit = credits.left === 0;
 }
 // left === null means the site has no limits turned on
-function setCredits(left){
-  if (typeof left === "number") credits = { left, limit: credits ? credits.limit : null };
+function setCredits(left, spent){
+  if (typeof left === "number") {
+    const p = credits || {}, ml = typeof p.monthLeft === "number" ? Math.max(0, p.monthLeft - (typeof spent === "number" ? spent : 0)) : undefined;
+    credits = { left, limit: p.limit || null, monthLimit: p.monthLimit, monthLeft: ml, period: p.period };
+  }
   else if (left === null) { credits = null; limitHit = false; }
   renderUsage(); hint(); syncSel();
 }
@@ -1062,12 +1065,18 @@ function untilMidnight(){
   const mins = Math.max(1, Math.round((mid - ny) / 60000)), h = Math.floor(mins / 60), m = mins % 60;
   return h ? `${h}h ${m}m` : `${m}m`;
 }
+function untilMonday(){
+  const ny = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const mon = new Date(ny); mon.setHours(0, 0, 0, 0); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7));
+  const mins = Math.max(1, Math.round((mon - ny) / 60000)), d = Math.floor(mins / 1440), h = Math.floor(mins % 1440 / 60);
+  return d ? `${d}d ${h}h` : `${h}h ${mins % 60}m`;
+}
 function renderUsage(){
   $("limit").hidden = !limitHit;
-  const bar = $("useBar"), more = $("useMore"), costs = $("useCost");
+  const bar = $("useBar"), more = $("useMore"), costs = $("useCost"), det = $("useDet"), wk = $("useWeek");
   if (!credits) {
     $("useState").textContent = "Unlimited"; $("useDot").className = "dot2 ok";
-    bar.hidden = true; costs.hidden = true;
+    bar.hidden = true; det.hidden = true; wk.hidden = true;
     more.textContent = "There's no daily credit limit right now, so every model is free to use as much as you want.";
     return;
   }
@@ -1077,11 +1086,20 @@ function renderUsage(){
   const level = left <= 20 ? "out" : left <= 50 ? "low" : "";
   $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
   bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (level ? " " + level : ""); }
+  // the longer limit: this week (paid plans) or this month (free)
+  if (credits.monthLimit > 0 && typeof credits.monthLeft === "number") {
+    const isWeek = credits.period === "week", ml = credits.monthLeft, mt = credits.monthLimit, pct = Math.max(0, Math.min(1, ml / mt));
+    const wl = ml <= 0 ? "out" : pct <= 0.2 ? "low" : "";
+    wk.hidden = false;
+    $("useWeekTxt").textContent = `${ml} of ${creditWord(mt)} left this ${isWeek ? "week" : "month"}`;
+    $("useWeekDot").className = "dot2 " + (wl === "out" ? "bad" : wl === "low" ? "mid" : "ok");
+    $("useWeekBar").className = "ubar" + (wl ? " " + wl : ""); $("useWeekFill").style.width = pct * 100 + "%";
+    $("useWeekMore").textContent = isWeek ? `Resets Monday at 12:00 am New York time (in ${untilMonday()}).` : "Resets on the 1st of the month.";
+  } else wk.hidden = true;
   let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
-  if (credits.monthLimit) txt += ` This ${credits.period === "week" ? "week (resets Monday)" : "month"}: ${credits.monthLeft} of ${credits.monthLimit} left.`;
   if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
   more.textContent = txt;
-  costs.hidden = false; costs.innerHTML = "";
+  det.hidden = false; costs.innerHTML = "";
   const curM = active ? pf(active).m : -1;
   MODELS.forEach((m, i) => { const d = el("div", i === curM ? "on" : null); d.append(el("b", null, String(m.cost)), el("small", null, m.n)); costs.append(d); });
   costs.append(el("p", null, "Credits per message. Higher effort costs more: High ×2, Extra ×3, Max ×4. Extras on top: long chat (more than 20 messages) +1, web search +2 (only if it searches), big files (6+ files, a big PDF, or lots of code) +2."));
