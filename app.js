@@ -527,7 +527,11 @@ function applyTeam(cmd){
 // The row of team members above the chat box
 function renderTeam(){
   const bar = $("teamBar"), t = curTeam(), home = app.dataset.view === "home";
-  $("teamNote").hidden = !(home && teamMode); $("teamLock").hidden = teamAllowed();
+  // Free people can open the Teams tab, but everything is locked behind the Upgrade card
+  const locked = home && teamMode && !!user && !teamAllowed();
+  app.classList.toggle("teamlocked", locked); $("teamGate").hidden = !locked;
+  $("teamNote").hidden = !(home && teamMode) || locked;
+  for (const id of ["box", "send"]) $(id).toggleAttribute("inert", locked);
   $("pickLbl").textContent = home && teamMode ? "Pick your team (the first one you tap is the lead)" : "Pick your orb";
   if (!t || !t.lead || (home && !teamMode)) { bar.hidden = true; bar.replaceChildren(); return; }
   bar.hidden = false; bar.replaceChildren(el("span", "tl", "Team"));
@@ -577,7 +581,7 @@ function teamBox(list, live, lead){
 function pick(k){
   if (busy) return;
   dropIncog(null);
-  if (teamMode) { teamToggle(k); k = teamDraft.lead; }
+  if (teamMode) { if (!teamAllowed()) { openPlans(); return; } teamToggle(k); k = teamDraft.lead; }
   active = k; cur = null; if (!teamMode) status.textContent = ""; webOn = false;
   renderHome();
   const mark = $("mark"); mark.classList.remove("pop"); void mark.offsetWidth; mark.classList.add("pop"); setTimeout(() => mark.classList.remove("pop"), 600);
@@ -1965,6 +1969,7 @@ function renderPlan(){
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
   $("planBtn").hidden = $("planBtn").hidden || testing;
   $("limitUp").hidden = !on || (p && p.id === "plusplusplus");
+  renderTeam();   // the Teams lock depends on the plan
 }
 for (const b of document.querySelectorAll("#viewSeg button")) b.onclick = () => busyBtn(b, async () => {
   $("viewMsg").textContent = "Switching…";

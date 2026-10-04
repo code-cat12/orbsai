@@ -722,6 +722,13 @@ textarea:disabled{pointer-events:none}
 .teambox .tnote{margin:4px 0 10px;padding-left:10px;border-left:3px solid var(--c,var(--line))}
 .teambox .tnote .msg{font-size:.88rem}
 
+.teamgate{max-width:440px;margin:0 auto 18px;padding:22px 22px 18px;text-align:center;border:1px solid var(--line);border-radius:18px;background:var(--panel);box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.teamgate .tglock{width:34px;height:34px;color:#9b5cff;margin-bottom:6px}
+.teamgate h2{font-family:var(--display);font-weight:500;font-size:1.45rem;margin:0 0 8px}
+.teamgate p{color:var(--muted);font-size:.95rem;margin:0 0 16px}
+.teamgate .gbtn{width:100%}
+.teamgate small{display:block;margin-top:10px;color:var(--muted);font-size:.8rem}
+.app.teamlocked .composer-wrap,.app.teamlocked .picker{opacity:.35;filter:grayscale(.7);pointer-events:none;user-select:none}
 </style>
 <script src="/vendor/gsap.min.js" defer></script>
 <script src="/vendor/Observer.min.js" defer></script>
@@ -953,7 +960,14 @@ textarea:disabled{pointer-events:none}
     <h1 id="greet">Good afternoon</h1>
     <button class="icon-btn star" id="pinHome" type="button" aria-label="Pin this orb" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button>
   </div>
-  <p class="teamnote" id="teamNote" hidden>Pick up to 5 orbs. Each one does its own part, then the lead builds the final result. <span id="teamLock" hidden>Orb Teams come with Plus and up. <button class="linkbtn" type="button" id="teamUp">Upgrade</button></span></p>
+  <p class="teamnote" id="teamNote" hidden>Pick up to 5 orbs. Each one does its own part, then the lead builds the final result.</p>
+  <div class="teamgate" id="teamGate" hidden>
+    <svg class="tglock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+    <h2>Orb Teams is for paid members</h2>
+    <p>Pick up to 5 orbs and they make something together. Each orb does its own part, then the lead orb builds the final result.</p>
+    <button class="gbtn" type="button" id="teamUp">Upgrade to unlock Teams</button>
+    <small>Comes with Plus, Plus Plus and Plus Plus Plus. Plus starts at $9.99 a month.</small>
+  </div>
   <p class="inote" id="incogNote" hidden>🕶️ This chat won't be saved and won't show up in your chats.</p>
 
   <main id="log" aria-live="polite"></main>
