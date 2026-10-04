@@ -746,7 +746,7 @@ textarea:disabled{pointer-events:none}
 .lv *,.lv *::before,.lv *::after{box-sizing:border-box}
 .lv button{font-family:inherit;margin:0}
 .lv-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1;z-index:0;pointer-events:none;background:#161616}
-.lv-grain{position:absolute;inset:0;z-index:100;pointer-events:none;opacity:.06;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.lv-grain{position:absolute;inset:0;z-index:100;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 .lv-page{position:relative;z-index:1;display:grid;grid-template-rows:auto 1fr;height:100%}
 
 /* Scenes: the video and header stay, only the content in the stage swaps (GSAP in app.js) */
@@ -755,8 +755,7 @@ textarea:disabled{pointer-events:none}
 .lv-scene.on{opacity:1;visibility:visible}
 .lv-scene:not(.lv-scene-hero){padding:12px 72px 40px}
 .lv-panel{margin:auto;width:min(100%,960px);display:flex;flex-direction:column;align-items:center;gap:22px;padding:30px 32px;border-radius:20px;
-  background:rgba(22,22,22,.62);border:1px solid rgba(236,235,231,.12);box-shadow:0 20px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);
-  backdrop-filter:blur(18px) saturate(1.1);-webkit-backdrop-filter:blur(18px) saturate(1.1);font-size:18px;line-height:1.45;color:var(--ink)}
+  background:rgba(20,20,20,.8);border:1px solid rgba(236,235,231,.12);box-shadow:0 20px 60px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06);font-size:18px;line-height:1.45;color:var(--ink)}
 .lv-panel .lsec,.lv-panel .faq{width:100%;max-width:none}
 .lv-panel h2{font:500 2rem/1.15 var(--display);letter-spacing:-.02em;margin:0 0 6px;text-align:center;color:#fff}
 .lv-panel .lsub{margin:0 auto 18px;max-width:52ch}
@@ -805,7 +804,7 @@ textarea:disabled{pointer-events:none}
 .lv-btn:hover::after{transform:translateX(130%)}
 .lv-solid{background:linear-gradient(180deg,#ffffff 0%,#ecebe7 48%,#d6d4cf 100%);color:#161616;border:1px solid #fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.95)}
 .lv-solid:hover{background:linear-gradient(180deg,#fff,#f4f1ff 42%,#ddd3f5);border-color:#f6f2ff;box-shadow:inset 0 1px 0 #fff,0 0 22px rgba(155,92,255,.38),0 8px 18px rgba(255,255,255,.12)}
-.lv-ghost{color:#fff;background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(22,22,22,.5) 46%,rgba(79,123,255,.1));border:1px solid rgba(236,235,231,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.lv-ghost{color:#fff;background:linear-gradient(135deg,rgba(255,255,255,.14),rgba(22,22,22,.72) 46%,rgba(79,123,255,.1));border:1px solid rgba(236,235,231,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 .lv-ghost:hover{background:linear-gradient(135deg,rgba(122,167,242,.2),rgba(22,22,22,.35) 48%,rgba(255,95,184,.16));border-color:rgba(230,225,255,.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 24px rgba(79,123,255,.3)}
 .lv-big{height:var(--hero-btn-h);padding:0 18px}
 .lv-solid.lv-big:hover{box-shadow:inset 0 1px 0 #fff,0 0 26px rgba(155,92,255,.45),0 8px 18px rgba(255,255,255,.14)}

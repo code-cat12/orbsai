@@ -1445,9 +1445,9 @@ function lvGo(i){
   lvBusy = true;
   const bits = to.querySelectorAll(".lv-badge, .lv-line > span, .lv-lede, .lv-actions, .lv-stat, .lv-panel h2, .lv-panel .lsub, .lbonus, .lo, .lfeat li, .pcard, .lv-panel > .lsec > p, .faq details, .legalnote");
   gsap.timeline({ onComplete(){ from.classList.remove("on"); gsap.set([from, to, ...bits], { clearProps:"opacity,visibility,transform,filter" }); lvBusy = false; } })
-    .to(from, { autoAlpha:0, y:-50 * dir, scale:.98, filter:"blur(8px)", duration:.42, ease:"power2.in" })
+    .to(from, { autoAlpha:0, y:-50 * dir, scale:.98, duration:.42, ease:"power2.in" })
     .add(() => to.classList.add("on"))
-    .fromTo(to, { autoAlpha:0, y:50 * dir, filter:"blur(8px)" }, { autoAlpha:1, y:0, filter:"blur(0px)", duration:.7, ease:"power3.out" }, "-=.05")
+    .fromTo(to, { autoAlpha:0, y:50 * dir }, { autoAlpha:1, y:0, duration:.7, ease:"power3.out" }, "-=.05")
     .from(bits, { autoAlpha:0, y:22 * dir, duration:.55, stagger:{ each:.035, from:dir > 0 ? "start" : "end" }, ease:"power3.out" }, "<.08");
 }
 const lvRoom = (sc, dir) => dir > 0 ? sc.scrollHeight - sc.clientHeight - sc.scrollTop > 40 : sc.scrollTop > 40; // a sliver of overflow doesn't need its own swipe
