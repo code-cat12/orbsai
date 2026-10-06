@@ -1374,7 +1374,8 @@ html,body{height:100%;overflow:hidden}
 .ogrid::-webkit-scrollbar{display:none}
 .ocard{flex:0 0 clamp(92px,11vw,118px);scroll-snap-align:start;padding:clamp(10px,1.6vh,16px) 6px clamp(8px,1.2vh,12px)}
 .ocard .g.has-orb{width:clamp(40px,6vh,58px);height:clamp(40px,6vh,58px)}
-@media (max-height:820px){.ddate{display:none}.app.dashv .pteams p{display:none}.app.dashv .ph{margin-bottom:2px}.ocard small{display:none}.dorb{width:clamp(84px,17vh,150px);margin:-6px 0}.app.dashv .dash{padding-top:2px}}
+.ocard small{display:block;line-height:1.25;overflow:visible;white-space:normal}
+@media (max-height:820px){.ddate{display:none}.app.dashv .pteams p{display:none}.app.dashv .ph{margin-bottom:2px}.dorb{width:clamp(84px,17vh,150px);margin:-6px 0}.app.dashv .dash{padding-top:2px}}
 @media (max-height:920px) and (min-width:761px){.app.dashv .dash{padding-top:4px}.dorb{margin:-14px 0 -14px}}
 @media (max-height:700px){.ocard small{display:none}.app.dashv .urow small{display:none}}
 @media (max-width:760px){
@@ -1410,7 +1411,7 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
 .lv-orb{width:min(40vh,420px,80vw);height:min(40vh,420px,80vw);margin:0 0 -1vh}
 @media (min-width:901px) and (max-height:850px){.lv-orb{width:min(30vh,300px);height:min(30vh,300px)}}
 @media (min-width:901px) and (max-height:850px){.lv-orb{width:min(34vh,340px);height:min(34vh,340px)}}
-@media (max-width:900px){.lv{--lede-max:100%}.lv-orb{width:min(30vh,240px,66vw);height:min(30vh,240px,66vw)}}
+@media (max-width:900px){.lv{--lede-max:100%}.lv-orb{width:min(17vh,150px,50vw);height:min(17vh,150px,50vw)}}
 .lv-scene-hero .lv-stats{padding-top:6px}
 </style>
 </head>
