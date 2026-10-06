@@ -93,13 +93,13 @@ Every message is measured in what it really cost: Claude Opus input, output, and
 | Plan | Daily | Weekly | Most it can cost you per month |
 |---|---|---|---|
 | Free | 10¢ | 30¢ | about $1.30 |
-| Plus ($9.99) | 30¢ | 90¢ | about $3.90 (39% of the price) |
-| Plus Plus ($19.99) | 60¢ | $1.80 | about $7.80 (39%) |
-| Plus Plus Plus ($49.99) | $1.50 | $4.50 | about $19.50 (39%) |
+| Plus ($9.99) | 17.5¢ | 52.5¢ | about $2.28 (23% of the price) |
+| Plus Plus ($19.99) | 35¢ | $1.05 | about $4.55 (23%) |
+| Plus Plus Plus ($49.99) | 62.5¢ | $1.875 | about $8.13 (16%) |
 
-That's 3x, 6x, and 15x the free plan. A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
+That's exactly 1.75x, 3.5x, and 6.25x the free plan (`PLAN_MULTIPLIER` in `api/_limits.js`). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
 - Before Claude is called, the server checks there's usage left (it blocks at 100%). After the reply, it bills the real cost in a Firestore transaction on `usage/{uid}` (`day`/`dayCents`, `wkey`/`weekCents`) and adds it to `usage/_site` (today's total for everyone).
-- Budgets: admin panel (config/site) wins, then `USAGE_BUDGETS` in Vercel, then the defaults above. 0 = unlimited.
+- Budgets: admin panel (config/site) wins, then `USAGE_BUDGETS` in Vercel (e.g. `{"plus":{"day":17.5,"week":52.5}}`), then the defaults above. 0 = unlimited. Decimals are allowed.
 - The owner (`ADMIN_EMAILS`) is unlimited. "Test as" in Settings uses that plan's budgets with separate counters.
 - Also set a monthly spending limit in the Claude Console. That's your final safety net.
 

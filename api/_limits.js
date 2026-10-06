@@ -38,18 +38,19 @@ export function resetTimes(now = Date.now()) {
 }
 
 // ---------- Budgets (in cents of real Claude cost) ----------
-// Sized so each paid plan stays profitable even if someone uses every bit of it every week:
+// Paid plans are exact multiples of Free, and each stays profitable even if someone uses every bit of it every week:
 // a full month of the weekly budget (about 4.33 weeks) is under 40% of the plan price.
-//   Free:            10¢ a day, 30¢ a week                 (1x)
-//   Plus ($9.99):    30¢ a day, 90¢ a week  -> max ~$3.90 a month (3x free)
-//   Plus Plus ($19.99): 60¢ a day, $1.80 a week -> max ~$7.80 a month (6x free)
-//   Plus Plus Plus ($49.99): $1.50 a day, $4.50 a week -> max ~$19.50 a month (15x free)
-export const DEFAULT_BUDGETS = {
-  free:         { day: 10,  week: 30 },
-  plus:         { day: 30,  week: 90 },
-  plusplus:     { day: 60,  week: 180 },
-  plusplusplus: { day: 150, week: 450 },
-};
+// Budgets can have fractions of a cent (kept to 0.1 cent); usage itself is stored as a float (0.001 cent).
+//   Free:                    10¢ a day,   30¢ a week                          (1x)
+//   Plus ($9.99):          17.5¢ a day, 52.5¢ a week  -> max ~$2.28 a month  (1.75x free)
+//   Plus Plus ($19.99):      35¢ a day,  $1.05 a week -> max ~$4.55 a month  (3.5x free)
+//   Plus Plus Plus ($49.99): 62.5¢ a day, $1.875 a week -> max ~$8.13 a month (6.25x free)
+export const FREE_BUDGET = { day: 10, week: 30 };
+export const PLAN_MULTIPLIER = { free: 1, plus: 1.75, plusplus: 3.5, plusplusplus: 6.25 };
+// Round to a tenth of a cent so 1.75 x 10 is exactly 17.5 (no 17.499999 float noise)
+export const tenths = (v) => Math.round(Number(v) * 10) / 10;
+export const DEFAULT_BUDGETS = Object.fromEntries(Object.entries(PLAN_MULTIPLIER).map(([t, m]) =>
+  [t, { day: tenths(FREE_BUDGET.day * m), week: tenths(FREE_BUDGET.week * m) }]));
 export const TIERS = Object.keys(DEFAULT_BUDGETS);
 export const DEFAULT_SITE_CENTS = 0; // all of Orbs together per day; 0 = no site-wide cap
 
@@ -61,10 +62,11 @@ export const BUDGET_KEYS = [...TIERS.flatMap((t) => [t + "DayCents", t + "WeekCe
 export function budgets(cfg, env = {}) {
   let fromEnv = {};
   try { if (env.USAGE_BUDGETS) fromEnv = JSON.parse(env.USAGE_BUDGETS) || {}; } catch { fromEnv = {}; }
+  // Fractions of a cent are fine (e.g. 17.5); everything is kept to a tenth of a cent
   const pick = (adminVal, envVal, def) => {
-    if (Number.isInteger(adminVal) && adminVal >= 0) return adminVal;
+    if (typeof adminVal === "number" && Number.isFinite(adminVal) && adminVal >= 0) return tenths(adminVal);
     const e = Number(envVal);
-    if (envVal !== undefined && envVal !== null && envVal !== "" && Number.isFinite(e) && e >= 0) return Math.floor(e);
+    if (envVal !== undefined && envVal !== null && envVal !== "" && typeof envVal !== "boolean" && Number.isFinite(e) && e >= 0) return tenths(e);
     return def;
   };
   const out = {};

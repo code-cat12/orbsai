@@ -1,7 +1,7 @@
 // Quick checks for the usage math and the chat flow. Run: npm test
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dayKey, weekKey, nyMidnight, resetTimes, budgets, usageState, usageBlock, publicUsage, DEFAULT_BUDGETS } from "../api/_limits.js";
+import { dayKey, weekKey, nyMidnight, resetTimes, budgets, usageState, usageBlock, publicUsage, DEFAULT_BUDGETS, PLAN_MULTIPLIER } from "../api/_limits.js";
 import { allowance } from "../api/_plans.js";
 import { costCents } from "../api/_price.js";
 import { makeChatHandler, cleanRequest, siteConfig } from "../api/_core.js";
@@ -34,7 +34,24 @@ test("budgets: admin panel beats Vercel beats defaults; 0 = unlimited", () => {
 test("plans stay profitable: a month of full weekly use is under 40% of the price", () => {
   const price = { plus: 999, plusplus: 1999, plusplusplus: 4999 };
   for (const [p, cents] of Object.entries(price)) assert.ok(DEFAULT_BUDGETS[p].week * 52 / 12 <= cents * 0.4, p);
-  assert.equal(DEFAULT_BUDGETS.plus.week, DEFAULT_BUDGETS.free.week * 3);
+});
+test("paid plans are exact multiples of Free (fractional cents)", () => {
+  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 10, week: 30 });
+  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 17.5, week: 52.5 });          // 1.75x
+  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 35, week: 105 });         // 3.5x
+  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 62.5, week: 187.5 }); // 6.25x
+  for (const [t, m] of Object.entries(PLAN_MULTIPLIER)) {
+    assert.equal(DEFAULT_BUDGETS[t].day, DEFAULT_BUDGETS.free.day * m, t);
+    assert.equal(DEFAULT_BUDGETS[t].week, DEFAULT_BUDGETS.free.week * m, t);
+  }
+  // Fractional budgets survive the admin panel, USAGE_BUDGETS and siteConfig
+  assert.deepEqual(budgets(null, { USAGE_BUDGETS: JSON.stringify({ plus: { day: 17.5, week: "52.5" } }) }).plus, { day: 17.5, week: 52.5 });
+  assert.deepEqual(budgets({ plusDayCents: 17.54, plusWeekCents: 52.5 }, {}).plus, { day: 17.5, week: 52.5 });
+  assert.equal(siteConfig({ plusDayCents: 17.5 }).plusDayCents, 17.5);
+  assert.equal(siteConfig({ searchesPerUser: 2.5 }).searchesPerUser, 5); // searches stay whole numbers
+  // Percentages with a fractional budget: 8.75 of 17.5 cents is exactly 50%
+  const s = usageState({ day: "d", dayCents: 8.75, wkey: "w", weekCents: 52.5 }, { day: 17.5, week: 52.5, dayKey: "d", weekKey: "w" });
+  assert.equal(s.dayPct, 50); assert.equal(s.weekPct, 100); assert.equal(usageBlock(s), "usage_week");
 });
 test("allowance: free, paid, owner and owner testing a plan", () => {
   const env = { ADMIN_EMAILS: "boss@x.com" };
@@ -42,11 +59,11 @@ test("allowance: free, paid, owner and owner testing a plan", () => {
   assert.equal(free.tier, "free"); assert.equal(free.day, 10); assert.equal(free.week, 30);
   const sub = { plan: "plusplus", status: "active", periodEnd: null };
   const pp = allowance({ sub, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(pp.day, 60); assert.equal(pp.week, 180); assert.ok(pp.memory);
+  assert.equal(pp.day, 35); assert.equal(pp.week, 105); assert.ok(pp.memory);
   const owner = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true } });
   assert.equal(owner.day, 0); assert.equal(owner.week, 0); assert.ok(owner.admin);
   const t = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true }, viewAs: "plus" });
-  assert.equal(t.admin, false); assert.equal(t.day, 30); assert.match(t.dayKey, /:test-plus$/);
+  assert.equal(t.admin, false); assert.equal(t.day, 17.5); assert.match(t.dayKey, /:test-plus$/);
 });
 test("usage percentages and blocking at 100%", () => {
   const now = Date.parse("2026-10-06T21:47:00Z");

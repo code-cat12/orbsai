@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#efeaf8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Orbs AI: nine little AI helpers in one chat</title>
 <meta name="description" content="Orbs AI is a calm, free AI chat with nine helpers: tech help, cooking, games and Roblox, websites, stories, homework, music, languages, and more. Every orb runs on Claude Opus.">
@@ -19,6 +20,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Orbs AI","alternateName":"Orbs","url":"https://orbsai.app/"}</script>
+<script src="/tod.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
@@ -40,16 +42,6 @@ img{max-width:100%}
   --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   --c-tech:#1f6fff; --c-cook:#ff6b1a; --c-game:#00b060; --c-web:#8b3dff; --c-write:#ffb300; --c-study:#00b3a4; --c-music:#ff2e88; --c-lang:#ff3b30; --c-spooks:#ff7a00; --c-hex:#4fa8ff; --c-neb:#141416; --neb-eye:#ffffff;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#161616; --panel:#1f1f1e; --field:#212120; --ink:#ecebe7; --muted:#9a9891; --line:#3a3936;
-  --me:#2c2c2a; --me-ink:#ecebe7; --code:#0e0e0d; --code-ink:#dcd9d2;
-  --accent:#7aa7f2; --c-tech:#4a8dff; --c-cook:#ff7d33; --c-game:#22d17a; --c-web:#a066ff; --c-write:#ffc233; --c-study:#1fd1c0; --c-music:#ff4f9d; --c-lang:#ff5a50; --c-spooks:#ff8f26; --c-hex:#7cc0ff; --c-neb:#f4f4f7; --neb-eye:#111111;
-  color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#161616; --panel:#1f1f1e; --field:#212120; --ink:#ecebe7; --muted:#9a9891; --line:#3a3936;
-  --me:#2c2c2a; --me-ink:#ecebe7; --code:#0e0e0d; --code-ink:#dcd9d2;
-  --accent:#7aa7f2; --c-tech:#4a8dff; --c-cook:#ff7d33; --c-game:#22d17a; --c-web:#a066ff; --c-write:#ffc233; --c-study:#1fd1c0; --c-music:#ff4f9d; --c-lang:#ff5a50; --c-spooks:#ff8f26; --c-hex:#7cc0ff; --c-neb:#f4f4f7; --neb-eye:#111111;
-  color-scheme:dark}
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:19px;line-height:1.45}
 button{font:inherit;color:inherit}
@@ -733,6 +725,7 @@ textarea:disabled{pointer-events:none}
 <script src="/vendor/gsap.min.js" defer></script>
 <script src="/vendor/Observer.min.js" defer></script>
 <script type="module" src="/app.js"></script>
+<script type="module" src="/orb3d.js"></script>
 <style>
 /* Landing hero: one full-screen frame over the background video, in the site's dark colors + orb gradient */
 .gate:has(#landing:not([hidden])){padding:0;background:#161616;overflow:hidden}
@@ -748,7 +741,7 @@ textarea:disabled{pointer-events:none}
   position:relative;width:100%;min-height:100vh;min-height:100dvh;height:100vh;height:100dvh;overflow:hidden;
   background:#161616;color:var(--text);text-align:left;
   font-family:var(--body);font-size:16px;line-height:1.3;
-  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;color-scheme:dark
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility
 }
 .lv *,.lv *::before,.lv *::after{box-sizing:border-box}
 .lv button{font-family:inherit;margin:0}
@@ -927,14 +920,6 @@ textarea:disabled{pointer-events:none}
   --body:"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --c-neb:#18181b;
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0f0f11; --panel:#17171a; --field:#1b1b1f; --ink:#ededf0; --muted:#9b9aa3; --line:#28282d; --line2:#222226;
-  --me:#222227; --code:#0b0b0d; --code-ink:#e2e1e6; --accent:#8d8cf7; --on-accent:#0f0f11; --bubble:#1b1b1f; --bubble-me:#6f6ef0;
-  --sh-1:0 1px 2px rgba(0,0,0,.3); --sh-2:0 1px 2px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.35); --c-neb:#f4f4f7}}
-:root[data-theme="dark"]{
-  --bg:#0f0f11; --panel:#17171a; --field:#1b1b1f; --ink:#ededf0; --muted:#9b9aa3; --line:#28282d; --line2:#222226;
-  --me:#222227; --code:#0b0b0d; --code-ink:#e2e1e6; --accent:#8d8cf7; --on-accent:#0f0f11; --bubble:#1b1b1f; --bubble-me:#6f6ef0;
-  --sh-1:0 1px 2px rgba(0,0,0,.3); --sh-2:0 1px 2px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.35); --c-neb:#f4f4f7}
 body{font-family:var(--body);font-size:15.5px;line-height:1.5;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"cv11","ss01"}
 ::selection{background:color-mix(in srgb,var(--accent) 24%,transparent)}
 .linkbtn{color:var(--accent);background:none;border:0;cursor:pointer;font:inherit;padding:0}
@@ -1186,8 +1171,203 @@ kbd{font-size:.72rem}
   .row .col{max-width:90%}
 }
 </style>
+<style>
+/* ==========================================================================
+   Orbs one look (Oct 2026): no light/dark theme. A slow aurora sky that follows the time of day (tod.js sets the
+   palette), frosted-glass surfaces on top, and a 3D orb as the hero. data-sky="dark" (evening/night) swaps the glass
+   and text to light-on-dark so everything stays readable; it's driven by the clock, not a setting.
+   ========================================================================== */
+@property --sky1{syntax:"<color>";inherits:true;initial-value:#dff0ff}
+@property --sky2{syntax:"<color>";inherits:true;initial-value:#eceffc}
+@property --b1{syntax:"<color>";inherits:true;initial-value:#6cc2ff}
+@property --b2{syntax:"<color>";inherits:true;initial-value:#4ed5c6}
+@property --b3{syntax:"<color>";inherits:true;initial-value:#a797ff}
+@property --b4{syntax:"<color>";inherits:true;initial-value:#8edfff}
+@property --b5{syntax:"<color>";inherits:true;initial-value:#c0b2ff}
+:root{
+  --t-ink:#16151c; --t-muted:#545260; --t-line:rgba(40,32,90,.12); --t-line2:rgba(40,32,90,.08); --t-bg:#f6f3fb;
+  --glass:rgba(255,255,255,.56); --glass-strong:rgba(255,255,255,.8); --glass-sub:rgba(255,255,255,.5); --glass-hover:rgba(40,32,90,.07);
+  --glass-border:rgba(255,255,255,.72); --glass-hi:inset 0 1px 0 rgba(255,255,255,.8);
+  --blur:saturate(170%) blur(20px);
+  --bg:var(--t-bg); --panel:var(--glass); --field:var(--glass-strong); --ink:var(--t-ink); --muted:var(--t-muted); --line:var(--t-line); --line2:var(--t-line2);
+  --me:var(--glass-hover); --bubble:var(--glass-strong); --accent:#5b5bd6; --on-accent:#fff; --c-neb:#18181b; --neb-eye:#fff;
+  --sh-1:0 1px 2px rgba(30,20,80,.05),0 4px 14px rgba(30,20,80,.06);
+  --sh-2:0 2px 4px rgba(30,20,80,.05),0 14px 36px rgba(30,20,80,.1);
+  --sh-3:0 30px 80px rgba(20,12,60,.28);
+  color-scheme:light;
+  transition:--sky1 4s linear,--sky2 4s linear,--b1 4s linear,--b2 4s linear,--b3 4s linear,--b4 4s linear,--b5 4s linear;
+  background:var(--sky2);
+}
+:root[data-sky="dark"]{
+  --t-ink:#f2f0fa; --t-muted:#b9b5cc; --t-line:rgba(255,255,255,.12); --t-line2:rgba(255,255,255,.08); --t-bg:#130f2e;
+  --glass:rgba(26,21,60,.5); --glass-strong:rgba(30,25,68,.74); --glass-sub:rgba(255,255,255,.05); --glass-hover:rgba(255,255,255,.08);
+  --glass-border:rgba(255,255,255,.13); --glass-hi:inset 0 1px 0 rgba(255,255,255,.08);
+  --accent:#a5a3ff; --on-accent:#14112e; --c-neb:#f4f4f7; --neb-eye:#111;
+  --sh-1:0 1px 2px rgba(0,0,0,.2),0 4px 14px rgba(0,0,0,.18); --sh-2:0 2px 4px rgba(0,0,0,.25),0 14px 36px rgba(0,0,0,.3);
+  --c-tech:#4a8dff; --c-cook:#ff7d33; --c-game:#22d17a; --c-web:#a066ff; --c-write:#ffc233; --c-study:#1fd1c0; --c-music:#ff4f9d; --c-lang:#ff5a50; --c-spooks:#ff8f26; --c-hex:#7cc0ff;
+  color-scheme:dark;
+}
+@media (prefers-reduced-motion:reduce){:root{transition:none}}
+html,body{background:transparent}
+body{color:var(--ink)}
+
+/* ---------- The aurora: five soft blobs drifting on a two-tone sky (transform-only animation, GPU-cheap) ---------- */
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:linear-gradient(165deg,var(--sky1) 0%,var(--sky2) 100%);contain:strict}
+.aurora i{position:absolute;width:72vmax;height:72vmax;border-radius:50%;opacity:.72;will-change:transform;backface-visibility:hidden;
+  background:radial-gradient(closest-side,var(--c) 0%,color-mix(in srgb,var(--c) 45%,transparent) 45%,transparent 100%);
+  animation:aur 46s ease-in-out infinite alternate}
+.aurora .a1{--c:var(--b1);left:-24vmax;top:-30vmax;animation-duration:52s}
+.aurora .a2{--c:var(--b2);right:-26vmax;top:-18vmax;animation-name:aur2;animation-duration:61s}
+.aurora .a3{--c:var(--b3);left:8vmax;bottom:-40vmax;animation-name:aur3;animation-duration:57s}
+.aurora .a4{--c:var(--b4);right:-12vmax;bottom:-34vmax;width:60vmax;height:60vmax;animation-duration:67s;animation-direction:alternate-reverse}
+.aurora .a5{--c:var(--b5);left:30vmax;top:10vmax;width:48vmax;height:48vmax;opacity:.5;animation-name:aur2;animation-duration:73s;animation-direction:alternate-reverse}
+:root[data-sky="dark"] .aurora i{opacity:.6}
+:root[data-sky="dark"] .aurora .a5{opacity:.4}
+@keyframes aur{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(14vmax,10vmax,0) scale(1.12)}100%{transform:translate3d(4vmax,22vmax,0) scale(.94)}}
+@keyframes aur2{0%{transform:translate3d(0,0,0) scale(1.05)}50%{transform:translate3d(-16vmax,12vmax,0) scale(.92)}100%{transform:translate3d(-6vmax,-8vmax,0) scale(1.1)}}
+@keyframes aur3{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(18vmax,-12vmax,0) scale(1.08)}100%{transform:translate3d(-10vmax,-4vmax,0) scale(.96)}}
+@media (prefers-reduced-motion:reduce){.aurora i{animation:none!important}}
+.shell{position:relative;z-index:1}
+
+/* ---------- Frosted glass surfaces ---------- */
+.side{background:var(--glass);border-right:1px solid var(--glass-border);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.panel,.composer,.card{border:1px solid var(--glass-border);box-shadow:var(--sh-1),var(--glass-hi);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.panel{background:var(--glass)}
+.composer{background:var(--glass-strong);box-shadow:var(--sh-2),var(--glass-hi)}
+.composer:focus-within{border-color:color-mix(in srgb,var(--accent) 45%,var(--glass-border))}
+.card{background:var(--glass-strong);box-shadow:var(--sh-3),var(--glass-hi)}
+.app[data-view="home"] .composer-wrap{background:none}
+.qchip,.ocard,.bot,.chip,.pbtn,.thinkbox,.teambox,.tablewrap,.sources .src,.opt,.msgfiles span,.incognote,.lfeat li,.faq details,.typing,.bot-row .msg{background:var(--glass-strong);border-color:var(--glass-border)}
+.ocard{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--c) 16%,transparent),transparent 70%),var(--glass-sub);border-color:var(--glass-border)}
+.ocard:hover{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--c) 22%,transparent),transparent 70%),var(--glass-strong)}
+.bot[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 14%,var(--glass-strong))}
+.ritem:hover,.nav:hover,.nav.on,.icon-btn:hover,.home-btn:hover{background:var(--glass-hover)}
+.sg{background:var(--glass-sub);border-color:var(--glass-border)}
+.seg,.modetabs{background:var(--glass-hover)}
+.seg button[aria-pressed="true"],.modetabs button[aria-selected="true"]{background:var(--glass-strong)}
+.ubar2{background:var(--glass-hover)}
+.tag{background:var(--glass-hover)}
+.me .msg{background:linear-gradient(135deg,#5b5bd6,#7c4fe6);color:#fff;box-shadow:0 4px 14px rgba(70,50,190,.25)}
+.limit{background:color-mix(in srgb,var(--accent) 12%,var(--glass-strong))}
+.sq,.kidsform input,.auth input{background:var(--glass-strong);border-color:var(--glass-border);color:var(--ink)}
+.sels select{background:var(--glass-hover);color:var(--ink)}
+.gbtn{background:var(--ink);color:var(--bg)}
+.modal{background:rgba(18,12,48,.26);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+@media (max-width:760px){.shell:not(.closed) .scrim{background:rgba(18,12,48,.3)}}
+.gate,.gate:has(#landing:not([hidden])){background:transparent}
+.opener{background:transparent}
+/* Many small blurred layers over a moving sky is what makes tablets stutter: on touch/small screens the small
+   surfaces just get a more solid fill, only the big ones keep the live blur. */
+@media (hover:hover) and (min-width:761px){
+  .bot-row .msg,.typing,.qchip,.chip{-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+}
+@media (hover:none),(max-width:760px){
+  :root{--glass:rgba(255,255,255,.66);--glass-strong:rgba(255,255,255,.86)}
+  :root[data-sky="dark"]{--glass:rgba(26,21,60,.62);--glass-strong:rgba(30,25,68,.84)}
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  :root{--glass:rgba(255,255,255,.84);--glass-strong:rgba(255,255,255,.92)}
+  :root[data-sky="dark"]{--glass:rgba(26,21,60,.86);--glass-strong:rgba(30,25,68,.94)}
+}
+
+/* ---------- Home: greeting + clock on the left, the 3D orb as the hero on the right ---------- */
+.dhead{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date orb" "greet orb" "clock orb";align-items:center;column-gap:24px}
+.ddate{align-self:end}
+.dclock{justify-self:start;margin-top:10px;font-size:clamp(2.2rem,4.6vw,3.2rem);align-self:start}
+.dorb{grid-area:orb;width:clamp(170px,22vw,260px);aspect-ratio:1;margin:-18px 0 -10px}
+@media (max-width:620px){
+  .dhead{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"date orb" "greet orb" "clock orb";column-gap:10px}
+  .dgreet{font-size:clamp(2rem,9vw,2.5rem)}
+  .dclock{margin-top:6px;font-size:2.1rem}
+  .dorb{width:118px;margin:0}
+}
+
+/* ---------- 3D orb + its CSS fallback ---------- */
+.orb3d{position:relative;pointer-events:none}
+.orb3d::after{content:"";position:absolute;left:22%;right:22%;bottom:2%;height:9%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--b3) 55%,rgba(20,10,60,.5)),transparent);filter:blur(6px);opacity:.55;animation:orbshadow 7s ease-in-out infinite}
+.orb3d-cv{position:absolute;inset:0;width:100%!important;height:100%!important;opacity:0;transition:opacity .9s ease;z-index:1}
+.orb3d.live .orb3d-cv{opacity:1}
+.orb3d-fb{position:absolute;inset:0;display:grid;place-items:center;transition:opacity .9s ease}
+.orb3d.live .orb3d-fb{opacity:0}
+.orb3d-fb i{width:58%;aspect-ratio:1;border-radius:50%;animation:orbfloat 7s ease-in-out infinite;
+  background:radial-gradient(circle at 33% 27%,rgba(255,255,255,.95) 0 5%,rgba(255,255,255,0) 24%),
+    radial-gradient(circle at 70% 78%,color-mix(in srgb,var(--b3) 70%,transparent),transparent 55%),
+    conic-gradient(from 210deg,var(--b1),var(--b2),var(--b3),var(--b4),var(--b5),var(--b1));
+  box-shadow:inset -14px -20px 40px rgba(30,15,80,.32),inset 12px 14px 30px rgba(255,255,255,.55),0 28px 50px -22px rgba(50,30,140,.5)}
+@keyframes orbfloat{0%,100%{transform:translateY(-3%)}50%{transform:translateY(3%)}}
+@keyframes orbshadow{0%,100%{transform:scaleX(.92);opacity:.45}50%{transform:scaleX(1.05);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.orb3d-fb i,.orb3d::after{animation:none}}
+
+/* ---------- Landing: same sky and glass, the 3D orb replaces the old video ---------- */
+.lv{--text:var(--t-ink);--muted:var(--t-muted);--stat:var(--t-ink);--panel:var(--glass);--field:var(--glass-strong);--ink:var(--t-ink);--line:var(--t-line);--accent:#5b5bd6;
+  --border:var(--glass-border);--c-neb:#18181b;--neb-eye:#fff;--c-tech:#1f6fff;--c-cook:#ff6b1a;--c-game:#00b060;--c-web:#8b3dff;--c-write:#ffb300;--c-study:#00b3a4;--c-music:#ff2e88;--c-lang:#ff3b30;--c-spooks:#ff7a00;--c-hex:#4fa8ff;
+  background:transparent;color:var(--t-ink)}
+:root[data-sky="dark"] .lv{--accent:#a5a3ff;--c-neb:#f4f4f7;--neb-eye:#111}
+.lv-grain{opacity:.03}
+.lv .lv-logo,.lv-h1,.lv-panel h2{color:var(--t-ink)}
+.lv-lede,.lv-stat{text-shadow:none}
+.lv-lede{color:var(--t-muted)}
+.lv-stats{color:var(--t-ink)}
+.lv-badge{background:var(--glass-strong);color:var(--t-ink);border:1px solid var(--glass-border);box-shadow:var(--sh-1);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.lv-nav button{background:var(--glass);border:1px solid var(--glass-border);color:var(--t-ink);box-shadow:var(--sh-1),var(--glass-hi);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.lv-nav button:hover{background:var(--glass-strong);border-color:color-mix(in srgb,var(--accent) 40%,var(--glass-border));box-shadow:0 0 18px color-mix(in srgb,#9b5cff 30%,transparent)}
+.lv-solid,.lv-solid:hover,.lv-solid.lv-big:hover{background:var(--t-ink);color:var(--t-bg);border:1px solid var(--t-ink);box-shadow:0 8px 24px rgba(30,20,80,.22)}
+.lv-solid:hover{box-shadow:0 0 0 4px color-mix(in srgb,#9b5cff 22%,transparent),0 10px 26px rgba(30,20,80,.25)}
+.lv-ghost,.lv-ghost:hover{color:var(--t-ink);background:var(--glass);border:1px solid var(--glass-border);box-shadow:var(--sh-1),var(--glass-hi);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.lv-ghost:hover{background:var(--glass-strong)}
+.lv-btn::after{background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.35) 48%,transparent 76%)}
+.lv-burger{background:var(--glass);border-color:var(--glass-border)}
+.lv-burger span{background:var(--t-ink)}
+.lv-panel{background:var(--glass);border:1px solid var(--glass-border);box-shadow:var(--sh-2),var(--glass-hi);color:var(--t-ink);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.lv-panel .pcard{background:color-mix(in srgb,var(--pc) 10%,var(--glass-strong))}
+.lv-scene{scrollbar-color:color-mix(in srgb,var(--t-ink) 25%,transparent) transparent}
+.lv-dots button{border-color:color-mix(in srgb,var(--t-ink) 45%,transparent)}
+.lv-dots button:hover{border-color:var(--t-ink)}
+.lv-hero{flex-direction:column;align-items:center;justify-content:flex-end}
+.lv-orb{flex:none;width:min(44vh,440px,80vw);height:min(44vh,440px,80vw);margin:0 0 -8px}
+@media (min-width:901px) and (max-height:850px){.lv-orb{width:min(36vh,360px);height:min(36vh,360px)}}
+@media (max-width:900px){
+  .lv-lede{color:var(--t-muted)}
+  .lv-orb{width:min(34vh,260px,70vw);height:min(34vh,260px,70vw);margin-bottom:0}
+  .lv-backdrop{background:color-mix(in srgb,var(--sky2) 55%,transparent)}
+  .lv-nav button{background:var(--glass-strong)}
+}
+@media (max-height:620px){.lv-orb{display:none}}
+
+/* Plan icons */
+.picon{display:inline-grid;flex:none;width:var(--ps);height:var(--ps);vertical-align:middle}
+.picon img{width:100%;height:100%;border-radius:24%;display:block;box-shadow:0 1px 3px rgba(30,20,80,.12)}
+.picwrap{display:inline-grid;place-items:center;flex:none}
+.pplan{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 4px}
+.panel .ph{align-items:center}
+.pcard h3{display:flex;align-items:center;gap:10px;color:color-mix(in srgb,var(--pc) 72%,var(--ink))}
+.pcard h3 .picon img{box-shadow:0 4px 14px color-mix(in srgb,var(--pc) 30%,transparent)}
+#limitUp{display:inline-flex;align-items:center;gap:6px}
+.upnav .ic.picwrap{background:none;width:26px;height:26px}
+.avplan{position:relative;z-index:1;width:18px;height:18px;margin:20px 0 0 -16px;pointer-events:none}
+.avplan .picon img{box-shadow:0 0 0 2px var(--glass-strong)}
+
+/* Fixes after the first look at screenshots */
+body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/sign-in sits on the sky, not on the app */
+.app[data-view="home"] .composer-wrap{isolation:isolate}
+.app[data-view="home"] .composer-wrap::before{content:"";position:absolute;inset:-26px 0 0;z-index:-1;pointer-events:none;
+  background:linear-gradient(to top,color-mix(in srgb,var(--sky2) 70%,transparent) 30%,transparent);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  -webkit-mask-image:linear-gradient(to top,#000 55%,transparent),linear-gradient(to right,transparent,#000 10%,#000 90%,transparent);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to top,#000 55%,transparent),linear-gradient(to right,transparent,#000 10%,#000 90%,transparent);mask-composite:intersect}
+:root[data-sky="dark"] .pplan.on{color:#7fe0ae;background:rgba(47,165,107,.18)}
+:root[data-sky="dark"] .pplan{color:#c9c7ff;background:rgba(165,163,255,.16)}
+.lv-hero{justify-content:flex-end;gap:0;padding-bottom:clamp(20px,4vh,44px)}
+.lv{--lede-max:600px}
+.lv-orb{width:min(40vh,420px,80vw);height:min(40vh,420px,80vw);margin:0 0 -1vh}
+@media (min-width:901px) and (max-height:850px){.lv-orb{width:min(30vh,300px);height:min(30vh,300px)}}
+@media (min-width:901px) and (max-height:850px){.lv-orb{width:min(34vh,340px);height:min(34vh,340px)}}
+@media (max-width:900px){.lv{--lede-max:100%}.lv-orb{width:min(30vh,240px,66vw);height:min(30vh,240px,66vw)}}
+.lv-scene-hero .lv-stats{padding-top:6px}
+</style>
 </head>
 <body>
+<div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><i class="a5"></i></div>
 <div class="shell" id="shell">
 <aside class="side" id="side" aria-label="Sidebar">
   <div class="side-top">
@@ -1210,7 +1390,7 @@ kbd{font-size:.72rem}
     <button class="nav small" type="button" data-open="helpModal"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg></span>Help and tips</button>
     <button class="nav small" type="button" data-open="newsModal"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span>What's new<span class="newdot" id="newDot" hidden></span></button>
     <button class="nav small promonav" type="button" id="promoNav" hidden><span class="ic"><svg class="li" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m15 9-6 6"/><path d="M9 9h.01"/><path d="M15 15h.01"/></svg></span><span>7% off: WELCOME7</span></button>
-    <button class="nav small upnav" type="button" id="upNav" hidden><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15.5l-1.9-4.6L5.5 9l4.6-1.4z"/></svg></span><span id="upNavTxt">Upgrade</span></button>
+    <button class="nav small upnav" type="button" id="upNav" hidden><span class="ic picwrap" id="upNavIco"></span><span id="upNavTxt">Upgrade</span></button>
     <button class="nav small" type="button" id="adminNav" hidden><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>Admin</button>
     <button class="nav small" type="button" data-open="keysModal"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/></svg></span>Shortcuts</button>
     <div class="sidelegal"><button class="linkbtn" type="button" data-open="tosModal">Terms</button> · <button class="linkbtn" type="button" data-open="privModal">Privacy</button></div>
@@ -1235,7 +1415,7 @@ kbd{font-size:.72rem}
     <button class="icon-btn star" id="pinTop" type="button" aria-label="Pin this orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button><button class="icon-btn delb" id="delTop" type="button" aria-label="Delete this chat" title="Delete this chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
     <button class="icon-btn incogbtn" id="incogBtn" type="button" aria-pressed="false" aria-label="Incognito chat" title="Incognito chat (not saved)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18"/><path d="M5 11l2-6h10l2 6"/><circle cx="7.5" cy="16" r="2.8"/><circle cx="16.5" cy="16" r="2.8"/><path d="M10.3 16h3.4"/></svg></button>
     <button class="icon-btn" id="searchTop" type="button" aria-label="Search chats" title="Search chats (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
-    <button class="avbtn" id="avBtn" type="button" aria-label="Account and settings" title="Account and settings"><img id="avImg" alt="" hidden><span id="avTxt">?</span></button>
+    <button class="avbtn" id="avBtn" type="button" aria-label="Account and settings" title="Account and settings"><img id="avImg" alt="" hidden><span id="avTxt">?</span></button><span class="avplan" id="avPlan" aria-hidden="true" hidden></span>
     <span hidden><button id="backBtn" type="button" disabled></button><button id="fwdBtn" type="button" disabled></button></span>
   </div>
 </header>
@@ -1246,6 +1426,7 @@ kbd{font-size:.72rem}
       <p class="ddate" id="dDate"></p>
       <h1 class="dgreet" id="dGreet">Good evening</h1>
       <p class="dclock" id="dClock" aria-live="off"></p>
+      <div class="orb3d dorb" data-orb3d="home" aria-hidden="true"><div class="orb3d-fb"><i></i></div></div>
     </div>
     <div class="dchips" id="dChips" aria-label="Quick start"></div>
     <div class="dgrid">
@@ -1333,7 +1514,7 @@ kbd{font-size:.72rem}
     <section class="sg">
       <div class="sg-t">Account and plan</div>
       <div class="sr"><div class="acct"><span class="dot2 ok"></span><span id="acctTxt"></span></div><small class="fine" id="syncTxt">Your chats and settings save to your account, so they follow you to any device.</small></div>
-      <div class="sr"><div class="swrow"><span class="acct"><span class="dot2 ok"></span><span id="planTxt">Free</span></span><button class="outline small" id="planBtn" type="button">Upgrade</button></div><small class="fine" id="planMore"></small></div>
+      <div class="sr"><div class="swrow"><span class="acct"><span class="picwrap" id="planIco"></span><span id="planTxt">Free</span></span><button class="outline small" id="planBtn" type="button">Upgrade</button></div><small class="fine" id="planMore"></small></div>
       <div class="sr vbox" id="viewBox" hidden>
         <b class="sr-t">Test as (only you can see this)</b>
         <div class="seg five" id="viewSeg"><button type="button" data-v="owner">Owner</button><button type="button" data-v="free">Free</button><button type="button" data-v="plus">Plus</button><button type="button" data-v="plusplus">Plus Plus</button><button type="button" data-v="plusplusplus">Plus Plus Plus</button></div>
@@ -1351,8 +1532,7 @@ kbd{font-size:.72rem}
     </section>
 
     <section class="sg">
-      <div class="sg-t">Look and chat</div>
-      <div class="sr"><b class="sr-t">Theme</b><div class="seg" id="themeSeg"><button type="button" data-t="system">System</button><button type="button" data-t="light">Light</button><button type="button" data-t="dark">Dark</button></div></div>
+      <div class="sg-t">Chat</div>
       <div class="sr"><div class="swrow"><span class="acct"><b class="sr-t">Show thinking</b><span class="sr-s" id="thinkTxt">On</span></span><button class="switch" id="thinkSw" type="button" role="switch" aria-checked="true" aria-label="Show thinking"></button></div>
         <small class="fine">A short summary of how the orb thought before answering. Hidden in Kids Mode.</small></div>
       <div class="sr"><div class="swrow"><span class="acct"><b class="sr-t">Memory</b><span class="sr-s" id="memTxt">On</span></span><span class="setrow" style="flex:none"><button class="outline small" id="memManage" type="button">Manage</button><button class="switch" id="memSw" type="button" role="switch" aria-checked="true" aria-label="Memory"></button></span></div>
@@ -1462,7 +1642,7 @@ kbd{font-size:.72rem}
       <h3>Voice typing</h3>
       <p>The microphone button uses your browser's own speech-to-text. Orbs only receives the text. Some browsers, like Google Chrome, send your voice to their company's servers to turn it into text, so their privacy rules apply to that part. Read aloud also uses your device's built-in voices.</p>
       <h3>On your device</h3>
-      <p>Orbs remembers your theme and sidebar choice on your device, and Firebase keeps you signed in. Files you attach stay on your device for "Try again" until you refresh. That's it.</p>
+      <p>Orbs remembers your sidebar choice on your device, and Firebase keeps you signed in. Files you attach stay on your device for "Try again" until you refresh. That's it.</p>
       <h3>Kids and teens</h3>
       <p>Orbs is not for children under 13, and we don't knowingly collect information from them, as required by the US Children's Online Privacy Protection Act (COPPA). If someone says they're under 13 when signing up, they can't use Orbs. If you're a parent and think your child under 13 made an account, email <a href="mailto:contact@orbsai.app">contact@orbsai.app</a> and the account will be deleted.</p>
       <p>Teens 13 to 17 need a parent or guardian's permission, and their accounts always use Kids Mode.</p>
@@ -1673,12 +1853,11 @@ kbd{font-size:.72rem}
 <div class="gate" id="gate">
   <div class="landing" id="landing" hidden>
     <div class="lv" id="lvTop">
-      <video class="lv-video" id="lvVideo" autoplay muted loop playsinline preload="auto" aria-hidden="true"><source src="/orbs-hero.mp4" type='video/mp4; codecs="avc1.64002a"'><source src="/orbs-hero.webm" type='video/webm; codecs="vp9"'></video>
       <div class="lv-grain" aria-hidden="true"></div>
       <div class="lv-page">
         <div class="lv-backdrop" id="lvBackdrop"></div>
         <header class="lv-head">
-          <button class="lv-logo appear appear--scale" style="--d:.08s" type="button" data-go="top" aria-label="Orbs AI"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgV)" stroke-width="2.4" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="#ecebe7"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="#161616"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="#161616"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgV)" stroke-width="2.4" stroke-linecap="round"/></g></svg><span>Orbs<span class="lv-suffix"> AI</span></span></button>
+          <button class="lv-logo appear appear--scale" style="--d:.08s" type="button" data-go="top" aria-label="Orbs AI"><svg class="lg" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="lgV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><g transform="rotate(-22 16 16)"><path d="M30 16A14 5 0 0 0 2 16" fill="none" stroke="url(#lgV)" stroke-width="2.4" stroke-linecap="round" opacity=".55"/></g><circle cx="16" cy="16" r="9.5" fill="var(--ink)"/><rect x="12.1" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><rect x="17.3" y="12.2" width="2.6" height="7" rx="1.3" fill="var(--bg)"/><g transform="rotate(-22 16 16)"><path d="M2 16A14 5 0 0 0 30 16" fill="none" stroke="url(#lgV)" stroke-width="2.4" stroke-linecap="round"/></g></svg><span>Orbs<span class="lv-suffix"> AI</span></span></button>
           <nav class="lv-nav" id="lvNav" aria-label="Main">
             <button class="appear appear--scale" style="--d:.16s" type="button" data-go="lfeatures">Features</button>
             <button class="appear appear--soft" style="--d:.28s" type="button" data-go="lpricing">Pricing</button>
@@ -1691,10 +1870,11 @@ kbd{font-size:.72rem}
         <div class="lv-stage" id="lvStage">
           <div class="lv-scene lv-scene-hero on" data-name="Home">
           <main class="lv-hero">
+            <div class="orb3d lv-orb" data-orb3d="landing" aria-hidden="true"><div class="orb3d-fb"><i></i></div></div>
             <div class="lv-copy">
-              <span class="lv-badge appear appear--pop" style="--d:.22s"><svg class="lv-star" width="18" height="20" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><path fill="url(#lgS)" d="M12 2.6C12.55 2.6 12.88 3.15 13.08 4.7c.62 4.7 1.52 5.6 6.22 6.22 1.55.2 2.1.53 2.1 1.08s-.55.88-2.1 1.08c-4.7.62-5.6 1.52-6.22 6.22-.2 1.55-.53 2.1-1.08 2.1s-.88-.55-1.08-2.1c-.62-4.7-1.52-5.6-6.22-6.22C3.15 12.88 2.6 12.55 2.6 12s.55-.88 2.1-1.08c4.7-.62 5.6-1.52 6.22-6.22C11.12 3.15 11.45 2.6 12 2.6Z"/></svg>Powered by Claude</span>
+              <span class="lv-badge appear appear--pop" style="--d:.22s"><svg class="lv-star" width="18" height="20" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lgS" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7bff"/><stop offset=".5" stop-color="#9b5cff"/><stop offset="1" stop-color="#ff5fb8"/></linearGradient></defs><path fill="url(#lgS)" d="M12 2.6C12.55 2.6 12.88 3.15 13.08 4.7c.62 4.7 1.52 5.6 6.22 6.22 1.55.2 2.1.53 2.1 1.08s-.55.88-2.1 1.08c-4.7.62-5.6 1.52-6.22 6.22-.2 1.55-.53 2.1-1.08 2.1s-.88-.55-1.08-2.1c-.62-4.7-1.52-5.6-6.22-6.22C3.15 12.88 2.6 12.55 2.6 12s.55-.88 2.1-1.08c4.7-.62 5.6-1.52 6.22-6.22C11.12 3.15 11.45 2.6 12 2.6Z"/></svg>Every orb runs on Claude Opus</span>
               <h1 class="lv-h1"><span class="lv-line"><span class="appear appear--mask" style="--d:.42s">Nine little <em>AI helpers</em></span></span><span class="lv-line"><span class="appear appear--mask" style="--d:.62s">in one chat.</span></span></h1>
-              <p class="lv-lede appear appear--soft" style="--d:.82s;animation-duration:1.25s">Tech, cooking, games and Roblox, websites, stories, homework, music, and languages. Pick an orb and ask away.</p>
+              <p class="lv-lede appear appear--soft" style="--d:.82s;animation-duration:1.25s">Chat with a specialist for anything, from code and cooking to Roblox, homework, and stories. Team them up, search the web, and let them remember you.</p>
               <div class="lv-actions">
                 <button class="lv-btn lv-solid lv-big appear appear--btn" style="--d:.96s" id="goBtn" type="button">Get started free</button>
                 <button class="lv-btn lv-ghost lv-big appear appear--side" style="--d:1.10s" id="goSignin" type="button">I already have an account</button>
@@ -1702,9 +1882,9 @@ kbd{font-size:.72rem}
             </div>
           </main>
           <footer class="lv-stats">
-            <div class="lv-stat appear appear--stat" style="--d:1.12s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lvP1" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f7bff" stop-opacity=".75"/><stop offset="1" stop-color="#9b5cff" stop-opacity=".45"/></linearGradient><linearGradient id="lvP2" x1="13" y1="2" x2="24" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9b5cff" stop-opacity=".45"/><stop offset="1" stop-color="#ff5fb8" stop-opacity=".75"/></linearGradient></defs><rect x="3.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP1)"/><rect x="13.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP2)"/><rect x="9.2" y="10.9" width="5.6" height="2.2" rx="1.1" fill="#3a3936"/></svg><span>9 helper orbs in one chat</span></div>
-            <div class="lv-stat appear appear--stat" style="--d:1.28s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.4" y="2.4" width="19.2" height="19.2" rx="6.2" fill="#ecebe7"/><path fill="#161616" d="M12 6.3c.3 0 .47.3.58 1.15.34 2.6.84 3.1 3.44 3.44.85.11 1.15.29 1.15.6s-.3.49-1.15.6c-2.6.34-3.1.84-3.44 3.44-.11.85-.28 1.15-.58 1.15s-.47-.3-.58-1.15c-.34-2.6-.84-3.1-3.44-3.44-.85-.11-1.15-.29-1.15-.6s.3-.49 1.15-.6c2.6-.34 3.1-.84 3.44-3.44.11-.85.28-1.15.58-1.15Z"/></svg><span>Every orb runs on Claude Opus</span></div>
-            <div class="lv-stat appear appear--stat" style="--d:1.44s"><svg class="lv-ic lv-ic-wide" viewBox="0 0 40 22" aria-hidden="true"><circle cx="10.2" cy="11" r="9.2" fill="#4a8dff"/><rect x="7.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="11.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="20.2" cy="11" r="9.2" fill="#ff7d33" stroke="#161616" stroke-width="1"/><rect x="17.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="21.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="30.2" cy="11" r="9.2" fill="#22d17a" stroke="#161616" stroke-width="1"/><rect x="27.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="31.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/></svg><span>Free daily usage, Kids Mode for teens</span></div>
+            <div class="lv-stat appear appear--stat" style="--d:1.12s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="lvP1" x1="3" y1="2" x2="14" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f7bff" stop-opacity=".75"/><stop offset="1" stop-color="#9b5cff" stop-opacity=".45"/></linearGradient><linearGradient id="lvP2" x1="13" y1="2" x2="24" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9b5cff" stop-opacity=".45"/><stop offset="1" stop-color="#ff5fb8" stop-opacity=".75"/></linearGradient></defs><rect x="3.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP1)"/><rect x="13.4" y="2.6" width="7.2" height="18.8" rx="3.6" fill="url(#lvP2)"/><rect x="9.2" y="10.9" width="5.6" height="2.2" rx="1.1" fill="#fff"/></svg><span>9 specialist orbs, one chat</span></div>
+            <div class="lv-stat appear appear--stat" style="--d:1.28s"><svg class="lv-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.4" y="2.4" width="19.2" height="19.2" rx="6.2" fill="var(--ink)"/><path fill="var(--bg)" d="M12 6.3c.3 0 .47.3.58 1.15.34 2.6.84 3.1 3.44 3.44.85.11 1.15.29 1.15.6s-.3.49-1.15.6c-2.6.34-3.1.84-3.44 3.44-.11.85-.28 1.15-.58 1.15s-.47-.3-.58-1.15c-.34-2.6-.84-3.1-3.44-3.44-.85-.11-1.15-.29-1.15-.6s.3-.49 1.15-.6c2.6-.34 3.1-.84 3.44-3.44.11-.85.28-1.15.58-1.15Z"/></svg><span>Orb Teams, web search and memory</span></div>
+            <div class="lv-stat appear appear--stat" style="--d:1.44s"><svg class="lv-ic lv-ic-wide" viewBox="0 0 40 22" aria-hidden="true"><circle cx="10.2" cy="11" r="9.2" fill="#4a8dff"/><rect x="7.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="11.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="20.2" cy="11" r="9.2" fill="#ff7d33" stroke="#161616" stroke-width="1"/><rect x="17.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="21.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><circle cx="30.2" cy="11" r="9.2" fill="#22d17a" stroke="#161616" stroke-width="1"/><rect x="27.4" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/><rect x="31.1" y="8.2" width="1.9" height="5" rx=".95" fill="#fff"/></svg><span>Free usage every day, Kids Mode for teens</span></div>
           </footer>
           </div>
           <div class="lv-scene" id="lfeatures" data-name="Meet the orbs">
@@ -1720,14 +1900,16 @@ kbd{font-size:.72rem}
             <div class="lv-panel">
                 <section class="lsec" aria-labelledby="lf2Title">
                   <h2 id="lf2Title">What you get</h2>
-                  <p class="lsub">Everything that comes with Orbs, free plan included.</p>
+                  <p class="lsub">One calm place to ask anything, with a specialist for every kind of question.</p>
                   <ul class="lfeat">
-                    <li><b>A helper for everything.</b> Tech, cooking, games, websites, stories, homework, music, languages, and Nebula for the rest.</li>
-                    <li><b>Claude Opus inside.</b> Every orb runs on Anthropic's most capable model. No menus, no settings to fiddle with.</li>
-                    <li><b>Your chats follow you.</b> Sign in on any device and pick up where you left off.</li>
-                    <li><b>Searches the web.</b> Tap the globe for news, prices, and scores, with the sites it used.</li>
-                    <li><b>Orb Teams.</b> On Plus and up, up to 5 orbs each do their part and the lead builds the final result.</li>
-                    <li><b>Safe and private.</b> Kids Mode for teens, memory you control, and incognito chats that are never saved.</li>
+                    <li><b>Specialist orbs.</b> Byte for tech, Chef Miso for cooking, Abyss for games and Roblox, Pixel for websites, Quill for stories, Nova for homework, Beat for music, Lingo for languages, and Nebula for everything else.</li>
+                    <li><b>Orb Teams.</b> On Plus and up, pick up to 5 orbs: each does its part, then the lead builds the final result.</li>
+                    <li><b>Searches the web.</b> Tap the globe for news, prices, and scores, and see the sites it used.</li>
+                    <li><b>Memory you control.</b> On Plus Plus and up, orbs remember your name, hobbies, and projects. See and delete it anytime.</li>
+                    <li><b>Kids Mode.</b> Teens always get kid-safe answers, an AI safety check on every message, and no sharing personal info.</li>
+                    <li><b>Usage you can see.</b> Free usage every day and week, shown as a simple percentage with the exact reset time.</li>
+                    <li><b>The best model, no menus.</b> Every orb runs on Claude Opus. Nothing to pick, just ask.</li>
+                    <li><b>Private by default.</b> Chats follow you to any device, only you can see them, and incognito chats are never saved.</li>
                   </ul>
                 </section>
             </div>
@@ -1757,7 +1939,7 @@ kbd{font-size:.72rem}
                 <section class="faq" aria-label="Questions">
                   <h2>Questions</h2>
                   <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>
-                  <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you a little usage every day and every week, on the same Claude Opus model as everyone else. Orbs Plus plans give you 3x, 6x, or 15x more usage, more web searches, Orb Teams, and memory.</p></details>
+                  <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you a little usage every day and every week, on the same Claude Opus model as everyone else. Orbs Plus plans give you 1.75x, 3.5x, or 6.25x the usage of Free, more web searches, Orb Teams, and memory.</p></details>
                   <details><summary>What AI does Orbs use?</summary><p>Every orb runs on Claude Opus, Anthropic's most capable model, and moves to the newest version automatically. Orbs is an independent project, not made by Anthropic.</p></details>
                   <details><summary>Is it safe for kids and teens?</summary><p>Orbs is for ages 13 and up. Teens always use Kids Mode, which gives kid-safe answers, checks every message and reply with an AI safety check, and blocks sharing personal info.</p></details>
                   <details><summary>Can Orbs search the web?</summary><p>Yes. Tap the globe and the orb can look up news, prices, scores, and other fresh info, and it shows the sites it used.</p></details>

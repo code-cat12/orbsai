@@ -1039,14 +1039,9 @@ function closeSet(){ $("settings").hidden = true; $("setBtn").setAttribute("aria
 $("setClose").onclick = closeSet;
 $("settings").addEventListener("click", e => { if (e.target === $("settings")) closeSet(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("settings").hidden) closeSet(); });
-function applyTheme(t){
-  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme");
-  for (const b of document.querySelectorAll("#themeSeg button")) b.setAttribute("aria-pressed", String(b.dataset.t === t));
-  try { localStorage.setItem("orbs-theme", t); } catch(e) {}
-}
-let savedTheme = "system"; try { savedTheme = localStorage.getItem("orbs-theme") || "system"; } catch(e) {}
-applyTheme(savedTheme);
-for (const b of document.querySelectorAll("#themeSeg button")) b.onclick = () => applyTheme(b.dataset.t);
+// One look everywhere: there is no light/dark theme anymore. Clear any old saved choice so nothing stale lingers.
+document.documentElement.removeAttribute("data-theme");
+try { localStorage.removeItem("orbs-theme"); } catch(e) {}
 let armTimer;
 function wipeArmed(on){ const w = $("wipeBtn"); w.classList.toggle("armed", on); w.textContent = on ? "Tap again to delete" : "Delete all chats"; clearTimeout(armTimer); if (on) armTimer = setTimeout(() => wipeArmed(false), 4000); }
 $("wipeBtn").onclick = () => {
@@ -1224,13 +1219,14 @@ function renderUsage(){
   }
   $("useDayLbl").textContent = "of today's usage"; $("useWeekLbl").textContent = "of this week";
   const p = kids.plan, testing = kids.owner && kids.viewAs && kids.viewAs !== "owner";
-  $("pPlan").textContent = testing ? `Testing ${p ? p.name : "Free"}` : p ? p.name : kids.owner ? "Owner" : "Free";
+  $("pPlan").replaceChildren(planIcon(myPlanId(), 18), testing ? `Testing ${p ? p.name : "Free"}` : p ? p.name : kids.owner ? "Owner" : "Free");
   $("pUsageUp").hidden = !kids.billing || !!(p && p.id === "plusplusplus") || (kids.owner && !testing);
   // Out of usage: a friendly note with when it comes back, and Upgrade
   const out = limitHit && u;
   $("limit").hidden = !out;
   if (out) {
     const week = limitHit === "week";
+    if (!$("limitUp").hidden) $("limitUp").replaceChildren(planIcon(nextPlanId(), 20), "Upgrade for more");
     $("limitTxt").textContent = week ? `You've used all of this week's usage. ${resetText(u.weekResetAt, true)}.` : `You've used all of today's usage. ${resetText(u.dayResetAt, false)}.`;
   }
 }
@@ -1362,7 +1358,7 @@ function authErr(e){ const c = e && e.code; if (c === "auth/popup-closed-by-user
 function say(msg, ok){ const el = $("aErr"); el.textContent = msg || ""; el.classList.toggle("aok", !!ok); }
 function showGate(mode, email){
   gate.hidden = false; say("");
-  $("landing").hidden = mode !== "home"; $("authCard").hidden = mode === "home"; lvVideo(mode === "home");
+  $("landing").hidden = mode !== "home"; $("authCard").hidden = mode === "home";
   $("aBack").hidden = mode !== "signin";
   if (mode === "home") { gate.scrollTop = 0; return; }
   $("aMain").hidden = mode !== "signin"; $("aVerify").hidden = mode !== "verify";
@@ -1395,9 +1391,7 @@ $("navSignin").onclick = () => setAuthMode("in");
 for (const b of document.querySelectorAll("#landing [data-go]")) b.onclick = () => { lvMenu(false); lvGo(b.dataset.go === "top" ? 0 : lvScenes.findIndex(x => x.id === b.dataset.go)); };
 // Landing hero: phone menu, entrance animations, and only playing the video while the landing shows
 function lvMenu(open){ $("landing").classList.toggle("menu-open", open); $("lvBurger").setAttribute("aria-expanded", String(open)); $("lvBurger").setAttribute("aria-label", open ? "Close menu" : "Open menu"); }
-function lvVideo(on){ const v = $("lvVideo"); v.muted = true; if (on) v.play().catch(() => {}); else v.pause(); }
 // If autoplay was blocked (iPhone Low Power Mode, data saver), start the video on the first tap, swipe, or key
-for (const t of ["touchstart", "pointerdown", "keydown"]) document.addEventListener(t, () => { if (!$("landing").hidden && !gate.hidden && $("lvVideo").paused) lvVideo(true); }, { passive:true });
 $("lvBurger").onclick = () => lvMenu(!$("landing").classList.contains("menu-open"));
 // Landing scenes: the page doesn't scroll. Wheel, swipe, arrow keys, the dots, and the nav swap the content with GSAP while the video stays put.
 // A scene taller than the screen scrolls on its own first, then the next swipe at its edge moves on.
@@ -1581,7 +1575,7 @@ async function enter(u){
   if (kids.banned) { showGate("banned"); return; }
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
-  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; lvVideo(false); renderHome();
+  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; renderHome();
   cloudSave(); // finishes moving any old-style chats
   checkAdmin(); afterBilling(); maybePromo();
 }
@@ -1881,6 +1875,19 @@ $("repSend").onclick = () => busyBtn($("repSend"), async () => {
 
 // ---------- Paid plans (Stripe) ----------
 const PLAN_NAMES = { plus:"Plus", plusplus:"Plus Plus", plusplusplus:"Plus Plus Plus" };
+// Plan icons (plans/*.webp, PNG fallback): Free = plain black orb, Plus = 1 dot, Plus Plus = 2, Plus Plus Plus = 3
+const PLAN_ICON_IDS = ["free", "plus", "plusplus", "plusplusplus"];
+function planIcon(id, px = 24, cls = "picon"){
+  id = PLAN_ICON_IDS.includes(id) ? id : "free";
+  const big = px > 48 ? 256 : 128;
+  const pic = document.createElement("picture"); pic.className = cls;
+  const src = document.createElement("source"); src.type = "image/webp"; src.srcset = `/plans/${id}-${big}.webp`;
+  const img = document.createElement("img"); img.src = `/plans/${id}-${big}.png`; img.alt = ""; img.width = px; img.height = px; img.decoding = "async"; img.draggable = false;
+  pic.append(src, img); pic.style.setProperty("--ps", px + "px"); return pic;
+}
+// Which icon goes with the account right now (the owner shows the top plan; testing shows the plan being tested)
+function myPlanId(){ const p = kids.plan; return p ? p.id : kids.owner ? "plusplusplus" : "free"; }
+function nextPlanId(){ const i = PLAN_ICON_IDS.indexOf(myPlanId()); return PLAN_ICON_IDS[Math.min(i + 1, 3)]; }
 // Sale: code WELCOME7 = 7% off the first payment of Plus and Plus Plus until Nov 1, 2026 11:59 PM EDT (typed at Stripe checkout)
 const PROMO_UNTIL = Date.parse("2026-11-02T03:59:59Z"), PROMO_PLANS = ["plus", "plusplus"];
 const promoOn = id => Date.now() < PROMO_UNTIL && (!id || PROMO_PLANS.includes(id));
@@ -1901,9 +1908,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["3x the usage of Free, every day and week", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["6x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["15x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["1.75x the usage of Free, every day and week", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["3.5x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["6.25x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
@@ -1914,7 +1921,8 @@ const PLAN_INFO = [
     const deal = id && promoOn(id) ? el("div", "pdeal", "Code WELCOME7: 7% off first payment · ends Nov 1") : null;
     const ul = el("ul"); perks.forEach(t => ul.append(el("li", null, t)));
     const b = el("button", "gbtn", "Get started"); b.type = "button"; b.onclick = () => setAuthMode("up");
-    c.append(el("h3", null, name), pr); if (deal) c.append(deal); c.append(ul, b); grid.append(c);
+    const h = el("h3"); h.append(planIcon(id || "free", 40), el("span", null, name));
+    c.append(h, pr); if (deal) c.append(deal); c.append(ul, b); grid.append(c);
   };
   card("Free", "#6e6b64", "$0", "", ["A little usage every day and week", "Every orb, on Claude Opus", "A few web searches a day"]);
   for (const pl of PLAN_INFO) card(pl.name, pl.color, "$" + pl.month, " / month", [...pl.perks, ...pl.soon.map(t => t + " (coming soon)"), "or $" + pl.year + " a year"], pl.pop, pl.id);
@@ -1925,11 +1933,15 @@ const fmtDate = sec => sec ? new Date(sec * 1000).toLocaleDateString([], { month
 function renderPlan(){
   const p = kids.plan, on = !!kids.billing;
   const testing = kids.owner && kids.viewAs && kids.viewAs !== "owner";
+  $("planIco").replaceChildren(planIcon(myPlanId(), 28));
+  $("avPlan").replaceChildren(user ? planIcon(myPlanId(), 18) : ""); $("avPlan").hidden = !user;
+  $("upNavIco").replaceChildren(planIcon(p ? p.id : kids.owner ? "plusplusplus" : "plus", 26));
+  $("limitUp").replaceChildren(planIcon(nextPlanId(), 20), "Upgrade for more");
   $("planTxt").textContent = testing ? `Testing as ${p ? "Orbs " + p.name : "Free"} 🧪` : p ? `Orbs ${p.name} (${p.interval === "year" ? "yearly" : "monthly"})` + (kids.owner ? " + Owner 👑" : "") : kids.owner ? "Owner 👑 (everything unlocked)" : "Free";
   $("viewBox").hidden = !kids.owner;
   for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.v === (kids.viewAs || "owner")));
   $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
-    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "A little usage every day and week. Upgrade for 3x to 15x more usage, Orb Teams, memory, and more web searches." : "";
+    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "A little usage every day and week. Upgrade for 1.75x to 6.25x more usage, Orb Teams, memory, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
   $("promoNav").hidden = !user || !on || !promoOn() || !!(p && !p.test);
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
@@ -1956,7 +1968,8 @@ function renderPlans(){
   const free = el("div", "pcard" + (!cur ? " cur" : "")); free.style.setProperty("--pc", "#6e6b64");
   const fl = el("ul"); ["A little usage every day and week", "Every orb, on Claude Opus", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
   const fb = el("button", "outline", !cur ? "Current plan" : "Included"); fb.type = "button"; fb.disabled = true;
-  free.append(el("h3", null, "Free"), el("div", "price", "$0"), fl, fb); grid.append(free);
+  const fh = el("h3"); fh.append(planIcon("free", 40), el("span", null, "Free"));
+  free.append(fh, el("div", "price", "$0"), fl, fb); grid.append(free);
   for (const pl of PLAN_INFO) {
     const c = el("div", "pcard" + (pl.id === cur ? " cur" : "") + (pl.pop && !cur ? " pop" : "")); c.style.setProperty("--pc", pl.color);
     const price = el("div", "price", "$" + (planInterval === "year" ? pl.year : pl.month)); price.append(el("small", null, planInterval === "year" ? " / year" : " / month"));
@@ -1967,7 +1980,8 @@ function renderPlans(){
     else if (pl.id === cur) { b.textContent = "Manage"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
     else if (cur) { b.textContent = "Switch"; b.onclick = () => billing({ action:"portal" }, b, $("planMsg")); }
     else { b.textContent = "Upgrade"; b.onclick = () => billing({ action:"checkout", plan: pl.id, interval: planInterval }, b, $("planMsg")); }
-    c.append(el("h3", null, pl.name), price);
+    const h = el("h3"); h.append(planIcon(pl.id, 40), el("span", null, pl.name));
+    c.append(h, price);
     if (promoOn(pl.id) && !cur) c.append(el("div", "pdeal", "Code WELCOME7: 7% off first payment · ends Nov 1"));
     c.append(ul, b); grid.append(c);
   }
@@ -2016,6 +2030,7 @@ async function checkAdmin(){
 }
 let adminData = null, adminTab = "overview";
 const money = c => "$" + (c / 100).toFixed(c < 100 ? 3 : 2);
+const centsTxt = c => (Math.round(c * 10) / 10) + "¢";   // budgets can be fractional, like 17.5¢
 const when = t => t ? new Date(t).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) : "";
 async function openAdmin(){
   openLegal("adminModal"); adminTab = adminTab || "overview";
@@ -2046,13 +2061,13 @@ function renderAdmin(){
     const chart = el("div", "abars"); chart.setAttribute("role", "img"); chart.setAttribute("aria-label", "Spending for the last 14 days");
     for (const s of days) { const col = el("div", "abar"); const bar = el("i"); bar.style.height = Math.max(2, s.cents / max * 100) + "%"; col.title = s.day + ": " + money(s.cents) + ", " + s.messages + " messages"; col.append(bar, el("small", null, s.day.slice(8))); chart.append(col); }
     body.append(el("h3", null, "Spending, last 14 days"), days.length ? chart : el("p", "fine", "No messages yet."));
-    if (d.budgets) body.append(el("h3", null, "Usage budgets in effect"), el("p", "fine", ["free", "plus", "plusplus", "plusplusplus"].map(t => `${t === "free" ? "Free" : PLAN_NAMES[t]}: ${d.budgets[t].day ? money(d.budgets[t].day) : "∞"} a day, ${d.budgets[t].week ? money(d.budgets[t].week) : "∞"} a week`).join(" · ") + ". Every orb runs on Claude Opus. People only see percentages."));
+    if (d.budgets) body.append(el("h3", null, "Usage budgets in effect"), el("p", "fine", ["free", "plus", "plusplus", "plusplusplus"].map(t => `${t === "free" ? "Free" : PLAN_NAMES[t]}: ${d.budgets[t].day ? centsTxt(d.budgets[t].day) : "∞"} a day, ${d.budgets[t].week ? centsTxt(d.budgets[t].week) : "∞"} a week${t !== "free" && d.budgets.free.day ? " (" + (Math.round(d.budgets[t].day / d.budgets.free.day * 100) / 100) + "x Free)" : ""}`).join(" · ") + ". Every orb runs on Claude Opus. People only see percentages."));
     body.append(el("p", "fine", "These are estimates from Orbs. Your real bill is in the Claude Console."));
   }
   if (adminTab === "settings") {
     const c = d.config, f = el("form", "aform");
     const sw = (key, label, help) => { const r = el("label", "arow"); const i = el("input"); i.type = "checkbox"; i.name = key; i.checked = !!c[key]; r.append(i, el("span", null, label)); if (help) r.append(el("small", "fine", help)); return r; };
-    const numIn = (key, label, help, ph) => { const r = el("label", "arow num"); const i = el("input"); i.type = "number"; i.min = "0"; i.max = "10000000"; i.name = key; i.value = c[key] == null ? "" : c[key]; i.placeholder = ph || (key.startsWith("searches") ? "0" : "No limit"); r.append(el("span", null, label), i); if (help) r.append(el("small", "fine", help)); return r; };
+    const numIn = (key, label, help, ph) => { const r = el("label", "arow num"); const i = el("input"); i.type = "number"; i.min = "0"; i.max = "10000000"; i.step = key.endsWith("Cents") ? "0.1" : "1"; i.name = key; i.value = c[key] == null ? "" : c[key]; i.placeholder = ph || (key.startsWith("searches") ? "0" : "No limit"); r.append(el("span", null, label), i); if (help) r.append(el("small", "fine", help)); return r; };
     // Usage budgets, in cents of real Claude cost. Empty = Vercel's USAGE_BUDGETS or the built-in default, 0 = unlimited.
     const defB = d.defaultBudgets || {}, budgetRows = [];
     for (const t of ["free", "plus", "plusplus", "plusplusplus"]) {
@@ -2078,7 +2093,7 @@ function renderAdmin(){
       for (const i of f.querySelectorAll("select")) out[i.name] = i.value;
       for (const i of f.querySelectorAll("input")) {
         if (i.type === "checkbox") out[i.name] = i.checked;
-        else if (i.type === "number") out[i.name] = i.value === "" ? (i.name.startsWith("searches") ? 0 : null) : Math.max(0, Math.floor(Number(i.value)) || 0);
+        else if (i.type === "number") out[i.name] = i.value === "" ? (i.name.startsWith("searches") ? 0 : null) : i.name.endsWith("Cents") ? Math.max(0, Math.round(Number(i.value) * 10) / 10 || 0) : Math.max(0, Math.floor(Number(i.value)) || 0);
         else out[i.name] = i.value.trim();
       }
       try { const j = await adminApi({ action:"settings", settings: out }); adminData.config = { ...adminData.config, ...j.settings }; msg.textContent = "Saved! It takes up to 30 seconds to kick in."; }

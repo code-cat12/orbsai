@@ -48,7 +48,7 @@ export function withFiles(content, files) {
   blocks.push({ type: "text", text: content });
   return blocks;
 }
-import { dayKey, BUDGET_KEYS, usageState, usageBlock, publicUsage } from "./_limits.js";
+import { dayKey, BUDGET_KEYS, tenths, usageState, usageBlock, publicUsage } from "./_limits.js";
 import { allowance, PLANS } from "./_plans.js";
 import { memoryRules, looksPersonal, extractMemory } from "./_memory.js";
 export { RESET_TZ, dayKey } from "./_limits.js";
@@ -141,6 +141,7 @@ export function siteConfig(raw) {
     for (const k of ["searchesPerUser", "searchesSite", ...BUDGET_KEYS]) {
       const v = raw[k];
       if (v === null && BUDGET_KEYS.includes(k)) c[k] = null;
+      else if (BUDGET_KEYS.includes(k) && typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1e7) c[k] = tenths(v); // budgets can be fractional cents
       else if (Number.isInteger(v) && v >= 0 && v <= 1e7) c[k] = v;
     }
   }
