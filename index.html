@@ -1340,6 +1340,54 @@ body{color:var(--ink)}
 .picwrap{display:inline-grid;place-items:center;flex:none}
 .pplan{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 4px}
 .panel .ph{align-items:center}
+
+/* ---------- Home fits the screen: no page scroll on desktop, tablets or phones ---------- */
+html,body{height:100%;overflow:hidden}
+.shell{height:100vh;height:100dvh}
+.app.dashv[data-view="home"]{overflow:hidden;display:flex;flex-direction:column;padding-block:0}
+.app.dashv .dash{flex:1 1 auto;min-height:0;padding-top:clamp(4px,2.2vh,28px);gap:clamp(8px,1.8vh,16px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.app.dashv .dash::-webkit-scrollbar{display:none}
+.app.dashv .composer-wrap{position:relative;flex:none;padding-top:8px}
+.app.dashv .composer-wrap::before{inset:-14px 0 0}
+/* Greeting row */
+.dgreet{font-size:clamp(1.9rem,min(5vw,6.4vh),3.3rem)}
+.dclock{font-size:clamp(1.7rem,min(4.4vw,5.6vh),3rem);margin-top:clamp(2px,.8vh,10px)}
+.dorb{width:clamp(96px,min(20vw,22vh),240px);margin:-10px 0 -10px}
+/* Chips: one row that scrolls sideways */
+.dchips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-20px;padding:2px 20px 4px;-webkit-mask-image:linear-gradient(to right,transparent,#000 20px,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(to right,transparent,#000 20px,#000 calc(100% - 20px),transparent)}
+.dchips::-webkit-scrollbar{display:none}
+.qchip{flex:none}
+/* Panels: usage + teams, then the orbs as a sideways strip. Recent chats live in the sidebar and search. */
+.app.dashv .precent{display:none}
+.app.dashv .dash > *{flex:none}
+.app.dashv .pusage{display:grid;grid-template-columns:1fr 1fr;column-gap:clamp(12px,2vw,24px);align-content:start}
+.app.dashv .pusage > .ph,.app.dashv .pusage > .pmore{grid-column:1 / -1}
+.app.dashv .pusage .urow + .urow{margin-top:clamp(6px,1.2vh,14px)}
+.app.dashv .pmore{justify-self:start}
+.dgrid{gap:clamp(8px,1.4vh,14px)}
+.app.dashv .panel{padding:clamp(12px,1.8vh,18px) clamp(14px,1.6vw,20px)}
+.app.dashv .urow{margin-top:clamp(6px,1.2vh,14px);gap:5px}
+.app.dashv .ut b{font-size:clamp(1.5rem,3.4vh,2rem)}
+.app.dashv .pmore{margin-top:clamp(6px,1.2vh,14px)}
+.app.dashv .pteams p{margin:6px 0 10px}
+.ogrid{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;margin:8px -6px 0;padding:2px 6px 4px;scroll-snap-type:x proximity}
+.ogrid::-webkit-scrollbar{display:none}
+.ocard{flex:0 0 clamp(92px,11vw,118px);scroll-snap-align:start;padding:clamp(10px,1.6vh,16px) 6px clamp(8px,1.2vh,12px)}
+.ocard .g.has-orb{width:clamp(40px,6vh,58px);height:clamp(40px,6vh,58px)}
+@media (max-height:820px){.ddate{display:none}.app.dashv .pteams p{display:none}.app.dashv .ph{margin-bottom:2px}.ocard small{display:none}.dorb{width:clamp(84px,17vh,150px);margin:-6px 0}.app.dashv .dash{padding-top:2px}}
+@media (max-height:920px) and (min-width:761px){.app.dashv .dash{padding-top:4px}.dorb{margin:-14px 0 -14px}}
+@media (max-height:700px){.ocard small{display:none}.app.dashv .urow small{display:none}}
+@media (max-width:760px){
+  .dchips{margin-inline:-14px;padding-inline:14px}
+  .dorb{width:clamp(80px,22vw,100px);margin:-6px 0}
+  .ocard small{display:none}
+  .app.dashv .dash{padding-top:0}
+  .app.dashv .pteams{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"h s b";align-items:center;column-gap:10px}
+  .app.dashv .pteams .ph{grid-area:h;margin:0}.app.dashv .pteams .pplan{display:none}
+  .app.dashv .pteams .tstack{grid-area:s;padding:0;overflow:hidden}.app.dashv .pteams .tstack .g.has-orb{width:28px;height:28px}
+  .app.dashv .pteams p{display:none}.app.dashv .pteams .pbtn{grid-area:b;margin:0;padding:7px 14px}
+  .app.dashv .pusage .urow small{font-size:.74rem}
+}
 .pcard h3{display:flex;align-items:center;gap:10px;color:color-mix(in srgb,var(--pc) 72%,var(--ink))}
 .pcard h3 .picon img{box-shadow:0 4px 14px color-mix(in srgb,var(--pc) 30%,transparent)}
 #limitUp{display:inline-flex;align-items:center;gap:6px}
