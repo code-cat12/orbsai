@@ -1,14 +1,13 @@
-// Keeps each Orbs model on the newest Claude model in its family, and works out its Orbs version.
-// Version rule: every newer Claude release bumps the version by .01 (1.01, 1.02 ... 1.07), then the
-// next one starts a new generation (2.01). Versions come from counting releases newer than the
-// starting point below, so they stay the same on every server and never go backwards.
+// Keeps Orbs on the newest Claude model in each family it uses:
+//   - Opus writes every reply (Orbs only runs on Opus; it starts on Claude Opus 5.5 and moves up by itself).
+//   - Haiku does the small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes).
+// Version rule (internal only): every newer Claude release bumps the version by .01, then a new generation after .07.
 
 export const FAMILIES = [
-  { family: "haiku",  name: "Koa",       start: [4, 5], startStep: 0, fallback: { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5",  effort: false } },
-  { family: "sonnet", name: "Lumina",    start: [5, 5], startStep: 1, fallback: { id: "claude-sonnet-5-5",         label: "Claude Sonnet 5.5", effort: true } },
-  { family: "opus",   name: "Chrysalis", start: [5, 5], startStep: 1, fallback: { id: "claude-opus-5-5",           label: "Claude Opus 5.5",   effort: true } },
-  { family: "fable",  name: "Mythos",    start: [5, 1], startStep: 1, fallback: { id: "claude-fable-5-1",          label: "Claude Fable 5.1",  effort: true } },
+  { family: "haiku", start: [4, 5], startStep: 0, fallback: { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", effort: false } },
+  { family: "opus",  start: [5, 5], startStep: 1, fallback: { id: "claude-opus-5-5",           label: "Claude Opus 5.5",  effort: true } },
 ];
+export const HAIKU = 0, OPUS = 1; // positions in FAMILIES / in what latestModels() returns
 const STEPS_PER_GEN = 7;
 
 export function orbVersion(step) {

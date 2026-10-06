@@ -1,31 +1,113 @@
-// Daily credit limits, shared by the chat and the account-status endpoints.
-export const RESET_TZ = "America/New_York"; // daily credits refill at midnight New York time
+// Usage limits, shared by the chat and the account-status endpoints.
+// Every message is measured in what it really cost (in US cents, from Claude's token counts).
+// Each plan gets a daily and a weekly budget of cents. People only ever see a percentage, never money.
+export const RESET_TZ = "America/New_York"; // the day resets at midnight New York time, the week on Monday at midnight
 export function dayKey(now = new Date()) {
-  return now.toLocaleDateString("en-CA", { timeZone: RESET_TZ });
+  return new Date(now).toLocaleDateString("en-CA", { timeZone: RESET_TZ });
 }
 export function num(v, fallback) {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
-// The admin panel's numbers win, then Vercel's DAILY_CREDITS / SITE_DAILY_CREDITS. 0 = unlimited.
-export function creditLimits(cfg, env) {
-  const perUser = cfg && cfg.dailyCredits !== null && cfg.dailyCredits !== undefined ? cfg.dailyCredits : num(env.DAILY_CREDITS, 0);
-  const site = cfg && cfg.siteCredits !== null && cfg.siteCredits !== undefined ? cfg.siteCredits : num(env.SITE_DAILY_CREDITS, 0);
-  return { perUser, site };
-}
-// What one person has left today, or null when there's no personal limit
-export function creditsLeft(usageDoc, perUser, day = dayKey()) {
-  if (!(perUser > 0)) return null;
-  const used = usageDoc && usageDoc.day === day ? usageDoc.used || 0 : 0;
-  return { limit: perUser, left: Math.max(0, perUser - used) };
+
+// The Monday (New York time) that starts this week, e.g. "2026-10-05".
+export function weekKey(now = Date.now()) {
+  const d = new Date(dayKey(new Date(now)) + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
 }
 
-// The owner (emails in ADMIN_EMAILS) gets a bigger daily allowance when limits are on
-export const ADMIN_CREDITS = 99999;
+// How far New York is from UTC at a moment, in minutes (handles daylight saving time)
+function nyOffset(t) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: RESET_TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    .formatToParts(new Date(t)).filter((x) => x.type !== "literal").map((x) => [x.type, Number(x.value)]));
+  return (Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - Math.floor(t / 1000) * 1000) / 60000;
+}
+// The exact moment (ms) of midnight New York time at the start of a "YYYY-MM-DD" New York date
+export function nyMidnight(ymd) {
+  const [y, m, d] = String(ymd).split("-").map(Number);
+  const wall = Date.UTC(y, m - 1, d);
+  let t = wall - nyOffset(wall) * 60000;
+  t = wall - nyOffset(t) * 60000; // second pass in case daylight saving time changed in between
+  return t;
+}
+const addDays = (ymd, n) => { const d = new Date(ymd + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+// When today's and this week's usage come back (ms since 1970). The page shows these in the person's own time zone.
+export function resetTimes(now = Date.now()) {
+  return { day: nyMidnight(addDays(dayKey(new Date(now)), 1)), week: nyMidnight(addDays(weekKey(now), 7)) };
+}
+
+// ---------- Budgets (in cents of real Claude cost) ----------
+// Sized so each paid plan stays profitable even if someone uses every bit of it every week:
+// a full month of the weekly budget (about 4.33 weeks) is under 40% of the plan price.
+//   Free:            10¢ a day, 30¢ a week                 (1x)
+//   Plus ($9.99):    30¢ a day, 90¢ a week  -> max ~$3.90 a month (3x free)
+//   Plus Plus ($19.99): 60¢ a day, $1.80 a week -> max ~$7.80 a month (6x free)
+//   Plus Plus Plus ($49.99): $1.50 a day, $4.50 a week -> max ~$19.50 a month (15x free)
+export const DEFAULT_BUDGETS = {
+  free:         { day: 10,  week: 30 },
+  plus:         { day: 30,  week: 90 },
+  plusplus:     { day: 60,  week: 180 },
+  plusplusplus: { day: 150, week: 450 },
+};
+export const TIERS = Object.keys(DEFAULT_BUDGETS);
+export const DEFAULT_SITE_CENTS = 0; // all of Orbs together per day; 0 = no site-wide cap
+
+// The admin panel's config keys for budgets, like "plusDayCents" and "plusWeekCents", and "siteDayCents"
+export const BUDGET_KEYS = [...TIERS.flatMap((t) => [t + "DayCents", t + "WeekCents"]), "siteDayCents"];
+
+// Budgets in effect: admin panel (config/site) wins, then Vercel's USAGE_BUDGETS / SITE_DAILY_CENTS, then the defaults above.
+// A budget of 0 means unlimited.
+export function budgets(cfg, env = {}) {
+  let fromEnv = {};
+  try { if (env.USAGE_BUDGETS) fromEnv = JSON.parse(env.USAGE_BUDGETS) || {}; } catch { fromEnv = {}; }
+  const pick = (adminVal, envVal, def) => {
+    if (Number.isInteger(adminVal) && adminVal >= 0) return adminVal;
+    const e = Number(envVal);
+    if (envVal !== undefined && envVal !== null && envVal !== "" && Number.isFinite(e) && e >= 0) return Math.floor(e);
+    return def;
+  };
+  const out = {};
+  for (const t of TIERS) {
+    const e = fromEnv[t] || {};
+    out[t] = {
+      day: pick(cfg && cfg[t + "DayCents"], e.day, DEFAULT_BUDGETS[t].day),
+      week: pick(cfg && cfg[t + "WeekCents"], e.week, DEFAULT_BUDGETS[t].week),
+    };
+  }
+  out.site = pick(cfg && cfg.siteDayCents, env.SITE_DAILY_CENTS, DEFAULT_SITE_CENTS);
+  return out;
+}
+
+// What one person has used, as percentages. usageDoc is usage/{uid}; limits come from allowance().
+export function usageState(usageDoc, limits, now = Date.now()) {
+  const dk = limits.dayKey || dayKey(new Date(now)), wk = limits.weekKey || weekKey(now);
+  const dayUsed = usageDoc && usageDoc.day === dk ? Number(usageDoc.dayCents) || 0 : 0;
+  const weekUsed = usageDoc && usageDoc.wkey === wk ? Number(usageDoc.weekCents) || 0 : 0;
+  const pct = (used, cap) => (cap > 0 ? Math.min(100, Math.max(0, Math.round((used / cap) * 1000) / 10)) : 0);
+  const r = resetTimes(now);
+  return {
+    unlimited: !(limits.day > 0) && !(limits.week > 0),
+    dayPct: pct(dayUsed, limits.day), weekPct: pct(weekUsed, limits.week),
+    dayLimited: limits.day > 0, weekLimited: limits.week > 0,
+    dayResetAt: r.day, weekResetAt: r.week,
+    dayUsed, weekUsed,
+  };
+}
+// Is there anything left? (blocks at 100%)
+export function usageBlock(state) {
+  if (state.dayLimited && state.dayPct >= 100) return "usage_day";
+  if (state.weekLimited && state.weekPct >= 100) return "usage_week";
+  return null;
+}
+// The part the page is allowed to see (percentages and reset times only, never cents)
+export function publicUsage(state) {
+  if (!state) return null;
+  const { unlimited, dayPct, weekPct, dayLimited, weekLimited, dayResetAt, weekResetAt } = state;
+  return { unlimited, dayPct, weekPct, dayLimited, weekLimited, dayResetAt, weekResetAt };
+}
+
 export function isAdmin(user, env) {
   const list = String(env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return !!(user && user.email_verified === true && user.email && list.includes(String(user.email).toLowerCase()));
-}
-export function userLimit(perUser, user, env) {
-  return perUser > 0 && isAdmin(user, env) ? Math.max(perUser, ADMIN_CREDITS) : perUser;
 }

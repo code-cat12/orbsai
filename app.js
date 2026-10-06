@@ -107,7 +107,7 @@ function greeting(){
   return n ? pick.replace("{n}", n) : pick.replace(/,? \{n\}/, "").replace("{n}", "");
 }
 // Keep it up to date if the page stays open across the hour
-setInterval(() => { if (app.dataset.view === "home" && $("greet") && !incogNext) $("greet").textContent = greeting(); }, 60000);
+setInterval(() => { if (app.dataset.view === "home" && $("greet") && !incogNext && active) $("greet").textContent = greeting(); }, 60000);
 
 // ---------- Formatting replies ----------
 // Markdown (tables, lists, links, code) -> cleaned HTML. Code gets colors and math gets drawn once a reply is finished.
@@ -235,12 +235,18 @@ ORB.hex = { shape:`<g class="o-ghostbody"><path d="M50 27C66 27 76 39 76 53C76 6
     <g class="o-wisp w2"><circle cx="85" cy="38" r="4.4" fill="#bfe6ff" opacity=".35"/><circle cx="85" cy="38" r="2" fill="#e8f6ff"/></g>
     <g class="o-wisp w3"><circle cx="80" cy="80" r="3.4" fill="#bfe6ff" opacity=".35"/><circle cx="80" cy="80" r="1.6" fill="#e8f6ff"/></g>` };
 let nebN = 0;
+// Orbs 2.0: same characters, now soft glowing gradient spheres-ish: a halo behind, a glossy highlight, a little ground shadow
 function orbSVG(k){
-  const o = ORB[k], y = o.ey;
+  const o = ORB[k], y = o.ey, n = ++nebN;
   const eye = x => `<rect x="${x-3}" y="${y-8.5}" width="6" height="17" rx="3" fill="${o.eyeFill || (k === "neb" ? "var(--neb-eye)" : "#111")}" transform="rotate(${o.tilt} ${x} ${y})"/>`;
+  const gloss = k === "hex" ? "" : `<g fill="url(#oh${n})" pointer-events="none">${o.shape}</g>`;
   return `<svg class="orb orb-${k}" viewBox="0 0 100 100" aria-hidden="true" style="color:var(${BOTS[k].color})">
+    <defs><radialGradient id="og${n}" cx="50%" cy="55%" r="50%"><stop offset="0" stop-color="currentColor" stop-opacity=".42"/><stop offset=".6" stop-color="currentColor" stop-opacity=".12"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>
+      <radialGradient id="oh${n}" cx="34%" cy="26%" r="80%"><stop offset="0" stop-color="#fff" stop-opacity=".62"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></radialGradient></defs>
+    <ellipse class="o-halo2" cx="50" cy="62" rx="48" ry="42" fill="url(#og${n})"/>
+    <ellipse class="o-shadow" cx="50" cy="96" rx="21" ry="3" fill="#000" fill-opacity=".12"/>
     <g class="o-hop"><g class="o-extra"><g class="o-squish">
-      ${o.back ? o.back() : ""}<g fill="var(${BOTS[k].color})">${o.shape}</g>
+      ${o.back ? o.back() : ""}<g fill="var(${BOTS[k].color})">${o.shape}</g>${gloss}
       <g class="o-eyes"><g class="o-lids">${eye(42)}${eye(58)}</g></g>
       ${o.acc}
     </g></g></g></svg>`;
@@ -277,8 +283,16 @@ function renderPicker(){
 function renderHome(){
   app.dataset.view = "home"; log.innerHTML = "";
   const mark = $("mark");
+  // Home with no orb picked = the dashboard (greeting, clock, usage, orbs, recent chats). Typing there asks Nebula.
+  const dash = !active && !teamMode;
+  app.classList.toggle("dashv", dash);
   $("greet").textContent = teamMode ? "Orb Teams" : greeting();
-  if (active) {
+  if (dash) {
+    mark.className = "mark empty"; mark.innerHTML = "";
+    box.disabled = false; form.classList.remove("locked");
+    box.placeholder = `Ask ${BOTS[DASH_ORB].name} anything…`;
+    renderDash();
+  } else if (active) {
     const b = BOTS[active];
     mark.className = "mark"; orbInto(mark, active);
     box.disabled = false; form.classList.remove("locked");
@@ -290,10 +304,73 @@ function renderHome(){
   }
   stopSpeak(); setAccent(); renderPicker(); updateSend(); snap(); renderSide(); renderIncog(); renderTeam();
 }
-// Incognito switch (top right on the home screen)
+// ---------- Home dashboard: greeting, live clock and date, usage, orbs, Orb Teams, recent chats ----------
+const QUICK = [["neb","Plan a fun weekend for me"],["study","Help me study for a test"],["cook","What can I make for dinner tonight?"],["web","Make me a simple landing page"],["write","Give me a spooky story idea"],["tech","Why is my phone so slow?"]];
+let lastClock = "";
+function renderClock(){
+  const now = new Date();
+  const t = now.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
+  const key = t + now.getDate();
+  if (key === lastClock) return; lastClock = key;
+  const m = /^(.*?)(\s?[AaPp]\.?\s?[Mm]\.?)$/.exec(t);
+  const c = $("dClock"); c.replaceChildren(m ? m[1] : t); if (m) c.append(el("small", null, m[2].trim()));
+  $("dDate").textContent = now.toLocaleDateString([], { weekday:"long", month:"long", day:"numeric" });
+  $("dGreet").textContent = greeting();
+}
+setInterval(() => { if (app.classList.contains("dashv")) renderClock(); }, 1000);
+function orbCard(k){
+  const b = BOTS[k], c = el("button", "ocard" + (b.season ? " spooky" : "")); c.type = "button";
+  c.style.setProperty("--c", `var(${b.color})`);
+  const g = el("span", "g"); orbInto(g, k);
+  c.append(g, el("b", null, b.name), el("small", null, b.role));
+  if (pins.includes(k)) c.append(el("span", "opin", "★"));
+  c.onclick = () => pick(k);
+  return c;
+}
+function renderDash(){
+  lastClock = ""; renderClock();
+  // Quick starts: each goes to the orb that fits it
+  const chips = $("dChips"); chips.replaceChildren();
+  for (const [k, text] of QUICK) {
+    const ch = el("button", "qchip"); ch.type = "button"; ch.style.setProperty("--c", `var(${BOTS[k].color})`);
+    const g = el("span", "g"); orbInto(g, k); ch.append(g, el("span", null, text));
+    ch.onclick = () => { if (busy) return; active = k; cur = null; send(text); };
+    chips.append(ch);
+  }
+  // Orbs: pinned first, then the ones used most recently, then the rest
+  const used = Object.values(convs).filter(c => c.turns.length && !c.incog).sort((a, b) => (b.updated || 0) - (a.updated || 0)).map(c => c.orb);
+  const order = [...new Set([...pins, ...used, ...pickOrder()])].filter(k => pickOrder().includes(k));
+  $("dOrbs").replaceChildren(...order.map(orbCard));
+  // Recent chats (chat and team)
+  const rec = Object.values(convs).filter(c => c.turns.length && !c.incog).sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 5);
+  const list = $("dRecent"); list.replaceChildren();
+  for (const c of rec) {
+    const r = el("button", "ritem"); r.type = "button"; r.style.setProperty("--c", `var(${BOTS[c.orb].color})`);
+    const g = el("span", "g"); orbInto(g, c.orb);
+    const tx = el("span", "tx"); tx.append(el("b", null, c.title || "New chat"), el("small", null, teamName(c.orb, c.team)));
+    r.append(g, tx, el("time", null, fmtTime(c.updated)));
+    r.onclick = () => openConv(c.id);
+    list.append(r);
+  }
+  if (!rec.length) list.append(el("p", "pempty", "Your chats will show up here. Ask anything below, or tap an orb to start."));
+  $("dAll").hidden = !rec.length;
+  // Orb Teams card
+  const allowed = teamAllowed();
+  $("pTeamsTag").textContent = allowed ? "Ready" : "Plus";
+  $("pTeamsTag").classList.toggle("on", allowed);
+  $("pTeamsGo").textContent = allowed ? "Start a team" : "Unlock with Plus";
+  const st = $("pTeamsOrbs"); if (!st.childElementCount) for (const k of ["web", "write", "music", "game"]) { const g = el("span", "g"); g.style.setProperty("--c", `var(${BOTS[k].color})`); orbInto(g, k); st.append(g); }
+  renderUsage();
+}
+$("dAll").onclick = () => { setSide(true); };
+$("pTeamsGo").onclick = () => { if (busy) return; if (!teamAllowed()) { openPlans(); return; } setTab(true); renderHome(); };
+$("pUsageUp").onclick = () => openPlans();
+$("searchTop").onclick = () => focusSearch();
+$("avBtn").onclick = () => openSet();
+// Incognito switch (top right after you pick an orb)
 function renderIncog(){
   const home = app.dataset.view === "home", btn = $("incogBtn");
-  btn.hidden = !home || !user; btn.setAttribute("aria-pressed", String(incogNext)); btn.classList.toggle("on", incogNext);
+  btn.hidden = !home || !user || app.classList.contains("dashv"); btn.setAttribute("aria-pressed", String(incogNext)); btn.classList.toggle("on", incogNext);
   btn.title = incogNext ? "Turn off incognito" : "Incognito chat (not saved)";
   app.classList.toggle("incog", home && incogNext);
   if (home) {
@@ -424,11 +501,13 @@ function liveReply(){
   col.append(team, think, searched, msg, src); row.appendChild(col); log.appendChild(row);
   return { row, team, think, searched, msg, src };
 }
-// The orb sits under the newest reply (like the Claude app); older replies stay still.
+// Typing indicator: three soft dots in a bubble while the orb thinks (no avatar clutter under replies)
 function tailOrb(thinking){
   log.querySelector(".tail")?.remove();
-  const t = document.createElement("div"); t.className = "tail" + (thinking ? " think" : "");
-  const g = document.createElement("div"); g.className = "av"; orbInto(g, active); t.appendChild(g);
+  if (!thinking) return null;
+  const t = el("div", "tail row bot-row"); t.style.setProperty("--c", `var(${BOTS[active].color})`);
+  const b = el("div", "typing"); b.setAttribute("aria-label", `${BOTS[active].name} is typing`);
+  b.append(el("i"), el("i"), el("i")); t.append(b);
   log.appendChild(t); return t;
 }
 
@@ -447,9 +526,7 @@ function renderChat(){
   const turns = c.turns;
   turns.forEach((t, i) => {
     bubble(t.role === "user" ? "user" : "assistant", t, i, i === turns.length - 1);
-    if (credits && i === 19 && turns.length > 20) log.appendChild(el("div", "incognote", "💬 This chat got long. From here on, each message costs 1 extra credit. Start a new chat to save credits."));
   });
-  if (turns.length && turns[turns.length - 1].role === "assistant" && !busy) tailOrb(false);
   log.scrollTop = log.scrollHeight;
   updateSend(); snap(); renderSide(); renderIncog(); renderTeam();
 }
@@ -458,7 +535,7 @@ function renderChat(){
 function dropIncog(keep){ for (const id of Object.keys(convs)) if (convs[id].incog && id !== keep) delete convs[id]; }
 
 // ---------- Orb teams (Plus and up): helpers each do their part, then the lead orb builds the final result ----------
-const TEAM_MAX = 5, TEAM_BUILD = 2, TEAM_ASK = 20;   // max orbs (lead included), extra credits for the build, ask first above this
+const TEAM_MAX = 5;   // max orbs (lead included)
 // The Teams tab (like Chat and Code in the Claude app): its own home screen and its own list of chats
 let teamMode = false, teamDraft = { lead: null, helpers: [] }, teamOk = null, lastChatOrb = null;
 try { teamMode = localStorage.getItem("orbs-tab") === "team"; } catch(_) {}
@@ -468,7 +545,6 @@ const TEAM_CHIPS = ["Make me a video game", "Plan a birthday party with food and
 function curTeam(){ if (app.dataset.view === "chat") { const c = curConv(); return c && c.team || null; } return teamMode ? teamDraft : null; }
 const teamHelpers = t => t ? t.helpers.filter(k => k !== t.lead && pickOrder().includes(k)) : [];
 const teamName = (k, t) => BOTS[k].name + (t && teamHelpers(t).length ? "'s team" : "");
-function teamCost(k, est){ const h = teamHelpers(curTeam()); return h.length ? est.total + TEAM_BUILD + h.length * MODELS[pf(k).m].cost : est.total; }
 function teamToggle(k){
   const t = teamDraft;
   if (t.lead === k) t.lead = t.helpers.shift() || null;
@@ -555,7 +631,7 @@ function setTab(team){
 for (const b of document.querySelectorAll("[data-tab]")) b.onclick = () => {
   if (busy) return;
   dropIncog(null); cur = null; webOn = false; teamOk = null; status.textContent = ""; box.value = ""; autosize();
-  app.dataset.view = "home"; setTab(b.dataset.tab === "team"); renderHome(); if (mobile()) setSide(false);
+  app.dataset.view = "home"; setTab(b.dataset.tab === "team"); if (!teamMode) active = null; renderHome(); if (mobile()) setSide(false);
 };
 setTab(teamMode);
 $("teamUp").onclick = () => openPlans();
@@ -569,8 +645,8 @@ function teamBox(list, live, lead){
     const step = el("div", "tstep"), name = el("b", null, b.name);
     if (x.s === "go") { step.classList.add("go"); step.append(name, " is doing their part…"); }
     else if (x.s === "ok") step.append(name, x.n ? " did their part:" : " did their part.");
-    else if (x.s === "fail") step.append(name, " couldn't help this time (you got those credits back).");
-    else if (x.s === "skip") step.append(name, " was skipped to save time (you got those credits back).");
+    else if (x.s === "fail") step.append(name, " couldn't help this time.");
+    else if (x.s === "skip") step.append(name, " was skipped to save time.");
     d.append(step);
     if (x.s === "ok" && x.n) { const n = el("div", "tnote"); n.style.setProperty("--c", `var(${b.color})`); const m = el("div", "msg"); m.innerHTML = md(x.n); n.append(m); d.append(n); }
   }
@@ -600,19 +676,19 @@ function updateSend(){
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>'; return; }
   sendBtn.setAttribute("aria-label","Send");
   sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
-  sendBtn.disabled = !active || (!box.value.trim() && !pendingFiles.length);
+  sendBtn.disabled = (!active && !app.classList.contains("dashv")) || (!box.value.trim() && !pendingFiles.length);
 }
 
 const ERR = {
   unauthenticated:"You got signed out. Sign in again.",
   unverified:"Verify your email first, then try again.",
   bad_request:"That message didn't go through. Try again.",
-  site_busy:"Orbs used up its daily budget for everyone. Try again tomorrow.",
+  site_busy:"Orbs is extra busy today and hit its limit for everyone. Try again after midnight New York time.",
   overloaded:"Claude is super busy right now. Try again in a minute.",
   upstream_error:"Something went wrong reaching Claude. Try again.",
   not_configured:"The site isn't fully set up yet. The owner needs to add the keys on Vercel.",
   server_error:"Orbs had a server problem. Try again.",
-  out_of_funds:"Orbs ran out of Claude money!! 😤💢 Tell the owner to add more, baka!",
+  out_of_funds:"Orbs can't reach Claude right now. The owner has been told. Try again a bit later.",
   paused:"Orbs is taking a little break right now. Try again later!",
   banned:"This account can't chat on Orbs anymore.",
   network:"Can't reach Orbs. Check your internet connection.",
@@ -624,28 +700,20 @@ const NOSEARCH = { kids:"Web search is off in Kids Mode, so that answer didn't s
 const fileStore = {};
 async function send(text, regen, filesOverride){
   text = (text || "").trim();
-  if (!active) { nudge(); return; }
   if ((!text && !regen && !pendingFiles.length && !filesOverride) || busy) return;
+  if (needOrb()) return;
   if (!user) return;
   // Team changes said in words ("add Beat", "remove Quill") are done right here, for free
   if (!regen && !filesOverride && !pendingFiles.length && text && curTeam() && teamAllowed()) {
     const cmd = teamCommand(text);
     if (cmd) { box.value = ""; autosize(); status.textContent = applyTeam(cmd); return; }
   }
-  const key = active, b = BOTS[key], mi = pf(key).m, model = MODELS[mi];
-  if (lockedModel(mi)) { status.textContent = `${model.n} needs Orbs ${PLAN_NAMES[needPlan(mi)]}. Upgrade, or pick Koa or Lumina.`; openPlans(); return; }
+  const key = active, b = BOTS[key];
   const helpers = teamHelpers(curTeam());
   if (helpers.length && !teamAllowed()) { status.textContent = "Orb Teams come with Plus and up."; openPlans(); return; }
-  const est = estimate(key, { regen, files: filesOverride }), total = teamCost(key, est);
-  if (credits && credits.left < total) {
-    if (!helpers.length) { creditShort(model); return; }
-    status.textContent = `Not enough credits for this team run: it needs ${total}, you have ${credits.left}. Remove an orb or pick a cheaper model.`; return;
-  }
-  // Big team runs ask first: press send again to go
-  if (helpers.length && credits && total > TEAM_ASK) {
-    const sig = (regen ? "\u0000redo" : text) + "|" + total;
-    if (teamOk !== sig) { teamOk = sig; status.textContent = `This team run uses ${total} credits. Press send again to go!`; return; }
-  }
+  // Out of usage: say when it comes back instead of sending (the server checks too)
+  const out = usageOut();
+  if (out) { limitHit = out; renderUsage(); status.textContent = ""; return; }
   teamOk = null;
   // Start a new chat if none is open for this orb
   if (!curConv() || curConv().orb !== key) {
@@ -684,7 +752,7 @@ async function send(text, regen, filesOverride){
   };
   const later = () => { if (!raf) raf = requestAnimationFrame(paint); };
   const extras = () => {
-    const o = { m: mi };
+    const o = {};
     if (thinking) { o.th = thinking.slice(0, 20000); if (thinkSecs) o.tm = thinkSecs; }
     if (queries.length) o.q = queries.slice(0, 5);
     if (sources.length) o.src = sources.slice(0, 10);
@@ -699,14 +767,14 @@ async function send(text, regen, filesOverride){
       res = await fetch("/api/chat", {
         method:"POST",
         headers:{ "content-type":"application/json", authorization:"Bearer " + token },
-        body: JSON.stringify({ orb:key, model:mi, effort:pf(key).e, messages:ctx, think: opts.think !== false, web: !!webOn, ...(helpers.length ? { team: helpers } : {}),
+        body: JSON.stringify({ orb:key, messages:ctx, think: opts.think !== false, web: !!webOn, ...(helpers.length ? { team: helpers } : {}),
           ...(ctx.length === 1 && !conv.incog && !conv.renamed ? { title: true } : {}),
           ...(kids.memory && opts.memory !== false && !conv.incog ? { memory: true } : {}),
           ...(files.length ? { attachments: files.map(f => f.kind === "text" ? { kind:"text", name:f.name, text:f.text } : { kind:f.kind, name:f.name, media_type:f.media_type, data:f.data }) } : {}) }),
         signal: ctl.signal
       });
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
-    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), left: j.left, msg: j.msg, needName: j.needName }; }
+    if (!res.ok) { let j = {}; try { j = await res.json(); } catch(_) {} throw { code: res.status === 413 ? "files_too_big" : (j.error || "upstream_error"), usage: j.usage, msg: j.msg, needName: j.needName }; }
     // The server sends one small JSON object per line: {d:"text"} {t:"thinking"} {q:"search"} {src:[...]} ... then {done:true} or {error:"..."}
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "", end = null;
@@ -723,7 +791,7 @@ async function send(text, regen, filesOverride){
           if (typeof ev.d === "string") {
             if (!reply && thinking && live.think.open) { thinkSecs = Math.max(1, Math.round((Date.now() - thinkStart) / 1000)); live.think.open = false; live.think.querySelector("summary").textContent = `Thought for ${thinkSecs}s`; }
             if (!reply && teamSteps.length) live.team.replaceChildren(teamBox(teamSteps.filter(x => x.s !== "go"), false));
-            reply += ev.d; tail.classList.remove("think"); later();
+            reply += ev.d; tail?.remove(); later();
           }
           else if (typeof ev.t === "string") { if (!thinking) thinkStart = Date.now(); thinking += ev.t; later(); }
           else if (typeof ev.q === "string") { queries.push(ev.q); live.searched.hidden = false; live.searched.textContent = "🔎 Searching the web: " + queries.map(q => "“" + q + "”").join(", "); stickBottom(); }
@@ -742,23 +810,21 @@ async function send(text, regen, filesOverride){
       }
     } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network", text: reply }; }
     if (!end) throw { code:"upstream_error", text: reply };
-    if (end.error) throw { code:end.error, left:end.left, text: reply };
-    setCredits(end.left, end.cost);
+    if (end.error) throw { code:end.error, usage:end.usage, text: reply };
+    setUsage(end.usage);
     if (end.refused && !reply.trim()) throw { code:"refused" };
-    conv.turns.push({ role:"assistant", content:reply, t:Date.now(), ...extras() }); conv.updated = Date.now(); save(); limitHit = false; renderUsage();
+    conv.turns.push({ role:"assistant", content:reply, t:Date.now(), ...extras() }); conv.updated = Date.now(); save(); renderUsage();
     if (end.truncated) status.textContent = "That answer got cut off. Ask for a shorter one.";
     else if (end.refused) status.textContent = "The orb stopped there. Try asking a different way.";
     else if (noSearch && NOSEARCH[noSearch]) status.textContent = NOSEARCH[noSearch];
   } catch (e) {
     const code = e && e.code || "upstream_error";
-    if (typeof (e && e.left) === "number") setCredits(e.left);
+    if (e && e.usage) setUsage(e.usage);
+    tail?.remove();
     if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
     else if (code === "plan_team") { status.textContent = "Orb Teams come with Plus and up."; refreshStatus(); openPlans(); }
-    else if (code === "plan_model") { status.textContent = `${model.n} needs Orbs ${e.needName || "Plus"}. Upgrade, or pick Koa or Lumina.`; refreshStatus(); openPlans(); }
-    else if (code === "week_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this week. They come back Monday!" + (kids.billing ? " Upgrade for more!" : ""); }
-    else if (code === "month_limit") { limitHit = true; renderUsage(); status.textContent = "You've used all your credits for this month." + (kids.billing ? " Upgrade for more!" : ""); }
-    else if (code === "limit_reached") { if (credits && credits.left > 0) creditShort(model); else { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; } }
+    else if (code === "usage_day" || code === "usage_week") { limitHit = code === "usage_week" ? "week" : "day"; renderUsage(); status.textContent = ""; }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
     else if (code === "kids_personal_info" || code === "kids_blocked" || code === "kids_no_media" || code === "files_too_big") {
       // Take the message back out of the chat (and don't save it)
@@ -783,13 +849,6 @@ async function send(text, regen, filesOverride){
     if (!conv.turns.length) { delete convs[cid]; if (cur === cid) cur = null; }
     if (cur === cid) renderChat(); else if (!cur && active === key) renderHome(); else { updateSend(); renderSide(); }
   }
-}
-
-function creditShort(model){
-  const ex = active ? estimate(active).total - msgCost(pf(active)) : 0;
-  const cheaper = MODELS.filter(m => m.cost + ex <= (credits ? credits.left : 0)).pop();
-  if (!cheaper) { limitHit = true; renderUsage(); status.textContent = "You're out of credits for today."; return; }
-  status.textContent = `Not enough credits left for ${model.n} today. Switch to ${cheaper.n} to keep chatting.`;
 }
 
 // Redo: drop this reply (and anything after it), then ask again
@@ -835,7 +894,7 @@ function vote(conv, turn, dir, up, down){
   if (next) turn.fb = next; else delete turn.fb;
   up.classList.toggle("on", next === "up"); down.classList.toggle("on", next === "down");
   save();
-  postFeedback({ key: conv.id + ":" + turn.t, orb: conv.orb, model: Number.isInteger(turn.m) ? turn.m : pf(conv.orb).m, vote: next });
+  postFeedback({ key: conv.id + ":" + turn.t, orb: conv.orb, vote: next });
   if (next === "up") status.textContent = "Thanks! Glad that helped.";
   if (next === "down") { fbTurn = turn; fbConv = conv; $("fbReason").value = ""; $("fbShare").checked = false; $("fbMsg").textContent = ""; $("fbSend").disabled = false;
     for (const b of document.querySelectorAll("#fbTags button")) b.setAttribute("aria-pressed", "false"); openLegal("fbModal"); }
@@ -844,7 +903,7 @@ for (const b of document.querySelectorAll("#fbTags button")) b.onclick = () => {
 $("fbSend").onclick = () => busyBtn($("fbSend"), async () => {
   if (!fbTurn || !fbConv) return;
   const tag = document.querySelector('#fbTags button[aria-pressed="true"]')?.dataset.tag;
-  await postFeedback({ key: fbConv.id + ":" + fbTurn.t, orb: fbConv.orb, model: Number.isInteger(fbTurn.m) ? fbTurn.m : pf(fbConv.orb).m, vote: "down",
+  await postFeedback({ key: fbConv.id + ":" + fbTurn.t, orb: fbConv.orb, vote: "down",
     ...(tag ? { tag } : {}), reason: $("fbReason").value.trim().slice(0, 300), ...($("fbShare").checked ? { reply: String(fbTurn.content).slice(0, 4000) } : {}) });
   $("fbMsg").textContent = "Thanks! That helps make Orbs better."; $("fbSend").disabled = true; setTimeout(closeLegal, 1100);
 });
@@ -903,23 +962,35 @@ function nudge(){
   const p = $("picker"); p.classList.remove("nudge"); void p.offsetWidth; p.classList.add("nudge");
   status.textContent = "Pick an orb first!";
 }
+// On Home (the dashboard) there's no orb picked yet: whatever you type goes to Nebula
+const DASH_ORB = "neb";
+function needOrb(){
+  if (active) return false;
+  if (app.dataset.view === "home" && !teamMode) { active = DASH_ORB; setAccent(); return false; }
+  nudge(); return true;
+}
 
 function autosize(){ box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 180) + "px"; }
 box.addEventListener("input", () => { autosize(); updateSend(); });
 box.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(box.value); } });
 form.addEventListener("submit", e => { e.preventDefault(); if (busy) { ctl?.abort(); return; } send(box.value); });
-form.addEventListener("click", () => { if (!active) nudge(); });
-$("homeBtn").onclick = () => { if (busy) return; cur = null; dropIncog(null); webOn = false; renderHome(); };
+form.addEventListener("click", () => { if (!active && !app.classList.contains("dashv")) nudge(); });
+// The house (top left) always goes back Home to the dashboard
+function goHome(){ if (busy) return; dropIncog(null); cur = null; webOn = false; incogNext = false; status.textContent = ""; box.value = ""; autosize();
+  if (teamMode) setTab(false); active = null; teamDraft = { lead: null, helpers: [] }; renderHome(); if (mobile()) setSide(false); }
+$("homeBtn").onclick = goHome;
+$("houseBtn").onclick = goHome;
 let freshNext = false;
 const shell = $("shell"), mobile = () => matchMedia("(max-width:760px)").matches;
 function setSide(open){ shell.classList.toggle("closed", !open); try { if (!mobile()) localStorage.setItem("orbs-side", open ? "1" : "0"); } catch(e) {} }
-let sideOpen = !mobile(); try { if (!mobile() && localStorage.getItem("orbs-side") === "0") sideOpen = false; } catch(e) {}
+// The sidebar (all your chats) starts tucked away; Home already shows recent chats. It remembers if you open it.
+let sideOpen = false; try { if (!mobile() && localStorage.getItem("orbs-side") === "1") sideOpen = true; } catch(e) {}
 setSide(sideOpen);
 $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
 $("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; teamDraft = { lead: null, helpers: [] }; teamOk = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); renderMemSet(); }).catch(() => {}); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); renderMemSet(); }
+function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); renderMemSet(); }).catch(() => {}); if (mobile()) setSide(false); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); renderMemSet(); }
 // ---------- Memory ----------
 function memChip(list){
   const d = el("div", "memchip"); d.append(el("span", null, "📝 Saved to memory: " + list.join(" · ")));
@@ -996,118 +1067,27 @@ function item(k, sub){
   el.onclick = () => { pick(k); if (mobile()) setSide(false); };
   return el;
 }
-const MODELS = [{n:"Koa",v:"1.01",cost:1,effort:false,base:"Claude Haiku 4.5",d:"fast and light, best for quick questions"},{n:"Lumina",v:"1.02",cost:3,effort:true,base:"Claude Sonnet 5.5",d:"balanced, good for everyday chats"},{n:"Chrysalis",v:"1.02",cost:6,effort:true,base:"Claude Opus 5.5",d:"slower but deeper, for harder problems"},{n:"Mythos",v:"1.02",cost:10,effort:true,base:"Claude Fable 5.1",d:"the most careful, takes its time"}];
 const commas = n => typeof n === "number" ? n.toLocaleString("en-US") : n;
-const creditWord = n => commas(n) + (n === 1 ? " credit" : " credits");
-let prefs = {};
-// Real effort levels (the server maps these to Claude's low/medium/high/xhigh/max). Koa (Haiku) has no effort setting.
-const EFFORTS = [{n:"Low",d:"quickest and cheapest, thinks a little",mult:1},{n:"Medium",d:"good balance for everyday chats",mult:1},{n:"High",d:"thinks things through more carefully",mult:2},{n:"Extra",d:"thinks a lot, slower and pricier",mult:3},{n:"Max",d:"thinks as hard as it can, slowest and most expensive",mult:4}];
-const hasEffort = m => MODELS[m].effort !== false;
-const msgCost = p => MODELS[p.m].cost * (hasEffort(p.m) ? EFFORTS[p.e].mult : 1);
-// Extras on top (same rules as the server): long chat +1, web search +2 (given back if it doesn't search), big files +2
-const EXTRA = { long: 1, web: 2, files: 2 };
-function bigFiles(fs){
-  if (!fs || !fs.length) return false;
-  if (fs.length >= 6) return true;
-  if (fs.some(f => f.kind === "pdf" && f.data && f.data.length > 1000000)) return true;
-  return fs.reduce((n, f) => n + (f.kind === "text" ? f.text.length : 0), 0) > 100000;
-}
-function estimate(k, opts2 = {}){
-  const p = pf(k), c = curConv();
-  const count = (c && c.orb === k ? c.turns.length : 0) + (opts2.regen ? 0 : 1);
-  const e = { base: msgCost(p), long: count > 20 ? EXTRA.long : 0, files: bigFiles(opts2.files || pendingFiles) ? EXTRA.files : 0,
-    web: webOn && kids.web !== false && !kids.on ? EXTRA.web : 0 };
-  e.total = e.base + e.long + e.files + e.web;
-  return e;
-}
-function pf(k){
-  if (!prefs || typeof prefs !== "object" || Object.isFrozen(prefs)) prefs = Object.assign({}, prefs || {});
-  const old = prefs[k] && typeof prefs[k] === "object" ? prefs[k] : {};
-  const okM = Number.isInteger(old.m) && old.m >= 0 && old.m < MODELS.length;
-  const okE = Number.isInteger(old.e) && old.e >= 0 && old.e < EFFORTS.length;
-  if (!okM || !okE || Object.isFrozen(old) || prefs[k] !== old) prefs[k] = { m: okM ? old.m : 1, e: okE ? old.e : 1 };
-  return prefs[k];
-}
-function savePrefs(){ cloudSave(); }
-function menuItem(title, cost, desc, selected, onPick){
-  const it = document.createElement("button"); it.type = "button"; it.className = "mitem"; it.setAttribute("role","option"); it.setAttribute("aria-selected", String(selected));
-  const b = document.createElement("b"), d = document.createElement("span"); b.textContent = title;
-  if (cost) { const c = document.createElement("span"); c.className = "cost"; c.textContent = cost; b.appendChild(c); }
-  d.textContent = desc; it.append(b, d); it.onclick = onPick; return it;
-}
-function closeMenus(){ for (const [m, b] of [["modelMenu","modelBtn"],["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
+let prefs = {};   // older saves kept per-orb model picks here; it's kept as-is so nothing gets lost
+function closeMenus(){ for (const [m, b] of [["addMenu","addBtn"]]) { $(m).hidden = true; $(b).setAttribute("aria-expanded","false"); } }
 const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
-// One button for model + effort. The menu lists the models, then effort as a row of choices.
+// The globe (web search) and the note under the chat box
 function syncSel(){
-  const canWeb = !!active && kids.web !== false && !kids.on;
+  const canWeb = (!!active || app.classList.contains("dashv")) && kids.web !== false && !kids.on;
   $("webBtn").hidden = !canWeb; if (!canWeb) webOn = false;
   $("webBtn").setAttribute("aria-pressed", String(webOn)); $("webBtn").classList.toggle("on", webOn);
   $("webBtn").title = webOn ? "Web search is on (tap to turn off)" : "Search the web";
-  $("sels").hidden = !active; if (!active) { hint(); return; }
-  const p = pf(active), m0 = MODELS[p.m];
-  const btn = $("modelBtn"); btn.replaceChildren(el("span", null, (lockedModel(p.m) ? "🔒 " : "") + m0.n + " " + m0.v));
-  if (hasEffort(p.m)) btn.append(el("small", null, EFFORTS[p.e].n));
-  btn.append(el("span", "car", "▾"));
-  const menu = $("modelMenu"); menu.innerHTML = "";
-  menu.append(el("div", "mh3", "Model"));
-  MODELS.forEach((m, i) => {
-    const it = menuItem(m.n + " " + m.v, credits ? creditWord(m.cost) : "", cap(m.d) + ". Built on the latest " + m.base.replace(/ [\d.]+$/, "") + " model (" + m.base.replace(/^Claude /, "") + ").", i === p.m,
-      () => { pf(active).m = i; savePrefs(); closeMenus(); syncSel(); });
-    if (lockedModel(i)) { it.classList.add("locked"); it.querySelector("b").append(el("span", "lock", "🔒 " + PLAN_NAMES[needPlan(i)])); it.onclick = () => { closeMenus(); openPlans(); }; }
-    menu.appendChild(it);
-  });
-  if (hasEffort(p.m)) {
-    menu.append(el("div", "msep"), el("div", "mh3", "Effort"));
-    const row = el("div", "effrow");
-    EFFORTS.forEach((e, i) => {
-      const b = el("button", null, e.n); b.type = "button"; b.setAttribute("aria-pressed", String(i === p.e));
-      if (credits && e.mult > 1) b.append(el("small", null, "×" + e.mult + " credits"));
-      b.onclick = ev => { ev.stopPropagation(); pf(active).e = i; savePrefs(); syncSel(); };
-      row.append(b);
-    });
-    menu.append(row, el("div", "effdesc", cap(EFFORTS[p.e].d) + "."));
-  } else menu.append(el("div", "msep"), el("div", "effdesc", m0.n + " doesn't have effort settings. It always answers fast."));
-  menu.onclick = e => e.stopPropagation();
-  hint(); renderUsage();
+  hint();
 }
-// Credit note under the chat box: only when credits are on and you picked something heavy, or you're running low
 function hint(){
   const h = $("hint");
-  const off = () => { h.textContent = ""; h.hidden = true; h.classList.remove("warn", "mid"); };
-  const show = (msg, cls) => { if (!msg) return off(); h.textContent = msg; h.hidden = false; h.classList.toggle("warn", cls === "warn"); h.classList.toggle("mid", cls === "mid"); };
-  // Web search note (it costs the site owner a little)
-  const web = active && webOn ? `🌐 Web search is on (up to 3 searches per message, ${Number.isInteger(kids.webPerDay) ? kids.webPerDay : 5} per day).` : "";
-  if (!active || !credits) return show(web);
-  const p = pf(active), m = MODELS[p.m], est = estimate(active), cost = teamCost(active, est), left = credits.left, th = teamHelpers(curTeam());
-  const what = m.n + (hasEffort(p.m) && EFFORTS[p.e].mult > 1 ? " on " + EFFORTS[p.e].n : "");
-  const koaTip = p.m !== 0 && !th.length ? " Koa uses just 1." : "";
-  // "This message: Lumina 3 + web search 2 = 5 credits"
-  const parts = [`${what} ${est.base}`]; if (est.long) parts.push(`long chat ${est.long}`); if (est.files) parts.push(`big files ${est.files}`); if (est.web) parts.push(`web search ${est.web}`);
-  // Orb team: "Team run: Pixel 3 + 3 helpers × 3 + team build 2 = 14 credits"
-  if (th.length) { parts[0] = `${BOTS[active].name} ${est.base}`; parts.push(`${th.length} helper${th.length > 1 ? "s" : ""} × ${m.cost}`, `team build ${TEAM_BUILD}`); }
-  const cost1 = th.length ? `Team run on ${what}: ${parts.join(" + ")} = ${creditWord(cost)}. You get credits back for any orb that can't help.`
-    : parts.length > 1 ? `This message: ${parts.join(" + ")} = ${creditWord(cost)}${est.web ? " (you get the 2 back if it doesn't search)" : ""}.` : `${what} uses ${creditWord(cost)} per message.`;
-  let msg = "", cls = "";
-  if (left < cost && th.length && left > 0) { msg = `Not enough credits for this team run: it needs ${cost}, you have ${left}. Remove an orb or pick a cheaper model.`; cls = "warn"; }
-  else if (left < cost) {
-    const ex = cost - est.base, cheaper = MODELS.filter(x => x.cost + ex <= left).pop();
-    msg = left > 0 ? `Not enough credits: this message needs ${cost}, you have ${left}. ${cheaper ? "Switch to " + cheaper.n + " to keep chatting." : "They refill at midnight."}` : "You're out of credits for today. They refill at midnight.";
-    cls = "warn";
-  } else if (left <= 20) { msg = `Low on credits: ${left} left today. ${cost1}` + koaTip; cls = "warn"; }
-  else if (left <= 50) { msg = `${creditWord(left)} left today. ${cost1}`; cls = "mid"; }
-  else if (th.length || parts.length > 1 || cost > 3) msg = cost1 + (cost > 3 ? ` (${left} left today)` : "");
-  // Say plainly when an extra kicks in
-  const why = [];
-  if (est.long) why.push("💬 This chat is long now, so each message costs 1 extra credit. Start a new chat to save credits.");
-  if (est.files) why.push("📁 Big files cost 2 extra credits for this message.");
-  show([web, ...why, msg].filter(Boolean).join(" "), cls);
+  const web = webOn ? `Web search is on: up to 3 searches per message, ${Number.isInteger(kids.webPerDay) ? kids.webPerDay : 5} a day.` : "";
+  const low = usage && !usage.unlimited ? Math.max(usage.dayLimited ? usage.dayPct : 0, usage.weekLimited ? usage.weekPct : 0) : 0;
+  const warn = low >= 80 && low < 100 ? `You've used ${Math.round(low)}% of your ${usage.weekLimited && usage.weekPct >= (usage.dayLimited ? usage.dayPct : 0) ? "weekly" : "daily"} usage.` : "";
+  const msg = [web, warn].filter(Boolean).join(" ");
+  h.textContent = msg; h.hidden = !msg; h.classList.toggle("warn", !!warn);
 }
-function toggleMenu(menuId, btnId){
-  return e => { e.stopPropagation(); const mm = $(menuId), open = mm.hidden; closeMenus(); mm.hidden = !open; $(btnId).setAttribute("aria-expanded", String(open));
-    if (open) mm.classList.toggle("down", $("form").getBoundingClientRect().top < mm.offsetHeight + 16); };
-}
-$("modelBtn").onclick = toggleMenu("modelMenu", "modelBtn");
-$("webBtn").onclick = e => { e.stopPropagation(); if (!active) { nudge(); return; } webOn = !webOn; const c = curConv(); if (c) c.web = webOn; syncSel(); box.focus(); };
+$("webBtn").onclick = e => { e.stopPropagation(); if (!active && !app.classList.contains("dashv")) { nudge(); return; } webOn = !webOn; const c = curConv(); if (c) c.web = webOn; syncSel(); box.focus(); };
 document.addEventListener("click", closeMenus);
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 let delArm = null, delTimer = null;
@@ -1202,78 +1182,67 @@ function travel(d){
 $("backBtn").onclick = () => travel(-1); $("fwdBtn").onclick = () => travel(1);
 
 
-// ---------- Credits (counted on the server; shown here) ----------
-let credits = null, limitHit = false;
-const dayKey = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-function creditsFromDoc(d){
-  if (!d || typeof d.limit !== "number") { credits = null; limitHit = false; return; }
-  credits = d.day === dayKey() ? { left: Math.max(0, d.limit - (d.used || 0)), limit: d.limit } : { left: d.limit, limit: d.limit };
-  limitHit = credits.left === 0;
+// ---------- Usage (measured on the server in what each message really costs; shown here as percentages) ----------
+// usage = { unlimited, dayPct, weekPct, dayLimited, weekLimited, dayResetAt, weekResetAt } or null before it loads
+let usage = null, limitHit = false;   // limitHit: false, "day" or "week"
+function setUsage(u){
+  if (u && typeof u === "object" && typeof u.dayPct === "number") usage = u;
+  limitHit = usageOut();
+  renderUsage(); hint();
 }
-// left === null means the site has no limits turned on
-function setCredits(left, spent){
-  if (typeof left === "number") {
-    const p = credits || {}, ml = typeof p.monthLeft === "number" ? Math.max(0, p.monthLeft - (typeof spent === "number" ? spent : 0)) : undefined;
-    credits = { left, limit: p.limit || null, monthLimit: p.monthLimit, monthLeft: ml, period: p.period };
+function usageOut(){
+  if (!usage || usage.unlimited) return false;
+  if (usage.weekLimited && usage.weekPct >= 100) return "week";
+  if (usage.dayLimited && usage.dayPct >= 100) return "day";
+  return false;
+}
+// "12:00 AM" or "Monday 12:00 AM", in the person's own time zone
+const fmtClock = t => new Date(t).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
+function resetText(t, week){
+  if (!t) return "";
+  const d = new Date(t), now = new Date();
+  if (!week) {
+    const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+    return d.toDateString() === now.toDateString() || d.toDateString() === tomorrow.toDateString() ? `Resets at ${fmtClock(t)}` : `Resets ${d.toLocaleDateString([], { weekday:"long" })} ${fmtClock(t)}`;
   }
-  else if (left === null) { credits = null; limitHit = false; }
-  renderUsage(); hint(); syncSel();
+  return `Resets ${d.toLocaleDateString([], { weekday:"long" })} ${fmtClock(t)}`;
 }
-function untilMidnight(){
-  const ny = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const mid = new Date(ny); mid.setHours(24, 0, 0, 0);
-  const mins = Math.max(1, Math.round((mid - ny) / 60000)), h = Math.floor(mins / 60), m = mins % 60;
-  return h ? `${h}h ${m}m` : `${m}m`;
-}
-function untilMonday(){
-  const ny = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const mon = new Date(ny); mon.setHours(0, 0, 0, 0); mon.setDate(mon.getDate() + ((8 - mon.getDay()) % 7 || 7));
-  const mins = Math.max(1, Math.round((mon - ny) / 60000)), d = Math.floor(mins / 1440), h = Math.floor(mins % 1440 / 60);
-  return d ? `${d}d ${h}h` : `${h}h ${mins % 60}m`;
+const pctText = p => (p > 0 && p < 1 ? "<1" : String(Math.round(p))) + "%";
+function fillBar(fill, pct){
+  fill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  const bar = fill.parentNode; bar.classList.toggle("low", pct >= 75 && pct < 100); bar.classList.toggle("out", pct >= 100);
 }
 function renderUsage(){
-  $("limit").hidden = !limitHit;
-  const bar = $("useBar"), more = $("useMore"), costs = $("useCost"), det = $("useDet"), wk = $("useWeek");
-  // The weekly row always shows, even when there's no weekly limit (like for the owner)
-  const noWeek = () => {
-    wk.hidden = false; $("useWeekBar").hidden = true; $("useWeekDot").className = "dot2 ok";
-    $("useWeekTxt").textContent = "No weekly limit";
-    $("useWeekMore").textContent = kids.owner ? "You're the owner, so you don't have a weekly limit. Pick a plan under \"Test as\" to see its weekly bar." : "There's no weekly limit on your account right now.";
-  };
-  if (!credits) {
-    $("useState").textContent = "Unlimited"; $("useDot").className = "dot2 ok";
-    bar.hidden = true; det.hidden = true; noWeek();
-    more.textContent = "There's no daily credit limit right now, so every model is free to use as much as you want.";
-    return;
+  const u = usage, unl = !u || u.unlimited;
+  const rows = [["useDay", "uDay", u && u.dayLimited, u ? u.dayPct : 0, u && u.dayResetAt, false], ["useWeek", "uWeek", u && u.weekLimited, u ? u.weekPct : 0, u && u.weekResetAt, true]];
+  for (const [set, dash, limited, pct, at, week] of rows) {
+    const on = !unl && limited;
+    $(set + "Pct").textContent = on ? pctText(pct) : "∞"; $(dash + "Pct").textContent = on ? pctText(pct) : "∞";
+    fillBar($(set + "Fill"), on ? pct : 0); fillBar($(dash + "Fill"), on ? pct : 0);
+    const r = on ? resetText(at, week) : !u ? "" : kids.owner ? "Unlimited for the owner" : "No limit right now";
+    $(set + "More").textContent = r; $(dash + "Reset").textContent = r;
   }
-  const { left, limit } = credits;
-  $("useState").textContent = limit ? `${commas(left)} of ${creditWord(limit)} left today` : `${creditWord(left)} left today`;
-  // 20 or less = low (red), 21 to 50 = getting there (yellow), more = fine (green)
-  const level = left <= 20 ? "out" : left <= 50 ? "low" : "";
-  $("useDot").className = "dot2 " + (level === "out" ? "bad" : level === "low" ? "mid" : "ok");
-  bar.hidden = !limit; if (limit) { $("useFill").style.width = Math.max(0, Math.min(100, left / limit * 100)) + "%"; bar.className = "ubar" + (level ? " " + level : ""); }
-  // the longer limit: this week (for everyone now)
-  if (credits.monthLimit > 0 && typeof credits.monthLeft === "number") {
-    const isWeek = credits.period === "week", ml = credits.monthLeft, mt = credits.monthLimit, pct = Math.max(0, Math.min(1, ml / mt));
-    const wl = ml <= 0 ? "out" : pct <= 0.2 ? "low" : "";
-    wk.hidden = false; $("useWeekBar").hidden = false;
-    $("useWeekTxt").textContent = `${commas(ml)} of ${creditWord(mt)} left this ${isWeek ? "week" : "month"}`;
-    $("useWeekDot").className = "dot2 " + (wl === "out" ? "bad" : wl === "low" ? "mid" : "ok");
-    $("useWeekBar").className = "ubar" + (wl ? " " + wl : ""); $("useWeekFill").style.width = pct * 100 + "%";
-    $("useWeekMore").textContent = isWeek ? `Resets Monday at 12:00 am New York time (in ${untilMonday()}).` : "Resets on the 1st of the month.";
-  } else noWeek();
-  let txt = `Refills at midnight New York time (in ${untilMidnight()}).`;
-  if (active) { const p = pf(active), c = msgCost(p), m = MODELS[p.m]; txt += ` Your pick for ${BOTS[active].name}, ${m.n}${hasEffort(p.m) ? " on " + EFFORTS[p.e].n : ""}, uses ${creditWord(c)} per message, so about ${Math.floor(left / c)} more message${Math.floor(left / c) === 1 ? "" : "s"} today.`; }
-  more.textContent = txt;
-  det.hidden = false; costs.innerHTML = "";
-  const curM = active ? pf(active).m : -1;
-  MODELS.forEach((m, i) => { const d = el("div", i === curM ? "on" : null); d.append(el("b", null, String(m.cost)), el("small", null, m.n)); costs.append(d); });
-  costs.append(el("p", null, "Credits per message. Higher effort costs more: High ×2, Extra ×3, Max ×4. Extras on top: long chat (more than 20 messages) +1, web search +2 (only if it searches), big files (6+ files, a big PDF, or lots of code) +2."));
+  $("useDayLbl").textContent = "of today's usage"; $("useWeekLbl").textContent = "of this week";
+  const p = kids.plan, testing = kids.owner && kids.viewAs && kids.viewAs !== "owner";
+  $("pPlan").textContent = testing ? `Testing ${p ? p.name : "Free"}` : p ? p.name : kids.owner ? "Owner" : "Free";
+  $("pUsageUp").hidden = !kids.billing || !!(p && p.id === "plusplusplus") || (kids.owner && !testing);
+  // Out of usage: a friendly note with when it comes back, and Upgrade
+  const out = limitHit && u;
+  $("limit").hidden = !out;
+  if (out) {
+    const week = limitHit === "week";
+    $("limitTxt").textContent = week ? `You've used all of this week's usage. ${resetText(u.weekResetAt, true)}.` : `You've used all of today's usage. ${resetText(u.dayResetAt, false)}.`;
+  }
 }
 
 // ---------- Account panel ----------
 function renderProfile(){
   const img = $("profImg"), av = $("profAv");
+  const aImg = $("avImg"), aTxt = $("avTxt");
+  const nm = user ? (user.displayName || (user.email || "").split("@")[0] || "You") : "";
+  aTxt.textContent = nm.trim().charAt(0).toUpperCase() || "?";
+  if (user && user.photoURL) { aImg.referrerPolicy = "no-referrer"; aImg.src = user.photoURL; aImg.hidden = false; aTxt.hidden = true; aImg.onerror = () => { aImg.hidden = true; aTxt.hidden = false; }; }
+  else { aImg.hidden = true; aTxt.hidden = false; }
   if (!user) { $("profName").textContent = "Your account"; $("profSub").textContent = ""; img.hidden = true; av.hidden = false; av.textContent = "?"; return; }
   const name = user.displayName || (user.email || "").split("@")[0] || "You";
   $("profName").textContent = name; $("profSub").textContent = user.email || "";
@@ -1288,7 +1257,7 @@ $("prof").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.prevent
 function resetState(){
   convs = {}; cur = null; deletedIds.clear(); legacyDel.clear();
   pins = []; prefs = {}; lastSent = {}; opts = { think: true, memory: true }; webOn = false; incogNext = false; stopSpeak();
-  active = null; hist = []; hi = -1; credits = null; limitHit = false;
+  active = null; hist = []; hi = -1; usage = null; limitHit = false;
   log.innerHTML = ""; $("q").value = ""; box.value = ""; status.textContent = ""; pendingFiles = []; renderAtts(); stopVoice();
 }
 
@@ -1367,7 +1336,6 @@ async function loadAccount(u){
       lastSent.settings = JSON.stringify({ pins, prefs, opts });
     }
   });
-  try { const us = await F.getDoc(F.doc(db, "usage", u.uid)); creditsFromDoc(us.exists() ? us.data() : null); } catch (e) { credits = null; }
   loaded = true;
   if (migrate || legacyDel.size) cloudSave();
 }
@@ -1565,7 +1533,7 @@ async function kidsApi(u, body){
   const r = await fetch("/api/kids", { method:"POST", headers:{ "content-type":"application/json", authorization:"Bearer " + await u.getIdToken() }, body: JSON.stringify(body) });
   let j = {}; try { j = await r.json(); } catch(_) {}
   if (typeof j.age !== "undefined") kids = { ...kids, ...j };
-  if ("credits" in j) { const c = j.credits; credits = c && typeof c.left === "number" ? { left: c.left, limit: c.limit || null, monthLeft: c.monthLeft, monthLimit: c.monthLimit, period: c.period } : null; limitHit = !!credits && credits.left === 0; }
+  if (j.usage && typeof j.usage === "object") { usage = j.usage; limitHit = usageOut(); }
   return { ok: r.ok, ...j };
 }
 function renderKids(){
@@ -1933,9 +1901,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["140 credits a day (800 a week)", "Chrysalis unlocked", "10 web searches a day", "Orb teams: up to 5 orbs work together"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["255 credits a day (1,400 a week)", "Chrysalis and Mythos unlocked", "25 web searches a day", "Memory: orbs remember you", "Orb teams: up to 5 orbs work together"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["625 credits a day (3,200 a week)", "Every model", "50 web searches a day", "Memory: orbs remember you", "Orb teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["3x the usage of Free, every day and week", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["6x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["15x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
@@ -1948,11 +1916,9 @@ const PLAN_INFO = [
     const b = el("button", "gbtn", "Get started"); b.type = "button"; b.onclick = () => setAuthMode("up");
     c.append(el("h3", null, name), pr); if (deal) c.append(deal); c.append(ul, b); grid.append(c);
   };
-  card("Free", "#6e6b64", "$0", "", ["Free credits every day", "Koa and Lumina", "A few web searches a day"]);
+  card("Free", "#6e6b64", "$0", "", ["A little usage every day and week", "Every orb, on Claude Opus", "A few web searches a day"]);
   for (const pl of PLAN_INFO) card(pl.name, pl.color, "$" + pl.month, " / month", [...pl.perks, ...pl.soon.map(t => t + " (coming soon)"), "or $" + pl.year + " a year"], pl.pop, pl.id);
 })();
-const needPlan = m => m >= 3 ? "plusplus" : "plus";
-function lockedModel(m){ return Array.isArray(kids.models) && !kids.models.includes(m); }
 let planInterval = "month";
 async function refreshStatus(){ if (!user) return; try { await kidsApi(user, { action:"status" }); renderUsage(); renderPlan(); syncSel(); } catch(_) {} }
 const fmtDate = sec => sec ? new Date(sec * 1000).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }) : "";
@@ -1963,7 +1929,7 @@ function renderPlan(){
   $("viewBox").hidden = !kids.owner;
   for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.v === (kids.viewAs || "owner")));
   $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
-    : kids.owner ? "You get every model, 99,999 credits a day, 99,999,999 a week, and as many web searches as the site allows. You can still test buying a plan." : on ? "Koa and Lumina, with daily free credits. Upgrade for more credits, Chrysalis, Mythos, and more web searches." : "";
+    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "A little usage every day and week. Upgrade for 3x to 15x more usage, Orb Teams, memory, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
   $("promoNav").hidden = !user || !on || !promoOn() || !!(p && !p.test);
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
@@ -1973,7 +1939,7 @@ function renderPlan(){
 }
 for (const b of document.querySelectorAll("#viewSeg button")) b.onclick = () => busyBtn(b, async () => {
   $("viewMsg").textContent = "Switching…";
-  try { await adminApi({ action:"viewAs", plan: b.dataset.v }); await refreshStatus(); limitHit = !!credits && credits.left === 0; renderUsage();
+  try { await adminApi({ action:"viewAs", plan: b.dataset.v }); await refreshStatus(); limitHit = usageOut(); renderUsage();
     $("viewMsg").textContent = b.dataset.v === "owner" ? "Back to Owner 👑. Everything unlocked." : `Now testing as ${b.textContent}. Nothing is charged.`; }
   catch (_) { $("viewMsg").textContent = "Couldn't switch. Try again."; }
 });
@@ -1988,7 +1954,7 @@ function renderPlans(){
   const cur = kids.plan ? kids.plan.id : null, on = !!kids.billing;
   // Free
   const free = el("div", "pcard" + (!cur ? " cur" : "")); free.style.setProperty("--pc", "#6e6b64");
-  const fl = el("ul"); [credits && credits.limit && !cur ? `${credits.limit} credits a day` : "Daily free credits", "Koa and Lumina", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
+  const fl = el("ul"); ["A little usage every day and week", "Every orb, on Claude Opus", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
   const fb = el("button", "outline", !cur ? "Current plan" : "Included"); fb.type = "button"; fb.disabled = true;
   free.append(el("h3", null, "Free"), el("div", "price", "$0"), fl, fb); grid.append(free);
   for (const pl of PLAN_INFO) {
@@ -2051,7 +2017,6 @@ async function checkAdmin(){
 let adminData = null, adminTab = "overview";
 const money = c => "$" + (c / 100).toFixed(c < 100 ? 3 : 2);
 const when = t => t ? new Date(t).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) : "";
-const MODEL_NAMES = ["Koa","Lumina","Chrysalis","Mythos"];
 async function openAdmin(){
   openLegal("adminModal"); adminTab = adminTab || "overview";
   $("admBody").replaceChildren(el("p", "fine", "Loading…"));
@@ -2069,7 +2034,8 @@ function renderAdmin(){
   if (adminTab === "overview") {
     const month = d.stats.filter(s => s.day.slice(0, 7) === d.today.slice(0, 7)).reduce((n, s) => n + s.cents, 0);
     const grid = el("div", "agrid");
-    grid.append(card("Spent today (about)", money(today.cents), today.messages + " messages"), card("This month (about)", money(month)),
+    grid.append(card("Spent today (about)", money(today.cents), today.messages + " Claude calls" + (today.messages ? " · " + money(today.cents / today.messages) + " each" : "")), card("This month (about)", money(month)),
+      card("Usage billed today", money(d.siteCentsToday || 0), d.budgets && d.budgets.site ? "site cap " + money(d.budgets.site) : "no site-wide cap"),
       card("Web searches today", String(d.searchesToday), "limit " + d.config.searchesSite + " for the whole site"),
       card("People", String(d.users.total), d.users.newWeek + " new this week"),
       card("Paying people", String(Object.values(d.subs || {}).reduce((n, v) => n + v, 0)), ["plus","plusplus","plusplusplus"].map(k => (PLAN_NAMES[k] + ": " + ((d.subs || {})[k] || 0))).join(" · ")), card("Kids Mode accounts", String(d.users.kidsOn), d.users.teens + " teens"),
@@ -2080,22 +2046,28 @@ function renderAdmin(){
     const chart = el("div", "abars"); chart.setAttribute("role", "img"); chart.setAttribute("aria-label", "Spending for the last 14 days");
     for (const s of days) { const col = el("div", "abar"); const bar = el("i"); bar.style.height = Math.max(2, s.cents / max * 100) + "%"; col.title = s.day + ": " + money(s.cents) + ", " + s.messages + " messages"; col.append(bar, el("small", null, s.day.slice(8))); chart.append(col); }
     body.append(el("h3", null, "Spending, last 14 days"), days.length ? chart : el("p", "fine", "No messages yet."));
-    const mix = d.stats.slice(0, 7).reduce((o, s) => { o[0] += s.koa; o[1] += s.lumina; o[2] += s.chrysalis; o[3] += s.mythos; return o; }, [0,0,0,0]);
-    body.append(el("h3", null, "Messages per model, last 7 days"), el("p", "fine", MODEL_NAMES.map((n, i) => n + ": " + mix[i]).join(" · ")));
+    if (d.budgets) body.append(el("h3", null, "Usage budgets in effect"), el("p", "fine", ["free", "plus", "plusplus", "plusplusplus"].map(t => `${t === "free" ? "Free" : PLAN_NAMES[t]}: ${d.budgets[t].day ? money(d.budgets[t].day) : "∞"} a day, ${d.budgets[t].week ? money(d.budgets[t].week) : "∞"} a week`).join(" · ") + ". Every orb runs on Claude Opus. People only see percentages."));
     body.append(el("p", "fine", "These are estimates from Orbs. Your real bill is in the Claude Console."));
   }
   if (adminTab === "settings") {
     const c = d.config, f = el("form", "aform");
     const sw = (key, label, help) => { const r = el("label", "arow"); const i = el("input"); i.type = "checkbox"; i.name = key; i.checked = !!c[key]; r.append(i, el("span", null, label)); if (help) r.append(el("small", "fine", help)); return r; };
-    const numIn = (key, label, help) => { const r = el("label", "arow num"); const i = el("input"); i.type = "number"; i.min = "0"; i.max = "10000000"; i.name = key; i.value = c[key] == null ? "" : c[key]; i.placeholder = key.startsWith("searches") ? "0" : "No limit"; r.append(el("span", null, label), i); if (help) r.append(el("small", "fine", help)); return r; };
+    const numIn = (key, label, help, ph) => { const r = el("label", "arow num"); const i = el("input"); i.type = "number"; i.min = "0"; i.max = "10000000"; i.name = key; i.value = c[key] == null ? "" : c[key]; i.placeholder = ph || (key.startsWith("searches") ? "0" : "No limit"); r.append(el("span", null, label), i); if (help) r.append(el("small", "fine", help)); return r; };
+    // Usage budgets, in cents of real Claude cost. Empty = Vercel's USAGE_BUDGETS or the built-in default, 0 = unlimited.
+    const defB = d.defaultBudgets || {}, budgetRows = [];
+    for (const t of ["free", "plus", "plusplus", "plusplusplus"]) {
+      const nm = t === "free" ? "Free" : PLAN_NAMES[t];
+      budgetRows.push(numIn(t + "DayCents", `${nm}: daily usage (cents)`, null, "Default " + (defB[t] ? defB[t].day : "")), numIn(t + "WeekCents", `${nm}: weekly usage (cents)`, null, "Default " + (defB[t] ? defB[t].week : "")));
+    }
     f.append(
       sw("paused", "Pause Orbs (emergency stop)", "Nobody can send messages while this is on."),
       (() => { const r = el("label", "arow num"); const i = el("input"); i.name = "pausedMsg"; i.maxLength = 300; i.value = c.pausedMsg || ""; i.placeholder = "Message to show (optional)"; r.append(el("span", null, "Pause message"), i); return r; })(),
       sw("webSearch", "Allow web search", "About 1 cent per search, plus a bit more for reading the results."),
       numIn("searchesPerUser", "Web searches per person per day"),
       numIn("searchesSite", "Web searches per day for the whole site"),
-      numIn("dailyCredits", "Daily credits per person", "Empty or 0 = unlimited. Koa uses 1 per message, Lumina 3, Chrysalis 6, Mythos 10 (more at higher effort)."),
-      numIn("siteCredits", "Daily credits for the whole site", "Empty or 0 = unlimited."),
+      el("p", "fine", "Usage budgets are in cents of real Claude Opus cost (a typical message is about 2 to 6 cents). Empty = default" + (d.envBudgets ? " (from USAGE_BUDGETS in Vercel)" : "") + ", 0 = unlimited. People only see a percentage."),
+      ...budgetRows,
+      numIn("siteDayCents", "Whole site: daily usage (cents)", "Empty = SITE_DAILY_CENTS in Vercel, or no cap. 0 = no cap.", "No cap"),
       sw("kidsForAll", "Kids Mode for everyone", "Turns on Kids Mode for every account on the site."),
       (() => { const r = el("label", "arow num"); const sel = el("select"); sel.name = "halloween";
         for (const [v, t] of [["auto", "Auto (October only)"], ["on", "On"], ["off", "Off"]]) { const o = el("option", null, t); o.value = v; if ((c.halloween || "auto") === v) o.selected = true; sel.append(o); }
@@ -2130,13 +2102,13 @@ function renderAdmin(){
       const bar = el("div", "abtns"); bar.append(dismissBtn("flag", f.id, x)); x.append(bar); return x; });
   }
   if (adminTab === "feedback") {
-    const by = MODEL_NAMES.map(() => ({ up:0, down:0 }));
-    for (const f of d.feedback) if (by[f.model]) by[f.model][f.vote === "up" ? "up" : "down"]++;
+    const by = {};
+    for (const f of d.feedback) { const k = BOTS[f.orb] ? f.orb : "?"; by[k] = by[k] || { up:0, down:0 }; by[k][f.vote === "up" ? "up" : "down"]++; }
     const grid = el("div", "agrid");
-    MODEL_NAMES.forEach((n, i) => grid.append(card(n, `👍 ${by[i].up}  👎 ${by[i].down}`)));
+    Object.entries(by).forEach(([k, v]) => grid.append(card(BOTS[k] ? BOTS[k].name : "Other", `👍 ${v.up}  👎 ${v.down}`)));
     body.append(el("h3", null, "Thumbs, latest 300"), grid, el("h3", null, "Thumbs down"));
     list(d.feedback.filter(f => f.vote === "down"), "No thumbs down yet.", f => { const x = el("div", "aitem");
-      x.append(el("div", "ameta", `${MODEL_NAMES[f.model] || "?"} · ${BOTS[f.orb]?.name || "?"} · ${when(f.at)}${f.tag ? " · " + f.tag.replace(/_/g, " ") : ""}`));
+      x.append(el("div", "ameta", `${BOTS[f.orb]?.name || "?"} · ${when(f.at)}${f.tag ? " · " + f.tag.replace(/_/g, " ") : ""}`));
       if (f.reason) x.append(el("p", "areason", "“" + f.reason + "”"));
       if (f.reply) { const q = el("div", "aquote"); q.textContent = f.reply; x.append(q); }
       const bar = el("div", "abtns"); bar.append(dismissBtn("feedback", f.id, x)); x.append(bar); return x; });
@@ -2149,25 +2121,8 @@ function renderAdmin(){
   }
 }
 
-// ---------- Newest models ----------
-// The server always uses the newest Claude model in each family; this shows its name and Orbs version.
-async function loadModels(){
-  try {
-    const r = await fetch("/api/models"); if (!r.ok) return;
-    const j = await r.json();
-    (j.models || []).forEach((m, i) => {
-      if (!MODELS[i] || !m) return;
-      if (typeof m.version === "string" && /^\d+\.\d{2}$/.test(m.version)) MODELS[i].v = m.version;
-      if (typeof m.base === "string" && m.base) MODELS[i].base = m.base;
-      if (typeof m.effort === "boolean") MODELS[i].effort = m.effort;
-    });
-    syncSel();
-  } catch (e) {}
-}
-
 // ---------- Start ----------
 renderUsage();
-loadModels();
 (async () => {
   showGate("loading");
   const ready = firebaseConfig && ["apiKey","authDomain","projectId","appId"].every(k => firebaseConfig[k] && firebaseConfig[k] !== "PASTE_HERE");

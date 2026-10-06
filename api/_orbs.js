@@ -41,24 +41,7 @@ export function inSeason(key, now = Date.now(), mode = "auto") {
 export function activeOrder(now = Date.now(), mode = "auto") { return [...ORDER, ...SEASONAL.filter((k) => inSeason(k, now, mode))]; }
 export function halloweenOn(mode = "auto", now = Date.now()) { return inSeason("spooks", now, mode); }
 
-// Orbs models, in the same order as FAMILIES in _models.js (Koa, Lumina, Chrysalis, Mythos).
-// Which real Claude model each one uses is picked automatically (always the newest in its family).
-// "cost" is how many daily credits one message uses (only matters if credits are on).
-export const MODELS = [
-  { name: "Koa",       cost: 1,  maxTokens: 4000 },
-  { name: "Lumina",    cost: 3 },
-  { name: "Chrysalis", cost: 6 },
-  { name: "Mythos",    cost: 10,
-    extra: "Go all out: think very carefully, check your work, and give the best answer you can." },
-];
-
-// Real effort levels. Thinking counts toward maxTokens, so higher effort gets more room.
-// "mult" multiplies the credit cost (only matters if you turn credits on).
-export const EFFORTS = [
-  { name: "Low",    id: "low",    maxTokens: 4000,  mult: 1 },
-  { name: "Medium", id: "medium", maxTokens: 8000,  mult: 1 },
-  { name: "High",   id: "high",   maxTokens: 16000, mult: 2 },
-  { name: "Extra",  id: "xhigh",  maxTokens: 32000, mult: 3 },
-  { name: "Max",    id: "max",    maxTokens: 64000, mult: 4 },
-];
-export const DEFAULT_EFFORT = 1; // Medium
+// Every orb runs on Claude Opus (the newest one, picked automatically in _models.js).
+// One fixed effort for everyone: thoughtful but quick. Thinking counts toward maxTokens.
+export const CHAT = { effort: "medium", maxTokens: 12000 };
+export const HELPER = { effort: "low", maxTokens: 1500 };

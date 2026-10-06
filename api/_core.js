@@ -1,8 +1,9 @@
 // The chat endpoint's logic, kept apart from Firebase/Vercel so it can be tested on its own.
-// Flow: check who's asking -> clean up their messages -> take credits -> ask Claude -> stream the reply back.
+// Flow: check who's asking -> clean up their messages -> check there's usage left -> ask Claude (Opus) -> stream the reply back
+//       -> bill what the reply really cost against today's and this week's usage.
 import { createHash } from "node:crypto";
-import { ORBS, ORDER, MODELS, EFFORTS, DEFAULT_EFFORT, inSeason, activeOrder } from "./_orbs.js";
-import { latestModels } from "./_models.js";
+import { ORBS, CHAT, HELPER, inSeason, activeOrder } from "./_orbs.js";
+import { latestModels, HAIKU, OPUS } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
 import { costCents, familyOf } from "./_price.js";
@@ -47,8 +48,8 @@ export function withFiles(content, files) {
   blocks.push({ type: "text", text: content });
   return blocks;
 }
-import { dayKey } from "./_limits.js";
-import { allowance, planFor, PLANS } from "./_plans.js";
+import { dayKey, BUDGET_KEYS, usageState, usageBlock, publicUsage } from "./_limits.js";
+import { allowance, PLANS } from "./_plans.js";
 import { memoryRules, looksPersonal, extractMemory } from "./_memory.js";
 export { RESET_TZ, dayKey } from "./_limits.js";
 
@@ -63,11 +64,9 @@ function json(status, body) {
 // Turn whatever the browser sent into a safe, Claude-ready list of turns.
 export function cleanRequest(body) {
   if (!body || typeof body !== "object") return { error: "bad_request" };
-  const { orb, model, messages } = body;
-  const effort = body.effort === undefined ? DEFAULT_EFFORT : body.effort;
-  if (!Number.isInteger(effort) || effort < 0 || effort >= EFFORTS.length) return { error: "bad_request" };
+  // "model" and "effort" from older pages are ignored: every orb runs on Opus with one fixed effort
+  const { orb, messages } = body;
   if (typeof orb !== "string" || !Object.hasOwn(ORBS, orb)) return { error: "bad_request" };
-  if (!Number.isInteger(model) || model < 0 || model >= MODELS.length) return { error: "bad_request" };
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 400) return { error: "bad_request" };
 
   let turns = [];
@@ -94,11 +93,11 @@ export function cleanRequest(body) {
     total -= turns.shift().content.length;
     while (turns.length > 1 && turns[0].role !== "user") total -= turns.shift().content.length;
   }
-  return { orb, model, effort, turns, files: att.files, team, think: body.think === true, web: body.web === true, count: messages.length,
+  return { orb, turns, files: att.files, team, think: body.think === true, web: body.web === true, count: messages.length,
     wantTitle: body.title === true && messages.length === 1, memory: body.memory === true };
 }
 
-// Smart chat title: Koa (the cheapest model) names a new chat in a few words. Costs a tiny fraction of a cent, no credits.
+// Smart chat title: Haiku names a new chat in a few words in the background. Costs a tiny fraction of a cent and never counts toward usage.
 export async function makeTitle({ apiKey, fetchImpl = fetch, modelId, text }) {
   const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -112,18 +111,6 @@ export async function makeTitle({ apiKey, fetchImpl = fetch, modelId, text }) {
   const j = await res.json();
   const t = String((j.content || []).map((b) => b.text || "").join(" ")).split("\n")[0].replace(/^["'“”‘’\s]+|["'“”‘’.\s]+$/g, "").trim();
   return t && t.length <= 80 ? t : null;
-}
-
-// Extra credits on top of the model's cost (never multiplied by effort)
-export const EXTRAS = { longChat: 1, web: 2, bigFiles: 2 };
-export const LONG_CHAT = 20;        // more than this many messages = long chat
-export const BIG_PDF = 1000000;     // a PDF bigger than about 750 KB
-export const BIG_TEXT = 100000;     // more than this many characters of text files
-export function isBigFiles(files) {
-  if (!files || !files.length) return false;
-  if (files.length >= 6) return true;
-  if (files.some((f) => f.kind === "pdf" && f.data.length > BIG_PDF)) return true;
-  return files.reduce((n, f) => n + (f.kind === "text" ? f.text.length : 0), 0) > BIG_TEXT;
 }
 
 // Ask a quick question first when the request is unclear (the page turns the options line into buttons)
@@ -142,16 +129,18 @@ export const WEB_RULES =
   "Search as few times as you can, and mention which sites the info came from.";
 
 // Site switches the owner can change in the admin panel (config/site in Firestore)
-export const SITE_DEFAULTS = { paused: false, pausedMsg: "", webSearch: true, searchesPerUser: 5, searchesSite: 100, dailyCredits: null, siteCredits: null, kidsForAll: false, halloween: "auto" };
+// Usage budgets (cents of real Claude cost, see _limits.js): null = use Vercel's USAGE_BUDGETS / the built-in defaults, 0 = unlimited.
+export const SITE_DEFAULTS = { paused: false, pausedMsg: "", webSearch: true, searchesPerUser: 5, searchesSite: 100, kidsForAll: false, halloween: "auto",
+  ...Object.fromEntries(BUDGET_KEYS.map((k) => [k, null])) };
 export function siteConfig(raw) {
   const c = { ...SITE_DEFAULTS };
   if (raw && typeof raw === "object") {
     for (const k of ["paused", "webSearch", "kidsForAll"]) if (typeof raw[k] === "boolean") c[k] = raw[k];
     if (typeof raw.pausedMsg === "string") c.pausedMsg = raw.pausedMsg.slice(0, 300);
     if (["auto", "on", "off"].includes(raw.halloween)) c.halloween = raw.halloween;
-    for (const k of ["searchesPerUser", "searchesSite", "dailyCredits", "siteCredits"]) {
+    for (const k of ["searchesPerUser", "searchesSite", ...BUDGET_KEYS]) {
       const v = raw[k];
-      if (v === null && (k === "dailyCredits" || k === "siteCredits")) c[k] = null;
+      if (v === null && BUDGET_KEYS.includes(k)) c[k] = null;
       else if (Number.isInteger(v) && v >= 0 && v <= 1e7) c[k] = v;
     }
   }
@@ -159,20 +148,18 @@ export function siteConfig(raw) {
 }
 export const MAX_SEARCHES_PER_MESSAGE = 3;
 
-export function systemPrompt(orb, model, seasonMode = "auto") {
+export function systemPrompt(orb, seasonMode = "auto") {
   const o = ORBS[orb];
   const others = activeOrder(Date.now(), seasonMode).filter((k) => k !== orb).map((k) => `${ORBS[k].name} (${ORBS[k].role})`).join(", ");
-  return [o.rules, `Other orbs they can pick: ${others}.`, MODELS[model].extra || "", ASK_FIRST, FORMAT, `Reply as ${o.name}.`]
+  return [o.rules, `Other orbs they can pick: ${others}.`, ASK_FIRST, FORMAT, `Reply as ${o.name}.`]
     .filter(Boolean).join(" ");
 }
 
 // ---------- Orb teams (Plus and up) ----------
 // The helpers each do their own part, one after another, then the lead orb puts it all together.
-// Cost: each helper = the model's cost (they always think a little, so no effort multiplier),
-//       the lead = a normal message + TEAM_BUILD for the big build at the end.
+// Usage: every helper call and the lead's reply are billed at what they really cost, all together after the run.
 export const MAX_TEAM = 5;            // orbs in a team, lead included
-export const TEAM_BUILD = 2;
-const HELPER_TOKENS = 1500;           // a helper's part stays short
+const HELPER_TOKENS = HELPER.maxTokens; // a helper's part stays short
 const PEEK_CHARS = 1500;              // how much of earlier helpers' parts the next helper sees
 const NOTE_CHARS = 6000;              // how much of each part the lead sees
 const HELPERS_TIME = 150000;          // after 2.5 minutes of helpers, skip the rest so the lead has time to build
@@ -198,12 +185,12 @@ export function notesBlock(notes, max = NOTE_CHARS) {
   return notes.length ? `\n\n<team_notes>\n${notes.map((n) => noteTag(n.k, n.text, max)).join("\n")}\n</team_notes>` : "";
 }
 
-// deps: verifyToken(idToken) -> decoded token, charge(uid, cost, limits, day) -> {ok, left, reason},
-//       refund(uid, cost, day), getKids(uid) -> kids settings, flag(uid, info) -> safety log,
+// deps: verifyToken(idToken) -> decoded token, getUsage(uid) -> usage/{uid}, bill(uid, cents, limits) -> new usage/{uid},
+//       siteUsed(day) -> cents used by everyone today, getKids(uid) -> kids settings, flag(uid, info) -> safety log,
 //       getConfig() -> site switches, searchesLeft(uid, day, cfg) -> number, countSearches(uid, n, day),
 //       record(day, info) -> spending stats, fetchImpl (for tests), env
 export function makeChatHandler({
-  verifyToken, charge, refund, getKids, flag = async () => {}, getConfig = async () => null,
+  verifyToken, getUsage = async () => null, bill = async () => null, siteUsed = async () => 0, getKids, flag = async () => {}, getConfig = async () => null,
   searchesLeft = async () => 0, countSearches = async () => {}, record = async () => {}, getSub = async () => null,
   getMemory = async () => [], addMemory = async () => [],
   fetchImpl = fetch, env = process.env,
@@ -241,15 +228,24 @@ export function makeChatHandler({
     let sub = null;
     try { sub = await getSub(user.uid); } catch { sub = null; }
     const allow = allowance({ sub, cfg, env, user, viewAs: rawKids && rawKids.viewAs });
-    if (!allow.models.includes(req.model)) { const need = planFor(req.model); return json(403, { error: "plan_model", need, needName: PLANS[need].name }); }
     // Orb teams come with Plus and up
     const team = req.team;
     if (team.length && !allow.plan && !allow.admin) return json(403, { error: "plan_team", need: "plus", needName: PLANS.plus.name });
 
-    const model = MODELS[req.model];
+    // Usage: make sure there's some left today and this week (blocks at 100%). What the reply really costs is billed at the end.
+    const limits = { day: allow.day, week: allow.week, dayKey: allow.dayKey, weekKey: allow.weekKey };
+    let before;
+    try { before = usageState(await getUsage(user.uid), limits); } catch { return json(503, { error: "upstream_error" }); }
+    const blocked = usageBlock(before);
+    if (blocked) return json(429, { error: blocked, usage: publicUsage(before) });
+    if (allow.site > 0) {
+      let used = 0;
+      try { used = await siteUsed(dayKey()); } catch { used = 0; }
+      if (used >= allow.site) return json(429, { error: "site_busy", usage: publicUsage(before) });
+    }
     const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
-    const live = allModels[req.model];
-    const checkerId = allModels[0].id; // the Haiku model does the quick safety checks
+    const live = allModels[OPUS];               // every reply is written by the newest Claude Opus
+    const checkerId = allModels[HAIKU].id;      // Haiku does the quick background checks (never billed to the person)
     const logFlag = (info) => flag(user.uid, { orb: req.orb, ...info }).catch(() => {});
     let extraRules = "";
     if (kidsOn) {
@@ -263,7 +259,7 @@ export function makeChatHandler({
       if (BLOCKED.has(label)) { logFlag({ type: "message_blocked", category: label }); return json(400, { error: "kids_blocked" }); }
       if (label === "SELFHARM") { logFlag({ type: "self_harm_support", category: label }); extraRules = SELF_HARM_NOTE; }
     }
-    const effort = live.effort ? EFFORTS[req.effort] : null;
+    const effort = live.effort ? CHAT.effort : null;
     const day = dayKey();
 
     // Web search: only when asked for, never in Kids Mode, and capped per person and for the whole site each day
@@ -277,27 +273,11 @@ export function makeChatHandler({
       }
     }
 
-    // Cost = model x effort, plus extras. Web search is charged up front and given back if it didn't search.
-    const extraLong = req.count > LONG_CHAT ? EXTRAS.longChat : 0;
-    const extraFiles = isBigFiles(req.files) ? EXTRAS.bigFiles : 0;
-    const extraWeb = searchCap ? EXTRAS.web : 0;
-    const leadCost = model.cost * (effort ? effort.mult : 1) + extraLong + extraFiles + extraWeb + (team.length ? TEAM_BUILD : 0);
-    const helperCost = model.cost;
-    // A team run is charged all at once (so it has to fit today's AND this week's credits), and failed parts come back
-    const cost = leadCost + helperCost * team.length;
-
-    // Credit limits: paid plans use their own numbers; free uses the admin panel's (then Vercel's). 0 = unlimited.
-    const perUser = allow.perUser, site = allow.site;
-    const limited = perUser > 0 || site > 0;
-    const limits = { perUser: perUser > 0 ? perUser : 1e9, site: site > 0 ? site : 1e9, month: perUser > 0 && allow.month > 0 ? allow.month : 1e12, monthKey: allow.monthKey, period: allow.period };
-    let paid = { ok: true, left: null };
-    if (limited) {
-      try { paid = await charge(user.uid, cost, limits, day); } catch { return json(503, { error: "upstream_error" }); }
-      if (!paid.ok) return json(429, { error: paid.reason, left: paid.left });
-      if (perUser <= 0) paid.left = null; // only a site-wide cap: don't show a personal count
-    }
-    const giveBack = async (n = cost) => { if (limited && n > 0) await refund(user.uid, n, day, limits.monthKey).catch(() => {}); };
-    const leftAfterRefund = (n = cost) => (limited && paid.left !== null ? paid.left + n : null);
+    let spent = 0; // cents, all Claude calls for this message added up
+    const charge = async () => {
+      try { const doc = await bill(user.uid, spent, { ...limits, day }); return publicUsage(usageState(doc, limits)); }
+      catch { return publicUsage(before); }
+    };
 
     // Memory (Plus Plus and up, never in Kids Mode): use what they told Orbs before, and save new things from this message
     const memOn = req.memory && allow.memory && !kidsOn;
@@ -326,13 +306,13 @@ export function makeChatHandler({
           method: "POST", headers,
           body: JSON.stringify({
             model: live.id,
-            max_tokens: Math.min(effort ? effort.maxTokens : model.maxTokens || 4000, live.maxTokens || Infinity),
-            ...(effort ? { output_config: { effort: effort.id } } : {}),
+            max_tokens: Math.min(CHAT.maxTokens, live.maxTokens || Infinity),
+            ...(effort ? { output_config: { effort } } : {}),
             ...(showThinking ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
             ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
             // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
             cache_control: { type: "ephemeral" },
-            system: [systemPrompt(req.orb, req.model, cfg.halloween), team.length ? leadRules(req.orb, team) : "", memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
+            system: [systemPrompt(req.orb, cfg.halloween), team.length ? leadRules(req.orb, team) : "", memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
             messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content + notesBlock(notes), req.files) } : t)),
             stream: true,
             metadata,
@@ -358,7 +338,7 @@ export function makeChatHandler({
         body: JSON.stringify({
           model: live.id,
           max_tokens: Math.min(HELPER_TOKENS, live.maxTokens || Infinity),
-          ...(live.effort ? { output_config: { effort: "low" } } : {}),
+          ...(live.effort ? { output_config: { effort: HELPER.effort } } : {}),
           system: helperPrompt(k, req.orb, team, kidsOn),
           messages: recent.map((t, i) => (i === recent.length - 1 ? { role: t.role, content: t.content + fileNote + notesBlock(notes, PEEK_CHARS) } : t)),
           metadata,
@@ -368,8 +348,10 @@ export function makeChatHandler({
       if (!res.ok) throw new Error("helper");
       const j = await res.json();
       const u = j.usage || {};
-      record(day, { family: familyOf(live.id), input: u.input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0, cacheRead: u.cache_read_input_tokens || 0,
-        output: u.output_tokens || 0, searches: 0, cents: costCents(live.id, { input: u.input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0, cacheRead: u.cache_read_input_tokens || 0, output: u.output_tokens || 0 }) }).catch(() => {});
+      const hu = { input: u.input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0, cacheRead: u.cache_read_input_tokens || 0, output: u.output_tokens || 0, searches: 0 };
+      const cents = costCents(live.id, hu);
+      spent += cents;
+      record(day, { family: familyOf(live.id), ...hu, cents }).catch(() => {});
       const text = (j.content || []).filter((b) => b.type === "text").map((b) => b.text || "").join("").trim();
       if (!text) throw new Error("empty");
       return text;
@@ -380,8 +362,7 @@ export function makeChatHandler({
     if (!team.length) {
       upstream = await askLead();
       if (!upstream || !upstream.ok || !upstream.body) {
-        await giveBack();
-        return json(502, { error: await upstreamError(upstream), left: leftAfterRefund() });
+        return json(502, { error: await upstreamError(upstream), usage: publicUsage(before) });
       }
     }
 
@@ -389,7 +370,7 @@ export function makeChatHandler({
     //   {d:"text"}  {t:"thinking"}  {q:"search words"}  {src:[{u,t}]}  {nosearch:"limit"}  then {done:...} or {error:...}
     const enc = new TextEncoder(), dec = new TextDecoder();
     // In Kids Mode the reply is held back until the safety check has read the whole thing.
-    let wroteText = false, stop = null, failed = null, held = "", teamBack = 0;
+    let wroteText = false, stop = null, failed = null, held = "";
     const usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0, searches: 0 };
     const blocks = {}; // index -> { type, json }
     let lastType = null;
@@ -402,22 +383,21 @@ export function makeChatHandler({
         if (team.length) {
           const notes = [], t0 = Date.now();
           for (const k of team) {
-            if (request.signal?.aborted) { teamBack += helperCost; continue; }
-            if (Date.now() - t0 > HELPERS_TIME) { teamBack += helperCost; send({ tm: { k, s: "skip" } }); continue; }
+            if (request.signal?.aborted) continue;
+            if (Date.now() - t0 > HELPERS_TIME) { send({ tm: { k, s: "skip" } }); continue; }
             send({ tm: { k, s: "go" } });
             try {
               const part = await askHelper(k, notes);
               notes.push({ k, text: part });
               send({ tm: { k, s: "ok", ...(kidsOn ? {} : { n: part.slice(0, NOTE_CHARS) }) } });
-            } catch { teamBack += helperCost; send({ tm: { k, s: "fail" } }); }
+            } catch { send({ tm: { k, s: "fail" } }); }
           }
           send({ tm: { k: req.orb, s: "lead" } });
           upstream = request.signal?.aborted ? null : await askLead(notes);
           if (!upstream || !upstream.ok || !upstream.body) {
-            // Nothing to show for it, so every credit comes back
+            // No final answer: only the helpers' real cost is billed
             const err = await upstreamError(upstream);
-            await giveBack();
-            send({ error: err, left: leftAfterRefund() });
+            send({ error: err, usage: await charge() });
             try { controller.close(); } catch {}
             return;
           }
@@ -472,13 +452,8 @@ export function makeChatHandler({
             }
           }
         } catch { failed = failed || "upstream_error"; }
-        let left = paid.left;
-        if (failed && !wroteText) { await giveBack(); left = leftAfterRefund(); }
-        else {
-          // It didn't end up searching, so the web search credits come back. Team parts that failed come back too.
-          const back = (extraWeb && !usage.searches ? extraWeb : 0) + teamBack;
-          if (back && limited) { await giveBack(back); if (left !== null) left += back; }
-        }
+        // What the reply really cost (Opus tokens + web searches), added to any team helpers
+        spent += costCents(live.id, usage);
         if (!failed && kidsOn && held) {
           let label = null;
           try { label = await classify({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl, modelId: checkerId, text: held, kind: "reply" }); } catch {}
@@ -488,9 +463,10 @@ export function makeChatHandler({
         }
         if (!failed && titleP) { const t = await titleP; if (t) send({ title: t }); }
         if (!failed && memP) { const added = await memP; if (added && added.length) send({ mem: added }); }
-        if (failed) send({ error: failed, left });
-        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", left, kids: kidsOn, searched: usage.searches || 0,
-          cost: limited ? cost - (extraWeb && !usage.searches ? extraWeb : 0) - teamBack : null });
+        // Bill it before saying "done", so the page gets the new percentages right away
+        const now = await charge();
+        if (failed) send({ error: failed, usage: now });
+        else send({ done: true, truncated: stop === "max_tokens", refused: stop === "refusal", kids: kidsOn, searched: usage.searches || 0, usage: now });
         try { controller.close(); } catch {}
         // Bookkeeping after the reply is done (never blocks or breaks the chat)
         if (usage.searches) await countSearches(user.uid, usage.searches, day).catch(() => {});

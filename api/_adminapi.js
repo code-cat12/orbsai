@@ -66,7 +66,7 @@ export function makeAdminHandler({ verifyToken, load, saveSettings, dismiss, set
   };
 }
 
-// Thumbs up / down on a reply. Saves the vote, which orb and model, and (only if the person chose to) the reply and a reason.
+// Thumbs up / down on a reply. Saves the vote, which orb, and (only if the person chose to) the reply and a reason.
 export function makeFeedbackHandler({ verifyToken, saveFeedback, now = () => Date.now() }) {
   return async function POST(request) {
     const user = await who(request, verifyToken);
@@ -77,10 +77,9 @@ export function makeFeedbackHandler({ verifyToken, saveFeedback, now = () => Dat
     if (!b || typeof b.key !== "string" || !/^[\w.:-]{1,80}$/.test(b.key)) return json(400, { error: "bad_request" });
     if (!(b.vote === "up" || b.vote === "down" || b.vote === null)) return json(400, { error: "bad_request" });
     if (typeof b.orb !== "string" || !Object.hasOwn(ORBS, b.orb)) return json(400, { error: "bad_request" });
-    if (!Number.isInteger(b.model) || b.model < 0 || b.model > 3) return json(400, { error: "bad_request" });
     const id = createHash("sha256").update(user.uid + "|" + b.key).digest("hex").slice(0, 40);
     if (b.vote === null) { await saveFeedback(id, null); return json(200, { ok: true }); }
-    const doc = { uid: user.uid, orb: b.orb, model: b.model, vote: b.vote, at: now() };
+    const doc = { uid: user.uid, orb: b.orb, vote: b.vote, at: now() };
     if (typeof b.reason === "string" && b.reason.trim()) doc.reason = b.reason.trim().slice(0, 300);
     if (typeof b.tag === "string" && /^[a-z_]{1,20}$/.test(b.tag)) doc.tag = b.tag;
     if (typeof b.reply === "string" && b.reply.trim()) doc.reply = b.reply.slice(0, 4000);

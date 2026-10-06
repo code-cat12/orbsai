@@ -114,7 +114,7 @@ export async function saveFeedback(id, data) {
   if (data === null) await ref.delete(); else await ref.set(data);
 }
 
-// Today's credit count for one person (usage/{uid})
+// What one person has used today and this week (usage/{uid}, in cents)
 export async function getUsage(uid) {
   const snap = await (await admin()).db.doc(`usage/${uid}`).get();
   return snap.exists ? snap.data() : null;

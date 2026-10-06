@@ -1,6 +1,8 @@
 # Orbs website
 
-Nine helper orbs in one chat. People make an account (Google or email + password), their chats save to Firebase, and messages go to Claude through your own server so your API key stays hidden.
+Nine helper orbs in one calm chat. People make an account (Google or email + password), their chats save to Firebase, and messages go to Claude Opus through your own server so your API key stays hidden.
+
+The app opens on **Home**: a time-of-day greeting with a live clock and date, a usage panel, your orbs, Orb Teams, recent chats, and quick-start chips. Typing on Home asks Nebula; tapping an orb starts a chat with it. Chats read like a text thread. The house icon (top left) always goes back Home; search and your account are top right.
 
 ## What each file does
 
@@ -9,12 +11,12 @@ Nine helper orbs in one chat. People make an account (Google or email + password
 | `index.html` | The page and its look | No |
 | `app.js` | Everything you click on | No |
 | `firebase-config.js` | Your Firebase web settings (you paste these in) | No, these are meant to be public |
-| `api/chat.js` | The server part. Checks who's signed in, counts credits, talks to Claude | No (the key is in Vercel, not here) |
+| `api/chat.js` | The server part. Checks who's signed in, checks and bills usage, talks to Claude | No (the key is in Vercel, not here) |
 | `api/_core.js`, `api/_orbs.js` | Server helpers: message checks and each orb's instructions | No |
 | `api/admin.js`, `api/feedback.js` | The admin panel and thumbs up/down | No |
 | `vendor/` | Free libraries for nicer formatting (Markdown, code colors, math) and GSAP for the front page animations. Licenses in `vendor/LICENSES.txt` | No |
 | `vercel.json` | Security settings for the site | No |
-| `package.json` | Tells Vercel to install Firebase's server tools | No |
+| `package.json` | Tells Vercel to install Firebase's server tools. `npm test` runs the usage checks in `tests/` | No |
 | `firestore.rules` | Who can read what in your database (paste into Firebase) | No |
 
 **Never put these in GitHub:** your Claude API key, or the Firebase service account file (`...firebase-adminsdk....json`). They only go in Vercel's Environment Variables.
@@ -41,8 +43,8 @@ Nine helper orbs in one chat. People make an account (Google or email + password
    - `FIREBASE_SERVICE_ACCOUNT`: paste everything from the service account `.json` file
      - If Vercel complains about line breaks, use three one-line variables instead (copy each value from the `.json` file, without the quotes):
        `FIREBASE_PROJECT_ID` (project_id), `FIREBASE_CLIENT_EMAIL` (client_email), `FIREBASE_PRIVATE_KEY` (private_key, the long one starting with `-----BEGIN PRIVATE KEY-----`)
-   - (optional, leave out for unlimited) `DAILY_CREDITS`: credits each person gets per day, like `40`.
-   - (optional, leave out for unlimited) `SITE_DAILY_CREDITS`: total credits for everyone together per day, like `200`.
+   - (optional) `USAGE_BUDGETS`: change the usage budgets (in cents of real Claude cost), like `{"free":{"day":10,"week":30},"plus":{"day":30,"week":90}}`. Leave out to use the defaults below.
+   - (optional) `SITE_DAILY_CENTS`: a cap for everyone together per day, in cents, like `2000` ($20). Leave out for no site-wide cap.
    - `ADMIN_EMAILS`: your email (the one you sign in to Orbs with). Only these emails see the **Admin** button. Separate several with commas.
 9. **Deployments → the newest one → ⋯ → Redeploy**, so Vercel picks up the new variables.
 10. Delete the service account `.json` from your Downloads (or keep it somewhere private).
@@ -54,12 +56,12 @@ Open your site, make an account, click the link in the email (check spam), and s
 
 Set `ADMIN_EMAILS` in Vercel, redeploy, then sign in to Orbs. **Admin** shows up at the bottom of the sidebar. It has:
 - **Overview:** about how much Orbs spent today and this month, messages, web searches, people, and a 14-day chart. (Estimates. The Claude Console has your real bill.)
-- **Settings:** emergency pause, web search on/off and daily search limits, daily credit limits, Kids Mode for everyone. These win over the Vercel variables.
+- **Settings:** emergency pause, web search on/off and daily search limits, usage budgets per plan (daily and weekly, in cents) and a site-wide daily cap, Kids Mode for everyone. These win over the Vercel variables.
 - **Reports**, **Feedback** (thumbs), and **People** (ban or unban accounts).
 
 ## Paid plans (Stripe)
 
-Plans live in `api/_plans.js`: Plus (140 credits/day, 800/week, Chrysalis), Plus Plus (255/day, 1,400/week, Mythos), Plus Plus Plus (625/day, 3,200/week). The weekly cap resets Monday at midnight New York time. Free gets Koa and Lumina with the daily credits set in the admin panel, and a weekly cap of 5 days' worth (50 a day = 250 a week), also resetting Monday.
+Plans live in `api/_plans.js` and their usage budgets in `api/_limits.js`. Everyone gets the same model (Claude Opus); plans differ in how much usage they get, web searches, Orb Teams (Plus and up), and memory (Plus Plus and up). Usage resets every day at midnight New York time and every Monday at midnight New York time.
 
 Vercel variables:
 - `STRIPE_SECRET_KEY`: from Stripe → Developers → API keys (`sk_test_…` while testing, `sk_live_…` for real)
@@ -76,31 +78,34 @@ Turn on the Customer portal (Settings → Billing → Customer portal) so people
 
 ## Orb teams (Plus and up)
 
-Orb Teams is its own tab (Chat | Teams, at the top of the sidebar, and on the home screen on phones), with its own home screen and its own list of team chats. Tap up to 5 orbs (the first one is the lead). In a team chat you can also just say "add Beat", "remove Quill" or "make Pixel the lead" (free, no Claude call).
+Orb Teams is its own tab (Chat | Teams in the sidebar, and a card on Home). Tap up to 5 orbs (the first one is the lead). In a team chat you can also just say "add Beat", "remove Quill" or "make Pixel the lead" (free, no Claude call).
 Each helper does its own part, one after another (each sees a short version of the earlier parts), then the lead gets every part and builds the final answer.
-Cost per run = the lead's normal message + 2 for the build + each helper at the model's cost (Lumina 3, no effort multiplier). Example: Pixel + Abyss, Quill, Beat on Lumina = 3 + 2 + 3×3 = 14.
-It's charged all at once, so it has to fit today's and this week's credits. Runs over 20 credits ask first. A helper that fails gives its credits back, and if the lead fails everything comes back. The logic is in `api/_core.js`.
+A team run uses more usage because every helper is a real Claude call: the helpers' and the lead's real cost are added up and billed together after the run. The logic is in `api/_core.js`.
 
 ## Web search
 
 Off unless someone taps the globe. Up to 3 searches per message, 5 per person per day, and 100 per day for the whole site (change these in the admin panel). Each search costs about 1 cent. Never used in Kids Mode.
 
-## Credits (off by default)
-Right now chatting is **unlimited**. Your only safety net is the monthly spending limit in the Claude Console, so set one.
-If you ever want limits, add `DAILY_CREDITS` and/or `SITE_DAILY_CREDITS` in Vercel and redeploy. Then each message costs credits:
-Koa 1 · Lumina 3 · Chrysalis 6 · Mythos 10, refilling at midnight New York time. The credit display only shows up when limits are on.
-When your Claude money runs out, people see a "ran out of Claude money" message.
+## Usage (replaces credits)
 
-| Orb model | Claude family | Started on |
-|---|---|---|
-| Koa | Haiku | Claude Haiku 4.5 (Koa 1.01) |
-| Lumina | Sonnet | Claude Sonnet 5.5 (Lumina 1.02) |
-| Chrysalis | Opus | Claude Opus 5.5 (Chrysalis 1.02) |
-| Mythos | Fable | Claude Fable 5.1 (Mythos 1.02) |
+Every message is measured in what it really cost: Claude Opus input, output, and cache tokens plus web searches (pricing in `api/_price.js`). That cost, in cents, counts against a daily and a weekly budget. People never see money, only a percentage ("34% of today's usage", "12% of this week") and the exact reset time in their own time zone.
 
-**Auto-updating:** about once an hour the server checks which Claude models exist and switches each orb model to the newest one in its family. Every newer release bumps the Orbs version by .01 (1.02, 1.03 … 1.07), and the one after 1.07 starts a new generation at 2.01. The descriptions update by themselves. If Anthropic's list can't be reached, it keeps using the models above.
+| Plan | Daily | Weekly | Most it can cost you per month |
+|---|---|---|---|
+| Free | 10¢ | 30¢ | about $1.30 |
+| Plus ($9.99) | 30¢ | 90¢ | about $3.90 (39% of the price) |
+| Plus Plus ($19.99) | 60¢ | $1.80 | about $7.80 (39%) |
+| Plus Plus Plus ($49.99) | $1.50 | $4.50 | about $19.50 (39%) |
 
-Also set a monthly spending limit in the Claude Console. That's your final safety net.
+That's 3x, 6x, and 15x the free plan. A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
+- Before Claude is called, the server checks there's usage left (it blocks at 100%). After the reply, it bills the real cost in a Firestore transaction on `usage/{uid}` (`day`/`dayCents`, `wkey`/`weekCents`) and adds it to `usage/_site` (today's total for everyone).
+- Budgets: admin panel (config/site) wins, then `USAGE_BUDGETS` in Vercel, then the defaults above. 0 = unlimited.
+- The owner (`ADMIN_EMAILS`) is unlimited. "Test as" in Settings uses that plan's budgets with separate counters.
+- Also set a monthly spending limit in the Claude Console. That's your final safety net.
+
+## Model
+
+Every orb runs on **Claude Opus** (it starts on Claude Opus 5.5 and moves to the newest Opus by itself, about once an hour; see `api/_models.js`). There's no model or effort picker: replies use a fixed `medium` effort, and team helpers use `low`. Small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes) use Claude Haiku and don't count toward anyone's usage.
 
 ## Kids Mode
 - After signing up, everyone answers "How old are you?" once. Under 13 can't use Orbs. 13 to 17 always have Kids Mode on. 18+ can turn it on with a parent PIN (Settings).
@@ -120,4 +125,4 @@ Also set a monthly spending limit in the Claude Console. That's your final safet
 - **Sign-in says the domain isn't allowed:** do step 3.
 - **"The site isn't fully set up yet":** a Vercel variable is missing, or you didn't redeploy (steps 8 and 9).
 - **Google sign-in window is blank:** remove the `Content-Security-Policy` line from `vercel.json` and redeploy, then tell Claude what happened.
-- **Mythos/Fable gives errors:** your API account may not have that model yet. Pick another model.
+- **Opus gives errors:** check that your Claude API account has access to Claude Opus.

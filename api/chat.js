@@ -1,42 +1,31 @@
 // POST /api/chat — the only place your Claude API key is ever used.
 // It runs on Vercel's servers, so the key never reaches anyone's browser.
 import { checkMfa } from "./_mfa.js";
-import { admin, getKids, flag, getConfig, searchesLeft, countSearches, record, getSub, getMemory, addMemory, setupProblem } from "./_admin.js";
+import { admin, getKids, flag, getConfig, getUsage, searchesLeft, countSearches, record, getSub, getMemory, addMemory, setupProblem } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
 
-// Credits live in Firestore under usage/{uid}: today's count (day/used) and this week's or month's (mkey/mused).
-// Browsers can read their own, but only this server can change them.
-async function charge(uid, cost, limits, day) {
+// Usage lives in Firestore under usage/{uid}: what today's messages really cost (day/dayCents) and this week's (wkey/weekCents),
+// in cents. Browsers can read their own, but only this server can change it. usage/_site adds up everyone's for today.
+async function bill(uid, cents, limits) {
   const { db } = await admin();
+  const add = Number.isFinite(cents) && cents > 0 ? Math.round(cents * 1000) / 1000 : 0;
   const userRef = db.doc(`usage/${uid}`), siteRef = db.doc("usage/_site");
   return db.runTransaction(async (tx) => {
     const [u, s] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
-    const used = u.exists && u.get("day") === day ? u.get("used") || 0 : 0;
-    const mused = u.exists && u.get("mkey") === limits.monthKey ? u.get("mused") || 0 : 0;
-    const siteUsed = s.exists && s.get("day") === day ? s.get("used") || 0 : 0;
-    const left = Math.max(0, Math.min(limits.perUser - used, limits.month - mused));
-    if (used + cost > limits.perUser) return { ok: false, reason: "limit_reached", left };
-    if (mused + cost > limits.month) return { ok: false, reason: limits.period === "week" ? "week_limit" : "month_limit", left };
-    if (siteUsed + cost > limits.site) return { ok: false, reason: "site_busy", left };
-    tx.set(userRef, { day, used: used + cost, limit: limits.perUser, mkey: limits.monthKey || null, mused: mused + cost });
-    tx.set(siteRef, { day, used: siteUsed + cost, limit: limits.site });
-    return { ok: true, left: left - cost };
+    const d = u.exists ? u.data() : {};
+    const dayCents = (d.day === limits.dayKey ? Number(d.dayCents) || 0 : 0) + add;
+    const weekCents = (d.wkey === limits.weekKey ? Number(d.weekCents) || 0 : 0) + add;
+    const siteCents = (s.exists && s.get("day") === limits.day ? Number(s.get("dayCents")) || 0 : 0) + add;
+    const next = { day: limits.dayKey, dayCents, wkey: limits.weekKey, weekCents, updated: Date.now() };
+    tx.set(userRef, next);
+    tx.set(siteRef, { day: limits.day, dayCents: siteCents });
+    return next;
   });
 }
-
-async function refund(uid, cost, day, monthKey) {
+async function siteUsed(day) {
   const { db } = await admin();
-  const userRef = db.doc(`usage/${uid}`), siteRef = db.doc("usage/_site");
-  await db.runTransaction(async (tx) => {
-    const [u, s] = await Promise.all([tx.get(userRef), tx.get(siteRef)]);
-    if (u.exists) {
-      const upd = {};
-      if (u.get("day") === day) upd.used = Math.max(0, (u.get("used") || 0) - cost);
-      if (monthKey && u.get("mkey") === monthKey) upd.mused = Math.max(0, (u.get("mused") || 0) - cost);
-      if (Object.keys(upd).length) tx.update(userRef, upd);
-    }
-    if (s.exists && s.get("day") === day) tx.update(siteRef, { used: Math.max(0, (s.get("used") || 0) - cost) });
-  });
+  const s = await db.doc("usage/_site").get();
+  return s.exists && s.get("day") === day ? Number(s.get("dayCents")) || 0 : 0;
 }
 
 const handler = makeChatHandler({
@@ -45,8 +34,9 @@ const handler = makeChatHandler({
     try { a = await admin(); } catch (e) { const err = new Error("setup"); err.setup = setupProblem(e); throw err; }
     return checkMfa(await a.auth.verifyIdToken(token));
   },
-  charge,
-  refund,
+  getUsage,
+  bill,
+  siteUsed,
   getKids,
   flag,
   getConfig,

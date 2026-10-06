@@ -3,8 +3,8 @@
 //  - 13 to 17: Kids Mode is on and locked (nobody can turn it off).
 //  - 18+: Kids Mode is optional, and turning it off needs the PIN that was set when it was turned on.
 import { scryptSync, randomBytes, timingSafeEqual } from "node:crypto";
-import { allowance, creditsLeftFor, publicPlan, testSub } from "./_plans.js";
-import { isAdmin } from "./_limits.js";
+import { allowance, publicPlan, testSub } from "./_plans.js";
+import { isAdmin, usageState, publicUsage } from "./_limits.js";
 
 const MAX_FAILS = 5, LOCK_MS = 15 * 60 * 1000;
 
@@ -45,16 +45,16 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
     const env = cfg && cfg.kidsForAll === true ? { ...baseEnv, KIDS_MODE: "all" } : baseEnv;
 
     if (action === "status") {
-      // Today's credits, so the page can show them before the first message
-      // ...plus their plan and what it unlocks
+      // Their plan and how much of today's and this week's usage is gone (percentages only), so the page can show it before the first message
       let sub = null; try { sub = await getSub(user.uid); } catch {}
       const owner = isAdmin(user, env), viewAs = owner ? (k.viewAs || "owner") : null;
       const a = allowance({ sub, cfg, env, user, viewAs });
       const shownSub = owner && viewAs !== "owner" ? testSub(viewAs) : sub;
-      let credits = null;
-      if (a.perUser > 0) { try { credits = creditsLeftFor(await getUsage(user.uid), a); } catch { credits = { limit: a.perUser, left: a.perUser }; } }
-      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, credits,
-        plan: publicPlan(shownSub), models: a.models, billing: !!env.STRIPE_SECRET_KEY, owner, viewAs, memory: a.memory && !publicState(k, env).on });
+      const limits = { day: a.day, week: a.week, dayKey: a.dayKey, weekKey: a.weekKey };
+      let doc = null; try { doc = await getUsage(user.uid); } catch {}
+      const usage = publicUsage(usageState(doc, limits, now()));
+      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, usage,
+        plan: publicPlan(shownSub), billing: !!env.STRIPE_SECRET_KEY, owner, viewAs, memory: a.memory && !publicState(k, env).on });
     }
 
     if (action === "age") {

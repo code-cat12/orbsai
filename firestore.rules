@@ -10,7 +10,7 @@ service cloud.firestore {
                          // Two-step sign-in: if it's on, this session must have passed it
                          && (!('mfa' in request.auth.token) || request.auth.token.auth_time in request.auth.token.mfa);
     }
-    // Daily credits: people can see their own count, but only the server can change it.
+    // Usage (what today's and this week's messages cost): people can read their own, but only the server can change it.
     match /usage/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;

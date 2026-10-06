@@ -1,22 +1,14 @@
-// Paid plans (Stripe) and what each one gets. Free uses the admin panel / Vercel numbers.
-import { creditLimits, isAdmin, ADMIN_CREDITS, dayKey } from "./_limits.js";
+// Paid plans (Stripe) and what each one gets. Usage budgets live in _limits.js (admin panel / Vercel can change them).
+import { budgets, isAdmin, dayKey, weekKey } from "./_limits.js";
+export { weekKey };
 
+// "more" = how much usage compared to free (just for the page copy; the real numbers are the budgets)
 export const PLANS = {
-  plus:         { name: "Plus",           daily: 140, week: 800,  searches: 10, models: [0, 1, 2] },
-  plusplus:     { name: "Plus Plus",      daily: 255, week: 1400, searches: 25, models: [0, 1, 2, 3], memory: true },
-  plusplusplus: { name: "Plus Plus Plus", daily: 625, week: 3200, searches: 50, models: [0, 1, 2, 3], memory: true },
+  plus:         { name: "Plus",           searches: 10 },
+  plusplus:     { name: "Plus Plus",      searches: 25, memory: true },
+  plusplusplus: { name: "Plus Plus Plus", searches: 50, memory: true },
 };
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
-export const FREE_MODELS = [0, 1];       // Koa and Lumina
-export const FREE_WEEK_DAYS = 5;         // free weekly cap = 5 days' worth (50 a day -> 250 a week), resets Monday like paid plans
-export const ADMIN_WEEK = 99999999;      // the owner's weekly limit (so the weekly bar shows)
-
-// The Monday (New York time) that starts this week, e.g. "2026-10-05". Weekly credits come back then.
-export function weekKey(now = Date.now()) {
-  const d = new Date(dayKey(new Date(now)) + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return d.toISOString().slice(0, 10);
-}
 
 // Stripe price IDs (test mode / sandbox, fake money)
 const TEST_PRICES = {
@@ -51,46 +43,28 @@ export function activePlan(sub, now = Date.now(), env = process.env) {
   if (sub.periodEnd && now > sub.periodEnd * 1000 + 3 * 864e5) return null;
   return sub.plan;
 }
-// The cheapest plan that unlocks a model
-export function planFor(model) { return PLAN_ORDER.find((p) => PLANS[p].models.includes(model)) || "plusplus"; }
-
-// Everything one person is allowed: credits per day and per week (free and paid), web searches, models.
-// perUser/month of 0 = unlimited. "month" and "monthKey" hold the longer cap whatever its period is ("week" for paid plans, "month" for free).
-// The owner can pretend to be on any plan to test it ("viewAs": free, plus, plusplus, plusplusplus; "owner" = normal)
+// Everything one person is allowed: daily and weekly usage budgets (in cents), web searches, memory.
+// A budget of 0 = unlimited. The owner can pretend to be on any plan to test it ("viewAs": free, plus, plusplus, plusplusplus; "owner" = normal)
 export const VIEW_AS = ["owner", "free", "plus", "plusplus", "plusplusplus"];
 export function testSub(viewAs) {
   return PLANS[viewAs] ? { plan: viewAs, interval: "month", status: "active", periodStart: "test-" + viewAs, periodEnd: null, test: true } : null;
 }
 export function allowance({ sub, cfg, env, user, now = Date.now(), viewAs = null }) {
-  let admin = isAdmin(user, env);
-  if (admin && viewAs && viewAs !== "owner" && VIEW_AS.includes(viewAs)) { admin = false; sub = testSub(viewAs); }
+  let admin = isAdmin(user, env), testing = null;
+  if (admin && viewAs && viewAs !== "owner" && VIEW_AS.includes(viewAs)) { admin = false; testing = viewAs; sub = testSub(viewAs); }
   const plan = activePlan(sub, now);
-  const free = creditLimits(cfg, env);
-  let perUser, month, monthKey, period = "month", searches, models, memory = false;
-  if (plan) {
-    const p = PLANS[plan];
-    perUser = p.daily; month = p.week; period = "week"; monthKey = "w" + weekKey(now) + (sub.test ? sub.periodStart : ""); searches = p.searches; models = p.models; memory = !!p.memory;
-    // If free people have no credit limit right now, paying people shouldn't have one either
-    if (!(free.perUser > 0)) { perUser = 0; month = 0; }
-    // Paying people never get less than free people
-    else if (free.perUser > perUser) { perUser = free.perUser; month = Math.max(month, free.perUser * FREE_WEEK_DAYS); }   // never less than free
-  } else {
-    perUser = free.perUser; month = perUser > 0 ? perUser * FREE_WEEK_DAYS : 0; period = "week"; monthKey = "w" + weekKey(now);
-    searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5; models = FREE_MODELS;
-  }
-  // The owner gets everything: every model, 99,999 credits a day, 99,999,999 a week, and lots of web searches
-  if (admin) { if (perUser > 0) perUser = Math.max(perUser, ADMIN_CREDITS); month = ADMIN_WEEK; period = "week"; monthKey = "w" + weekKey(now); models = [0, 1, 2, 3]; searches = Math.max(searches, 1000); memory = true; }
-  return { admin, plan, perUser, month, monthKey, period, site: free.site, searches, models, memory };
-}
-// What's left today and this week/month (null when there's no limit)
-export function creditsLeftFor(usageDoc, a, day = dayKey()) {
-  if (!(a.perUser > 0)) return null;
-  const used = usageDoc && usageDoc.day === day ? usageDoc.used || 0 : 0;
-  const mused = usageDoc && usageDoc.mkey === a.monthKey ? usageDoc.mused || 0 : 0;
-  const dayLeft = Math.max(0, a.perUser - used);
-  const out = { limit: a.perUser, left: dayLeft };
-  if (a.month > 0) { out.period = a.period || "month"; out.monthLimit = a.month; out.monthLeft = Math.max(0, a.month - mused); out.left = Math.min(dayLeft, out.monthLeft); }
-  return out;
+  const b = budgets(cfg, env);
+  const tier = plan || "free";
+  let day = b[tier].day, week = b[tier].week, searches, memory = false;
+  if (plan) { searches = PLANS[plan].searches; memory = !!PLANS[plan].memory; }
+  else searches = cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5;
+  // Paying people never get less than free people
+  if (plan) { if (b.free.day === 0 || (day > 0 && b.free.day > day)) day = b.free.day; if (b.free.week === 0 || (week > 0 && b.free.week > week)) week = b.free.week; }
+  // The owner is effectively unlimited (still counted, so the admin panel's spending numbers stay right)
+  if (admin) { day = 0; week = 0; searches = Math.max(searches, 1000); memory = true; }
+  // Testing a plan uses its own counters so it doesn't mix with the owner's real usage
+  const tag = testing ? ":test-" + testing : "";
+  return { admin, plan, tier, day, week, site: b.site, searches, memory, dayKey: dayKey(new Date(now)) + tag, weekKey: "w" + weekKey(now) + tag };
 }
 // The part of the subscription the page is allowed to see
 export function publicPlan(sub, now = Date.now()) {
