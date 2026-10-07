@@ -1,5 +1,5 @@
 // Pictures from the web: when someone asks to see pictures of something, real ones are looked up first
-// (Google Images or Brave API when a key is set in Vercel, otherwise free Bing results, then Openverse and Wikimedia Commons) and handed to the orb, which shows the best ones.
+// (Google Images or Brave API when a key is set in Vercel, otherwise free Wikipedia, Openverse and Wikimedia Commons) and handed to the orb, which shows the best ones.
 const WORDS = "(?:pictures?|pics?|images?|photos?|photographs?)";
 const NUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, couple: 2, few: 3 };
 // What they want pictures of, and how many, or null when they're not asking for pictures
@@ -63,20 +63,6 @@ async function webImages(q, { fetchImpl, env, ms }) {
       return (j?.results || []).map((x) => ({ url: okUrl(x.thumbnail?.src) ? x.thumbnail.src : x.properties?.url, title: clean(x.title) || q, page: x.url }))
         .filter((x) => okUrl(x.url)).map((x) => ({ ...x, page: okUrl(x.page) ? x.page : x.url }));
     }
-    // Free, no key: Bing's public image results page (unofficial, so it can change; set FREE_WEB_IMAGES=off to disable)
-    if (env.FREE_WEB_IMAGES !== "off") {
-      const r = await fetchImpl(`https://www.bing.com/images/async?q=${encodeURIComponent(q)}&first=0&count=12&adlt=strict&mmasync=1`, { signal: ac.signal,
-        headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "accept-language": "en-US" } });
-      const html = r.ok ? await r.text() : "";
-      const out = [];
-      for (const m of html.matchAll(/\bm="(\{[^"]*\})"/g)) {
-        try {
-          const j = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
-          if (okUrl(j.murl)) out.push({ url: j.murl, title: clean(j.t) || q, page: okUrl(j.purl) ? j.purl : j.murl });
-        } catch {}
-      }
-      return out.filter((x) => goodSource(x.page) && goodSource(x.url));
-    }
   } catch {} finally { clearTimeout(t); }
   return [];
 }
@@ -104,10 +90,15 @@ export async function findImages(q, { fetchImpl = fetch, env = {}, max = 6, ms =
   const enc = encodeURIComponent(q);
   const web = (await webImages(q, { fetchImpl, env, ms })).filter((x) => goodSource(x.page) && goodSource(x.url));
   if (web.length >= 3) return web.slice(0, max);
-  const [ov, wm] = await Promise.all([
+  const [ov, wm, wp] = await Promise.all([
     timed(fetchImpl, `https://api.openverse.org/v1/images/?q=${enc}&page_size=8&mature=false`, ms),
     timed(fetchImpl, `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrsearch=${enc}%20filetype:bitmap&gsrlimit=6&prop=imageinfo&iiprop=url|mime&iiurlwidth=960`, ms),
+    // Wikipedia: the main picture of the articles that best match
+    timed(fetchImpl, `https://en.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch=${enc}&gsrlimit=6&prop=pageimages|info&inprop=url&piprop=thumbnail&pithumbsize=960`, ms),
   ]);
+  const w = Object.values(wp?.query?.pages || {}).sort((x, y) => (x.index || 0) - (y.index || 0))
+    .filter((p) => okUrl(p.thumbnail?.source) && !/\.svg/i.test(p.thumbnail.source) && (p.thumbnail.width || 0) >= 300)
+    .map((p) => ({ url: p.thumbnail.source, title: clean(p.title) || q, page: okUrl(p.fullurl) ? p.fullurl : p.thumbnail.source }));
   const a = (ov?.results || []).filter((r) => okUrl(r.url) && (!r.width || r.width >= 400))
     .map((r) => ({ url: r.url, title: clean(r.title) || q, page: okUrl(r.foreign_landing_url) ? r.foreign_landing_url : r.url }));
   const b = Object.values(wm?.query?.pages || {}).sort((x, y) => (x.index || 0) - (y.index || 0))
@@ -116,8 +107,8 @@ export async function findImages(q, { fetchImpl = fetch, env = {}, max = 6, ms =
     .map((p) => ({ url: p.info.thumburl, title: clean(p.title) || q, page: okUrl(p.info.descriptionurl) ? p.info.descriptionurl : p.info.thumburl }));
   // Take turns from each source so one bad source doesn't fill the list
   const out = web.slice(0, max), seen = new Set(out.map((r) => r.url));
-  for (let i = 0; out.length < max && (i < a.length || i < b.length); i++) {
-    for (const r of [a[i], b[i]]) if (r && !seen.has(r.url) && out.length < max) { seen.add(r.url); out.push(r); }
+  for (let i = 0; out.length < max && (i < a.length || i < b.length || i < w.length); i++) {
+    for (const r of [w[i], a[i], b[i]]) if (r && !seen.has(r.url) && out.length < max) { seen.add(r.url); out.push(r); }
   }
   return out;
 }
