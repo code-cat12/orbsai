@@ -1908,9 +1908,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet", "About 5x the messages of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "About 4x the messages of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "About 13x the messages of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet", "5.1x the usage of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
+  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "7.6x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "27.1x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
