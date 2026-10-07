@@ -90,14 +90,16 @@ Off unless someone taps the globe. Up to 3 searches per message, 5 per person pe
 
 Every message is measured in what it really cost: Claude Opus input, output, and cache tokens plus web searches (pricing in `api/_price.js`). That cost, in cents, counts against a daily and a weekly budget. People never see money, only a percentage ("34% of today's usage", "12% of this week") and the exact reset time in their own time zone.
 
-| Plan | Daily | Weekly | Most it can cost you per month |
-|---|---|---|---|
-| Free | 10¢ | 30¢ | about $1.30 |
-| Plus ($9.99) | 17.5¢ | 52.5¢ | about $2.28 (23% of the price) |
-| Plus Plus ($19.99) | 35¢ | $1.05 | about $4.55 (23%) |
-| Plus Plus Plus ($49.99) | 62.5¢ | $1.875 | about $8.13 (16%) |
+| Plan | Model | Daily | Weekly | Most it can cost you per month |
+|---|---|---|---|---|
+| Free | Sonnet | 15¢ | 85¢ | about $3.68 |
+| Plus ($9.99) | Sonnet | 65¢ | $4.30 | about $18.63 |
+| Plus Plus ($19.99) | Opus | $1.00 | $6.50 | about $28.17 |
+| Plus Plus Plus ($49.99) | Opus | $3.50 | $23.00 | about $99.67 |
 
-That's exactly 1.75x, 3.5x, and 6.25x the free plan (`PLAN_MULTIPLIER` in `api/_limits.js`). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
+The worst case is above the plan price on every paid plan, so this relies on most people using far less than their full budget.
+
+Defaults are set per plan in `DEFAULT_BUDGETS` (`api/_limits.js`): Free 15¢/85¢, Plus 65¢/$4.30, Plus Plus $1/$6.50, Plus Plus Plus $3.50/$23 (day/week). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
 - Before Claude is called, the server checks there's usage left (it blocks at 100%). After the reply, it bills the real cost in a Firestore transaction on `usage/{uid}` (`day`/`dayCents`, `wkey`/`weekCents`) and adds it to `usage/_site` (today's total for everyone).
 - Budgets: admin panel (config/site) wins, then `USAGE_BUDGETS` in Vercel (e.g. `{"plus":{"day":17.5,"week":52.5}}`), then the defaults above. 0 = unlimited. Decimals are allowed.
 - The owner (`ADMIN_EMAILS`) is unlimited. "Test as" in Settings uses that plan's budgets with separate counters.

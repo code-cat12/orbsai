@@ -1,7 +1,7 @@
 // Quick checks for the usage math and the chat flow. Run: npm test
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dayKey, weekKey, nyMidnight, resetTimes, budgets, usageState, usageBlock, publicUsage, DEFAULT_BUDGETS, PLAN_MULTIPLIER } from "../api/_limits.js";
+import { dayKey, weekKey, nyMidnight, resetTimes, budgets, usageState, usageBlock, publicUsage, DEFAULT_BUDGETS } from "../api/_limits.js";
 import { allowance } from "../api/_plans.js";
 import { costCents } from "../api/_price.js";
 import { makeChatHandler, cleanRequest, siteConfig } from "../api/_core.js";
@@ -31,18 +31,13 @@ test("budgets: admin panel beats Vercel beats defaults; 0 = unlimited", () => {
   assert.equal(budgets({ freeDayCents: 0 }, {}).free.day, 0);
   assert.equal(budgets(null, { USAGE_BUDGETS: "not json" }).free.day, DEFAULT_BUDGETS.free.day);
 });
-test("plans stay profitable: a month of full weekly use is under 40% of the price", () => {
-  const price = { plus: 999, plusplus: 1999, plusplusplus: 4999 };
-  for (const [p, cents] of Object.entries(price)) assert.ok(DEFAULT_BUDGETS[p].week * 52 / 12 <= cents * 0.4, p);
-});
-test("paid plans are exact multiples of Free (fractional cents)", () => {
-  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 10, week: 30 });
-  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 17.5, week: 52.5 });          // 1.75x
-  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 35, week: 105 });         // 3.5x
-  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 62.5, week: 187.5 }); // 6.25x
-  for (const [t, m] of Object.entries(PLAN_MULTIPLIER)) {
-    assert.equal(DEFAULT_BUDGETS[t].day, DEFAULT_BUDGETS.free.day * m, t);
-    assert.equal(DEFAULT_BUDGETS[t].week, DEFAULT_BUDGETS.free.week * m, t);
+test("default budgets are the owner's numbers, and paid plans never get less than Free", () => {
+  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 15, week: 85 });
+  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 65, week: 430 });
+  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 100, week: 650 });
+  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 350, week: 2300 });
+  for (const t of ["plus", "plusplus", "plusplusplus"]) {
+    assert.ok(DEFAULT_BUDGETS[t].day >= DEFAULT_BUDGETS.free.day && DEFAULT_BUDGETS[t].week >= DEFAULT_BUDGETS.free.week, t);
   }
   // Fractional budgets survive the admin panel, USAGE_BUDGETS and siteConfig
   assert.deepEqual(budgets(null, { USAGE_BUDGETS: JSON.stringify({ plus: { day: 17.5, week: "52.5" } }) }).plus, { day: 17.5, week: 52.5 });
@@ -56,14 +51,14 @@ test("paid plans are exact multiples of Free (fractional cents)", () => {
 test("allowance: free, paid, owner and owner testing a plan", () => {
   const env = { ADMIN_EMAILS: "boss@x.com" };
   const free = allowance({ sub: null, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(free.tier, "free"); assert.equal(free.day, 10); assert.equal(free.week, 30);
+  assert.equal(free.tier, "free"); assert.equal(free.day, 15); assert.equal(free.week, 85);
   const sub = { plan: "plusplus", status: "active", periodEnd: null };
   const pp = allowance({ sub, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(pp.day, 35); assert.equal(pp.week, 105); assert.ok(pp.memory);
+  assert.equal(pp.day, 100); assert.equal(pp.week, 650); assert.ok(pp.memory);
   const owner = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true } });
   assert.equal(owner.day, 0); assert.equal(owner.week, 0); assert.ok(owner.admin);
   const t = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true }, viewAs: "plus" });
-  assert.equal(t.admin, false); assert.equal(t.day, 17.5); assert.match(t.dayKey, /:test-plus$/);
+  assert.equal(t.admin, false); assert.equal(t.day, 65); assert.match(t.dayKey, /:test-plus$/);
 });
 test("usage percentages and blocking at 100%", () => {
   const now = Date.parse("2026-10-06T21:47:00Z");
@@ -136,7 +131,7 @@ test("chat: Free gets Sonnet with a fixed effort (client model/effort ignored), 
   // 2000 in x $2/M + 500 out x $10/M = 0.4 + 0.5 = 0.9 cents
   assert.ok(Math.abs(billed[0] - 0.9) < 1e-9);
   const done = out.find((o) => o.done);
-  assert.equal(done.usage.dayPct, 9); assert.equal(done.usage.weekPct, 3);
+  assert.equal(done.usage.dayPct, 6); assert.equal(done.usage.weekPct, 1.1);
 });
 test("chat: plan picks the model (Plus = Sonnet, Plus Plus and up = Opus)", async () => {
   const sub = (plan) => async () => ({ plan, status: "active", interval: "month", periodEnd: null });
@@ -151,7 +146,7 @@ test("chat: plan picks the model (Plus = Sonnet, Plus Plus and up = Opus)", asyn
 });
 test("chat: blocked at 100% before Claude is called", async () => {
   const calls = [];
-  const h = makeChatHandler(base({ fetchImpl: fakeFetch(calls), getUsage: async () => ({ day: dayKey(), dayCents: 10, wkey: "w" + weekKey(), weekCents: 10 }) }));
+  const h = makeChatHandler(base({ fetchImpl: fakeFetch(calls), getUsage: async () => ({ day: dayKey(), dayCents: 15, wkey: "w" + weekKey(), weekCents: 15 }) }));
   const res = await h(req({ orb: "neb", messages: [{ role: "user", content: "hi" }] }));
   assert.equal(res.status, 429);
   const j = await res.json();

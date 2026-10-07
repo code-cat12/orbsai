@@ -38,19 +38,21 @@ export function resetTimes(now = Date.now()) {
 }
 
 // ---------- Budgets (in cents of real Claude cost) ----------
-// Paid plans are exact multiples of Free, and each stays profitable even if someone uses every bit of it every week:
-// a full month of the weekly budget (about 4.33 weeks) is under 40% of the plan price.
+// Set by the owner (2026-10-07). Free and Plus run on Sonnet, Plus Plus and up on Opus (about 2x Sonnet's cost per message).
 // Budgets can have fractions of a cent (kept to 0.1 cent); usage itself is stored as a float (0.001 cent).
-//   Free:                    10¢ a day,   30¢ a week                          (1x)
-//   Plus ($9.99):          17.5¢ a day, 52.5¢ a week  -> max ~$2.28 a month  (1.75x free)
-//   Plus Plus ($19.99):      35¢ a day,  $1.05 a week -> max ~$4.55 a month  (3.5x free)
-//   Plus Plus Plus ($49.99): 62.5¢ a day, $1.875 a week -> max ~$8.13 a month (6.25x free)
-export const FREE_BUDGET = { day: 10, week: 30 };
-export const PLAN_MULTIPLIER = { free: 1, plus: 1.75, plusplus: 3.5, plusplusplus: 6.25 };
-// Round to a tenth of a cent so 1.75 x 10 is exactly 17.5 (no 17.499999 float noise)
+//   Free:                    15¢ a day,   85¢ a week
+//   Plus ($9.99):            65¢ a day,  $4.30 a week   (about 5x Free's messages)
+//   Plus Plus ($19.99):     $1.00 a day,  $6.50 a week  (about 4x Free's messages, on Opus)
+//   Plus Plus Plus ($49.99): $3.50 a day, $23.00 a week (about 13x Free's messages, on Opus)
+// Worst case (someone using the full weekly budget every week, ~4.33 weeks a month) costs more than the plan price on
+// every paid plan; this relies on most people using far less. Check the admin panel's spending numbers.
 export const tenths = (v) => Math.round(Number(v) * 10) / 10;
-export const DEFAULT_BUDGETS = Object.fromEntries(Object.entries(PLAN_MULTIPLIER).map(([t, m]) =>
-  [t, { day: tenths(FREE_BUDGET.day * m), week: tenths(FREE_BUDGET.week * m) }]));
+export const DEFAULT_BUDGETS = {
+  free:         { day: 15,  week: 85 },
+  plus:         { day: 65,  week: 430 },
+  plusplus:     { day: 100, week: 650 },
+  plusplusplus: { day: 350, week: 2300 },
+};
 export const TIERS = Object.keys(DEFAULT_BUDGETS);
 export const DEFAULT_SITE_CENTS = 0; // all of Orbs together per day; 0 = no site-wide cap
 
