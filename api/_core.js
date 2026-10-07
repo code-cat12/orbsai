@@ -3,7 +3,7 @@
 //       -> bill what the reply really cost against today's and this week's usage.
 import { createHash } from "node:crypto";
 import { ORBS, CHAT, HELPER, inSeason, activeOrder } from "./_orbs.js";
-import { latestModels, HAIKU, OPUS } from "./_models.js";
+import { latestModels, HAIKU, modelForTier } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
 import { costCents, familyOf } from "./_price.js";
@@ -245,7 +245,7 @@ export function makeChatHandler({
       if (used >= allow.site) return json(429, { error: "site_busy", usage: publicUsage(before) });
     }
     const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
-    const live = allModels[OPUS];               // every reply is written by the newest Claude Opus
+    const live = allModels[modelForTier(allow.tier, allow.admin)]; // Free/Plus: newest Sonnet; Plus Plus and up: newest Opus
     const checkerId = allModels[HAIKU].id;      // Haiku does the quick background checks (never billed to the person)
     const logFlag = (info) => flag(user.uid, { orb: req.orb, ...info }).catch(() => {});
     let extraRules = "";

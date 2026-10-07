@@ -95,7 +95,7 @@ function sse(events) { return events.map((e) => "data: " + JSON.stringify(e) + "
 function fakeFetch(calls) {
   return async (url, opts) => {
     calls.push({ url, body: opts && opts.body ? JSON.parse(opts.body) : null });
-    if (String(url).includes("/v1/models")) return new Response(JSON.stringify({ data: [{ id: "claude-opus-5-5" }, { id: "claude-haiku-4-5-20251001" }] }), { status: 200 });
+    if (String(url).includes("/v1/models")) return new Response(JSON.stringify({ data: [{ id: "claude-opus-5-5" }, { id: "claude-sonnet-5-5" }, { id: "claude-haiku-4-5-20251001" }] }), { status: 200 });
     const body = sse([
       { type: "message_start", message: { usage: { input_tokens: 2000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } },
       { type: "content_block_start", index: 0, content_block: { type: "text" } },
@@ -115,24 +115,39 @@ const base = (over = {}) => ({
   getKids: async () => ({ age: "adult" }), getConfig: async () => null, getSub: async () => null, env, ...over,
 });
 
-test("chat: always Opus with a fixed effort, bills the real cost after the reply", async () => {
-  const calls = [], billed = [];
+function billedHandler(calls, billed, over = {}) {
   let doc = null;
-  const h = makeChatHandler(base({
+  return makeChatHandler(base({
     fetchImpl: fakeFetch(calls),
     getUsage: async () => doc,
     bill: async (uid, cents, limits) => { billed.push(cents); doc = { day: limits.dayKey, dayCents: cents, wkey: limits.weekKey, weekCents: cents }; return doc; },
+    ...over,
   }));
-  const res = await h(req({ orb: "neb", model: 0, effort: 4, messages: [{ role: "user", content: "hi" }] }));
+}
+test("chat: Free gets Sonnet with a fixed effort (client model/effort ignored), billed at real cost", async () => {
+  const calls = [], billed = [];
+  const h = billedHandler(calls, billed);
+  const res = await h(req({ orb: "neb", model: 3, effort: 4, messages: [{ role: "user", content: "hi" }] }));
   assert.equal(res.status, 200);
   const out = await lines(res);
   const msg = calls.find((c) => c.url.endsWith("/v1/messages") && c.body.stream);
-  assert.equal(msg.body.model, "claude-opus-5-5");
+  assert.equal(msg.body.model, "claude-sonnet-5-5");
   assert.equal(msg.body.output_config.effort, "medium");
-  // 2000 in x $4/M + 500 out x $20/M = 0.8 + 1.0 = 1.8 cents
-  assert.ok(Math.abs(billed[0] - 1.8) < 1e-9);
+  // 2000 in x $2/M + 500 out x $10/M = 0.4 + 0.5 = 0.9 cents
+  assert.ok(Math.abs(billed[0] - 0.9) < 1e-9);
   const done = out.find((o) => o.done);
-  assert.equal(done.usage.dayPct, 18); assert.equal(done.usage.weekPct, 6);
+  assert.equal(done.usage.dayPct, 9); assert.equal(done.usage.weekPct, 3);
+});
+test("chat: plan picks the model (Plus = Sonnet, Plus Plus and up = Opus)", async () => {
+  const sub = (plan) => async () => ({ plan, status: "active", interval: "month", periodEnd: null });
+  for (const [plan, model, cents] of [["plus", "claude-sonnet-5-5", 0.9], ["plusplus", "claude-opus-5-5", 1.8], ["plusplusplus", "claude-opus-5-5", 1.8]]) {
+    const calls = [], billed = [];
+    const h = billedHandler(calls, billed, { getSub: sub(plan) });
+    const res = await h(req({ orb: "neb", messages: [{ role: "user", content: "hi" }] }));
+    assert.equal(res.status, 200, plan); await lines(res);
+    assert.equal(calls.find((c) => c.url.endsWith("/v1/messages") && c.body.stream).body.model, model, plan);
+    assert.ok(Math.abs(billed[0] - cents) < 1e-9, plan);
+  }
 });
 test("chat: blocked at 100% before Claude is called", async () => {
   const calls = [];

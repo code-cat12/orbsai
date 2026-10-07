@@ -61,7 +61,7 @@ Set `ADMIN_EMAILS` in Vercel, redeploy, then sign in to Orbs. **Admin** shows up
 
 ## Paid plans (Stripe)
 
-Plans live in `api/_plans.js` and their usage budgets in `api/_limits.js`. Everyone gets the same model (Claude Opus); plans differ in how much usage they get, web searches, Orb Teams (Plus and up), and memory (Plus Plus and up). Usage resets every day at midnight New York time and every Monday at midnight New York time.
+Plans live in `api/_plans.js` and their usage budgets in `api/_limits.js`. Free and Plus run on Claude Sonnet, Plus Plus and Plus Plus Plus on Claude Opus (`TIER_MODEL` in `api/_models.js`); plans differ in how much usage they get, web searches, Orb Teams (Plus and up), and memory (Plus Plus and up). Usage resets every day at midnight New York time and every Monday at midnight New York time.
 
 Vercel variables:
 - `STRIPE_SECRET_KEY`: from Stripe → Developers → API keys (`sk_test_…` while testing, `sk_live_…` for real)
@@ -105,7 +105,7 @@ That's exactly 1.75x, 3.5x, and 6.25x the free plan (`PLAN_MULTIPLIER` in `api/_
 
 ## Model
 
-Every orb runs on **Claude Opus** (it starts on Claude Opus 5.5 and moves to the newest Opus by itself, about once an hour; see `api/_models.js`). There's no model or effort picker: replies use a fixed `medium` effort, and team helpers use `low`. Small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes) use Claude Haiku and don't count toward anyone's usage.
+Replies use **Claude Sonnet** on Free and Plus and **Claude Opus** on Plus Plus and up, owner included (each starts on 5.5 and moves to the newest version by itself, about once an hour; see `api/_models.js`). There's no model or effort picker: replies use a fixed `medium` effort, and team helpers use `low`. Small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes) use Claude Haiku and don't count toward anyone's usage.
 
 ## Kids Mode
 - After signing up, everyone answers "How old are you?" once. Under 13 can't use Orbs. 13 to 17 always have Kids Mode on. 18+ can turn it on with a parent PIN (Settings).
