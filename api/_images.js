@@ -42,6 +42,20 @@ async function webImages(q, { fetchImpl, env, ms }) {
       return (j?.results || []).map((x) => ({ url: okUrl(x.thumbnail?.src) ? x.thumbnail.src : x.properties?.url, title: clean(x.title) || q, page: x.url }))
         .filter((x) => okUrl(x.url)).map((x) => ({ ...x, page: okUrl(x.page) ? x.page : x.url }));
     }
+    // Free, no key: Bing's public image results page (unofficial, so it can change; set FREE_WEB_IMAGES=off to disable)
+    if (env.FREE_WEB_IMAGES !== "off") {
+      const r = await fetchImpl(`https://www.bing.com/images/async?q=${encodeURIComponent(q)}&first=0&count=12&adlt=strict&mmasync=1`, { signal: ac.signal,
+        headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "accept-language": "en-US" } });
+      const html = r.ok ? await r.text() : "";
+      const out = [];
+      for (const m of html.matchAll(/\bm="(\{[^"]*\})"/g)) {
+        try {
+          const j = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+          if (okUrl(j.murl)) out.push({ url: j.murl, title: clean(j.t) || q, page: okUrl(j.purl) ? j.purl : j.murl });
+        } catch {}
+      }
+      return out;
+    }
   } catch {} finally { clearTimeout(t); }
   return [];
 }
