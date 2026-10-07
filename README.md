@@ -93,11 +93,11 @@ Every message is measured in what it really cost: Claude Opus input, output, and
 | Plan | Model | Daily | Weekly | About messages a day |
 |---|---|---|---|---|
 | Free | Sonnet | 24¢ | $1.50 | 12 |
-| Light ($9.99) | Sonnet | 90¢ | $5.70 | 45 |
-| Pro ($19.99) | Opus | $4 | $25.20 | 100 |
-| Max ($49.99) | Opus | $11 | $69.20 | 275 |
+| Light ($9.99) | Sonnet | 90¢ | $6 | 45 |
+| Pro ($19.99) | Opus | $4 | $22.50 | 100 |
+| Max ($49.99) | Opus | $11 | $75 | 275 |
 
-Weekly is 10% less than 7 full days. A heavy user can cost more than their plan; the owner chose this on purpose.
+Weekly budgets are 4x, 15x and 50x Free's. A heavy user can cost more than their plan; the owner chose this on purpose.
 
 Defaults are set per plan in `DEFAULT_BUDGETS` (`api/_limits.js`): Free 15¢/85¢, Light 65¢/$4.30, Pro $1/$6.50, Max $3.50/$23 (day/week). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
 - Before Claude is called, the server checks there's usage left (it blocks at 100%). After the reply, it bills the real cost in a Firestore transaction on `usage/{uid}` (`day`/`dayCents`, `wkey`/`weekCents`) and adds it to `usage/_site` (today's total for everyone).
