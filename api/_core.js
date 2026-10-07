@@ -280,7 +280,7 @@ export function makeChatHandler({
     let picRules = "", picSrc = [];
     const picAsk = !kidsOn && cfg.webSearch !== false ? imageAsk(req.turns[req.turns.length - 1].content) : null;
     if (picAsk) {
-      const found = await findImages(picAsk.q, { fetchImpl }).catch(() => []);
+      const found = await findImages(picAsk.q, { fetchImpl, env }).catch(() => []);
       picRules = imageRules(picAsk, found);
       picSrc = found.slice(0, 4).map((r) => ({ u: r.page.slice(0, 500), t: r.title.slice(0, 200) }));
     }
