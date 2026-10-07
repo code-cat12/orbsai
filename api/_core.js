@@ -126,7 +126,8 @@ export const FORMAT =
   "For math, use LaTeX inside \\( \\) for inline math and $$ $$ for big equations (never single $ signs, so prices stay plain).";
 export const WEB_RULES =
   "You can search the web. Only search when the question needs fresh or current info (news, prices, scores, recent releases). " +
-  "Search as few times as you can, and mention which sites the info came from.";
+  "Search as few times as you can, and mention which sites the info came from. " +
+  "If a search result gives a direct link to a picture (a .jpg, .png, .webp or .gif address) that would really help, you can show up to 4 with Markdown like ![short description](https://...). Never make up a picture address.";
 
 // Site switches the owner can change in the admin panel (config/site in Firestore)
 // Usage budgets (cents of real Claude cost, see _limits.js): null = use Vercel's USAGE_BUDGETS / the built-in defaults, 0 = unlimited.

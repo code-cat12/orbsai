@@ -122,6 +122,13 @@ function splitOptions(text){
   return { body: String(text || ""), options: [] };
 }
 marked.use({ gfm: true, breaks: true });
+// Pictures in a reply (![alt](https://...)) aren't loaded while the reply streams in: they become a placeholder
+// that enhance() turns into floating 3D picture cards once the reply is finished. Never in Kids Mode.
+marked.use({ renderer: { image(tok, title, txt) {
+  const href = typeof tok === "object" && tok ? tok.href : tok, alt = typeof tok === "object" && tok ? tok.text : txt;
+  if (kids.on || !/^https:\/\/[^\s"'<>]+$/i.test(String(href || ""))) return esc(alt || "");
+  return `<span data-img="${esc(href)}" data-alt="${esc(String(alt || "").slice(0, 200))}"></span>`;
+} } });
 DOMPurify.addHook("afterSanitizeAttributes", node => {
   if (node.tagName === "A") { node.setAttribute("target", "_blank"); node.setAttribute("rel", "noopener noreferrer nofollow"); }
 });
@@ -153,7 +160,45 @@ function loadKatex(){
     const sc = document.createElement("script"); sc.src = "/vendor/katex/katex.min.js"; sc.onload = () => ok(window.katex); sc.onerror = no; document.head.appendChild(sc);
   });
 }
+// Pictures: each group (up to 4) sits on a soft gradient stage as tilted, floating glass cards. Tap one to open it.
+const MAX_STAGE = 4;
+function pictureStages(root, final){
+  const spans = [...root.querySelectorAll("span[data-img]")];
+  if (!spans.length) return;
+  const card = (sp) => {
+    const src = sp.dataset.img, alt = sp.dataset.alt || "";
+    const fig = el("figure", "imgcard" + (final ? "" : " loading"));
+    if (!final || !/^https:\/\//i.test(src)) return fig;
+    const a = document.createElement("a"); a.href = src; a.target = "_blank"; a.rel = "noopener noreferrer nofollow"; a.setAttribute("aria-label", alt ? "Open picture: " + alt : "Open picture");
+    const img = document.createElement("img"); img.src = src; img.alt = alt; img.loading = "lazy"; img.decoding = "async"; img.referrerPolicy = "no-referrer";
+    img.addEventListener("error", () => { const st = fig.parentNode; fig.remove(); if (st && !st.querySelector(".imgcard")) st.remove(); else if (st) st.dataset.n = st.children.length; });
+    img.addEventListener("load", () => fig.classList.add("in"));
+    a.append(img); fig.append(a);
+    if (alt) fig.append(el("figcaption", null, alt));
+    return fig;
+  };
+  // Group the pictures by the paragraph (or list item) they're in, then put each group on stages right after it
+  const groups = new Map();
+  for (const sp of spans) {
+    const block = sp.closest("p, li, td, th, h1, h2, h3, h4, blockquote");
+    if (block && block.matches("td, th")) { sp.replaceWith(document.createTextNode(sp.dataset.alt || "")); continue; }
+    const key = block || sp;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(sp);
+  }
+  for (const [block, list] of groups) {
+    let anchor = block, st = null;
+    for (const sp of list) {
+      if (!st || st.children.length >= MAX_STAGE) { st = el("div", "imgstage"); anchor.after(st); anchor = st; }
+      st.append(card(sp)); st.dataset.n = st.children.length;
+      if (sp !== block) sp.remove();
+    }
+    if (block.matches && block.matches("span[data-img]")) block.remove();
+    else if (!block.textContent.trim() && !block.querySelector("img, code, .math")) block.remove();
+  }
+}
 function enhance(root, final){
+  pictureStages(root, final);
   for (const t of root.querySelectorAll("table")) if (!t.parentNode.classList.contains("tablewrap")) { const w = document.createElement("div"); w.className = "tablewrap"; t.replaceWith(w); w.appendChild(t); }
   for (const pre of root.querySelectorAll("pre")) {
     const code = pre.querySelector("code"); if (!code) continue;

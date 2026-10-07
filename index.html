@@ -1085,6 +1085,30 @@ textarea{font:400 1rem/1.5 var(--body);min-height:26px}
 .msg pre[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;left:13px;font:500 .7rem var(--body);letter-spacing:.04em;text-transform:uppercase;color:#8b8a93}
 .tablewrap{margin:.6em -6px;border:1px solid var(--line);border-radius:14px;overflow:auto;background:var(--panel)}
 .tablewrap table{margin:0;border:0}
+/* Pictures in replies: tilted, floating glass cards on a soft gradient stage */
+.imgstage{position:relative;display:flex;justify-content:center;align-items:center;gap:0;margin:.8em -6px;padding:34px 18px 40px;min-height:180px;border-radius:24px;overflow:hidden;perspective:1100px;
+  background:radial-gradient(120% 90% at 20% 0%,rgba(122,200,255,.55),transparent 60%),radial-gradient(90% 80% at 100% 100%,rgba(184,150,255,.45),transparent 60%),linear-gradient(160deg,#cfe6fb,#e7e0fb 60%,#f6e6f2);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
+.imgcard{position:relative;margin:0;flex:0 1 auto;width:min(72%,340px);border-radius:18px;overflow:hidden;
+  background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  box-shadow:0 28px 50px -18px rgba(25,40,80,.45),0 8px 18px -10px rgba(25,40,80,.3),inset 0 0 0 1px rgba(255,255,255,.7);
+  transform-style:preserve-3d;transform:rotateY(-16deg) rotateX(7deg) rotateZ(-2.5deg);opacity:0;
+  transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s,box-shadow .5s;animation:imgfloat 7s ease-in-out infinite}
+.imgcard.in,.imgcard.loading{opacity:1}
+.imgstage[data-n="2"] .imgcard{width:min(54%,300px)}.imgstage[data-n="3"] .imgcard{width:min(42%,260px)}.imgstage[data-n="4"] .imgcard{width:min(36%,230px)}
+.imgcard+.imgcard{margin-left:-9%}
+.imgcard:nth-child(1){z-index:4}.imgcard:nth-child(2){z-index:3;transform:rotateY(16deg) rotateX(6deg) rotateZ(2.5deg) translateY(26px);animation-delay:-2.3s}
+.imgcard:nth-child(3){z-index:2;transform:rotateY(-12deg) rotateX(5deg) rotateZ(-4deg) translateY(-14px);animation-delay:-4.1s}
+.imgcard:nth-child(4){z-index:1;transform:rotateY(14deg) rotateX(7deg) rotateZ(3deg) translateY(18px);animation-delay:-5.6s}
+.imgcard:hover,.imgcard:focus-within{z-index:9;transform:none;box-shadow:0 34px 60px -18px rgba(25,40,80,.5),inset 0 0 0 1px rgba(255,255,255,.8);animation-play-state:paused}
+.imgcard a{display:block}
+.imgcard img{display:block;width:100%;height:auto;max-height:340px;object-fit:cover;background:rgba(255,255,255,.4)}
+.imgcard figcaption{padding:8px 12px 10px;font-size:.78rem;line-height:1.3;color:#2b3550;background:rgba(255,255,255,.55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imgcard.loading{height:180px;background:linear-gradient(110deg,rgba(255,255,255,.45) 30%,rgba(255,255,255,.85) 50%,rgba(255,255,255,.45) 70%) 0 0/250% 100%;animation:imgshine 1.4s linear infinite}
+@keyframes imgfloat{0%,100%{translate:0 0}50%{translate:0 -8px}}
+@keyframes imgshine{to{background-position:-250% 0}}
+@media (max-width:560px){.imgstage{padding:26px 10px 32px}.imgcard{width:min(80%,300px)}.imgcard+.imgcard{margin-left:-22%}}
+@media (prefers-reduced-motion:reduce){.imgcard{animation:none}}
 .msg table th,.msg table td{border:0;border-bottom:1px solid var(--line2);padding:8px 12px;text-align:left}
 .msg table th{background:var(--me);font-weight:600;font-size:.86rem}
 .msg table tr:last-child td{border-bottom:0}
