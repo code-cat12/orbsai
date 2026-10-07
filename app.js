@@ -2054,6 +2054,13 @@ function myPlanId(){ const p = kids.plan; return p ? p.id : kids.owner ? "pluspl
 function nextPlanId(){ const i = PLAN_ICON_IDS.indexOf(myPlanId()); return PLAN_ICON_IDS[Math.min(i + 1, 3)]; }
 // Sale: code WELCOME7 = 7% off the first payment of Light and Pro until Nov 1, 2026 11:59 PM EDT (typed at Stripe checkout)
 const PROMO_UNTIL = Date.parse("2026-11-02T03:59:59Z"), PROMO_PLANS = ["plus", "plusplus"];
+// The little WELCOME7 tag on plan cards: "WELCOME7 · 7% off" on top, "First payment · ends Nov 1" under it
+function dealTag(){
+  const d = el("div", "pdeal"), top = el("b");
+  top.append(el("span", "pdcode", "WELCOME7"), " · ", el("span", "nw", "7% off"));
+  d.append(top, el("small", null, "1st payment · ends Nov\u00a01"));
+  return d;
+}
 const promoOn = id => Date.now() < PROMO_UNTIL && (!id || PROMO_PLANS.includes(id));
 // Popups after sign-in, one after another: Halloween first, then the sale
 let popupQ = [];
@@ -2082,7 +2089,7 @@ const PLAN_INFO = [
   const card = (name, color, price, sub, perks, pop, id) => {
     const c = el("div", "pcard" + (pop ? " pop" : "")); c.style.setProperty("--pc", color);
     const pr = el("div", "price", price); if (sub) pr.append(el("small", null, sub));
-    const deal = id && promoOn(id) ? el("div", "pdeal", "Code WELCOME7: 7% off first payment · ends Nov 1") : null;
+    const deal = id && promoOn(id) ? dealTag() : null;
     const ul = el("ul"); perks.forEach(t => ul.append(el("li", null, t)));
     const b = el("button", "gbtn", "Get started"); b.type = "button"; b.onclick = () => setAuthMode("up");
     const h = el("h3"); h.append(planIcon(id || "free", 40), el("span", null, name));
@@ -2146,7 +2153,7 @@ function renderPlans(){
     else { b.textContent = "Upgrade"; b.onclick = () => billing({ action:"checkout", plan: pl.id, interval: planInterval }, b, $("planMsg")); }
     const h = el("h3"); h.append(planIcon(pl.id, 40), el("span", null, pl.name));
     c.append(h, price);
-    if (promoOn(pl.id) && !cur) c.append(el("div", "pdeal", "Code WELCOME7: 7% off first payment · ends Nov 1"));
+    if (promoOn(pl.id) && !cur) c.append(dealTag());
     c.append(ul, b); grid.append(c);
   }
 }
