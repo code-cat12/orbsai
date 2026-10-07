@@ -92,10 +92,10 @@ Every message is measured in what it really cost: Claude Opus input, output, and
 
 | Plan | Model | Daily | Weekly | About messages a day |
 |---|---|---|---|---|
-| Free | Sonnet | 24¢ | $1.512 | 12 |
-| Light ($9.99) | Sonnet | 90¢ | $5.67 | 45 |
+| Free | Sonnet | 24¢ | $1.50 | 12 |
+| Light ($9.99) | Sonnet | 90¢ | $5.70 | 45 |
 | Pro ($19.99) | Opus | $4 | $25.20 | 100 |
-| Max ($49.99) | Opus | $11 | $69.30 | 275 |
+| Max ($49.99) | Opus | $11 | $69.20 | 275 |
 
 Weekly is 10% less than 7 full days. A heavy user can cost more than their plan; the owner chose this on purpose.
 
