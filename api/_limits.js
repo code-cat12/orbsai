@@ -38,20 +38,20 @@ export function resetTimes(now = Date.now()) {
 }
 
 // ---------- Budgets (in cents of real Claude cost) ----------
-// Set by the owner (2026-10-07). Free and Light run on Sonnet, Pro and up on Opus (about 2x Sonnet's cost per message).
+// Set by the owner (2026-10-07): about 12 / 45 / 100 / 275 typical messages a day (Sonnet ~2¢ a reply, Opus ~4¢),
+// and each week is 10% less than 7 full days. Free and Light run on Sonnet, Pro and Max on Opus.
+// The owner chose these knowing a heavy user can cost more than their plan; Orbs is a passion project.
 // Budgets can have fractions of a cent (kept to 0.1 cent); usage itself is stored as a float (0.001 cent).
-//   Free:                    15¢ a day,   85¢ a week
-//   Light ($9.99):            65¢ a day,  $4.30 a week   (5.1x Free's weekly budget)
-//   Pro ($19.99):     $1.00 a day,  $6.50 a week  (7.6x)
-//   Max ($49.99): $3.50 a day, $23.00 a week (27.1x)
-// Worst case (someone using the full weekly budget every week, ~4.33 weeks a month) costs more than the plan price on
-// every paid plan; this relies on most people using far less. Check the admin panel's spending numbers.
+//   Free:            24¢ a day,  $1.512 a week
+//   Light ($9.99):   90¢ a day,  $5.67 a week   (3.8x Free's weekly budget)
+//   Pro ($19.99):    $4 a day,   $25.20 a week  (16.7x)
+//   Max ($49.99):    $11 a day,  $69.30 a week  (45.8x)
 export const tenths = (v) => Math.round(Number(v) * 10) / 10;
 export const DEFAULT_BUDGETS = {
-  free:         { day: 15,  week: 85 },
-  plus:         { day: 65,  week: 430 },
-  plusplus:     { day: 100, week: 650 },
-  plusplusplus: { day: 350, week: 2300 },
+  free:         { day: 24,   week: 151.2 },
+  plus:         { day: 90,   week: 567 },
+  plusplus:     { day: 400,  week: 2520 },
+  plusplusplus: { day: 1100, week: 6930 },
 };
 export const TIERS = Object.keys(DEFAULT_BUDGETS);
 export const DEFAULT_SITE_CENTS = 0; // all of Orbs together per day; 0 = no site-wide cap

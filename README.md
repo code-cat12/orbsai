@@ -90,14 +90,14 @@ Off unless someone taps the globe. Up to 3 searches per message, 5 per person pe
 
 Every message is measured in what it really cost: Claude Opus input, output, and cache tokens plus web searches (pricing in `api/_price.js`). That cost, in cents, counts against a daily and a weekly budget. People never see money, only a percentage ("34% of today's usage", "12% of this week") and the exact reset time in their own time zone.
 
-| Plan | Model | Daily | Weekly | Most it can cost you per month |
+| Plan | Model | Daily | Weekly | About messages a day |
 |---|---|---|---|---|
-| Free | Sonnet | 15¢ | 85¢ | about $3.68 |
-| Light ($9.99) | Sonnet | 65¢ | $4.30 | about $18.63 |
-| Pro ($19.99) | Opus | $1.00 | $6.50 | about $28.17 |
-| Max ($49.99) | Opus | $3.50 | $23.00 | about $99.67 |
+| Free | Sonnet | 24¢ | $1.512 | 12 |
+| Light ($9.99) | Sonnet | 90¢ | $5.67 | 45 |
+| Pro ($19.99) | Opus | $4 | $25.20 | 100 |
+| Max ($49.99) | Opus | $11 | $69.30 | 275 |
 
-The worst case is above the plan price on every paid plan, so this relies on most people using far less than their full budget.
+Weekly is 10% less than 7 full days. A heavy user can cost more than their plan; the owner chose this on purpose.
 
 Defaults are set per plan in `DEFAULT_BUDGETS` (`api/_limits.js`): Free 15¢/85¢, Light 65¢/$4.30, Pro $1/$6.50, Max $3.50/$23 (day/week). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
 - Before Claude is called, the server checks there's usage left (it blocks at 100%). After the reply, it bills the real cost in a Firestore transaction on `usage/{uid}` (`day`/`dayCents`, `wkey`/`weekCents`) and adds it to `usage/_site` (today's total for everyone).
