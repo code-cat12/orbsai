@@ -1429,7 +1429,9 @@ body{color:var(--ink)}
 
 /* ---------- Home fits the screen: no page scroll on desktop, tablets or phones ---------- */
 html,body{height:100%;overflow:hidden}
-.shell{height:100vh;height:100dvh}
+.shell{height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+/* The page already pads for the notch and home bar, so full-screen parts subtract it instead of running past the bottom */
+.landing,.landing .lv{min-height:0;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 .app.dashv[data-view="home"]{overflow:hidden;display:flex;flex-direction:column;padding-block:0}
 .app.dashv .dash{flex:1 1 auto;min-height:0;padding-top:clamp(4px,2.2vh,28px);gap:clamp(8px,1.8vh,16px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
 .app.dashv .dash::-webkit-scrollbar{display:none}
