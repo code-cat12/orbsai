@@ -9,7 +9,7 @@ import { publicState } from "./_kids.js";
 import { costCents, familyOf } from "./_price.js";
 import { imageAsk, vagueSubject, findImages, imageRules, shownSources } from "./_images.js";
 // Picture lookups are free, so each person gets a daily cap to stop spam
-export const PICS_PER_DAY = 40;
+export const PICS_PER_DAY = 10;
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
