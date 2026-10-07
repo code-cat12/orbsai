@@ -608,8 +608,22 @@ textarea:disabled{pointer-events:none}
 .ihead{display:flex;align-items:center;gap:8px}.ihead .li{width:1.1em;height:1.1em;color:#9b5cff;flex:none}
 .vspam .li{width:1.05em;height:1.05em;vertical-align:-.18em;margin-right:6px}
 .mrow b .li{width:1.1em;height:1.1em;vertical-align:-.2em;margin-right:6px;color:var(--muted)}
-.pcode{display:flex;align-items:center;justify-content:space-between;gap:10px;border:2px dashed #9b5cff;border-radius:14px;padding:10px 14px;background:color-mix(in srgb,#9b5cff 8%,var(--field))}
-.pcode span{font-family:var(--display);font-weight:600;font-size:1.6rem;letter-spacing:.08em;user-select:all}
+.ticket{--notch:var(--panel,#fff);position:relative;display:flex;align-items:stretch;border-radius:18px;color:#fff;overflow:hidden;
+  background:linear-gradient(120deg,#4f7bff 0%,#9b5cff 52%,#ff5fb8 100%);box-shadow:0 10px 30px rgba(155,92,255,.28);margin:4px 0 6px}
+.ticket::before,.ticket::after{content:"";position:absolute;left:104px;width:20px;height:20px;border-radius:50%;background:var(--notch);transform:translateX(-50%)}
+.ticket::before{top:-10px}.ticket::after{bottom:-10px}
+.tk-l{flex:none;width:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:2px dashed rgba(255,255,255,.55);padding:16px 0}
+.tk-l b{font-family:var(--display);font-weight:500;font-size:2.5rem;line-height:1}
+.tk-l span{font-weight:700;letter-spacing:.24em;font-size:.78rem;margin-top:4px;padding-left:.24em}
+.tk-r{flex:1;min-width:0;padding:14px 16px 16px 20px;display:flex;flex-direction:column;gap:2px}
+.tk-r small{opacity:.85;font-size:.82rem}
+.tk-plans{font-weight:700;font-size:1.08rem;margin-bottom:8px}
+.tk-code{display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:6px 6px 6px 14px}
+.tk-code span{font-weight:800;letter-spacing:.16em;font-size:1.12rem;user-select:all;white-space:nowrap}
+.tk-code button{flex:none;border:0;border-radius:9px;background:#fff;color:#7b3fe4;font:700 .85rem var(--body);padding:7px 14px;cursor:pointer}
+.tk-code button:hover{background:#f3ecff}
+.tk-how{font-size:.95rem;color:var(--muted)}
+@media (max-width:420px){.tk-l{width:84px}.ticket::before,.ticket::after{left:84px}.tk-l b{font-size:2rem}.tk-code span{font-size:1rem;letter-spacing:.1em}}
 .promo .setrow{margin-top:10px}
 .pdeal{font-size:.85rem;font-weight:600;color:var(--pc);background:color-mix(in srgb,var(--pc) 14%,transparent);border-radius:999px;padding:3px 10px;align-self:flex-start}
 /* Halloween orbs */
@@ -1481,6 +1495,14 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
 @media (min-width:901px) and (max-height:850px){.lv-orb{width:min(34vh,340px);height:min(34vh,340px)}}
 @media (max-width:900px){.lv{--lede-max:100%}.lv-orb{width:min(17vh,150px,50vw);height:min(17vh,150px,50vw)}}
 .lv-scene-hero .lv-stats{padding-top:6px}
+
+/* Delete chat (top bar): stays icon-sized and turns red; the "tap again" note pops out underneath so it never covers other icons */
+#delTop{position:relative}
+#delTop.armed{width:36px;padding:0;background:#c4452f;color:#fff}
+#delTop.armed::after{content:"Tap again to delete";position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#c4452f;color:#fff;font:600 .74rem var(--body);padding:5px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.18);pointer-events:none;z-index:20}
+#delTop.armed::before{content:"";position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:#c4452f;z-index:20}
+/* Sidebar rows: hide the pencil while "Delete?" is showing so they don't stack */
+.rrow:has(.delb.armed) .renb{opacity:0!important;pointer-events:none}
 </style>
 </head>
 <body>
@@ -1950,13 +1972,18 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
 </div>
 <div class="modal legal-modal" id="promoModal" hidden>
   <div class="card legal promo" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
-    <div class="mh"><h2 id="promoTitle" class="ihead"><svg class="li" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m15 9-6 6"/><path d="M9 9h.01"/><path d="M15 15h.01"/></svg>7% off a paid plan</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
+    <div class="mh"><h2 id="promoTitle" class="ihead"><svg class="li" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m15 9-6 6"/><path d="M9 9h.01"/><path d="M15 15h.01"/></svg>A little welcome gift</h2><button class="icon-btn" data-close type="button" aria-label="Close">✕</button></div>
     <div class="lbody">
-      <p class="promobig">Get <b>7% off</b> your first payment when you start <b style="color:#4f7bff">Light</b> or <b style="color:#9b5cff">Pro</b>.</p>
-      <p>Use this code at checkout:</p>
-      <div class="pcode"><span id="promoCode">WELCOME7</span><button class="outline small" id="promoCopy" type="button">Copy</button></div>
-      <p>On the Stripe checkout page, tap <b>Add promotion code</b> and type it in. Works on monthly and yearly plans.</p>
-      <p class="fine">Ends November 1 at 11:59 PM EDT. For new subscriptions only, one per person.</p>
+      <div class="ticket">
+        <div class="tk-l"><b>7%</b><span>OFF</span></div>
+        <div class="tk-r">
+          <small>Your first payment on</small>
+          <div class="tk-plans">Light or Pro</div>
+          <div class="tk-code"><span id="promoCode">WELCOME7</span><button type="button" id="promoCopy">Copy</button></div>
+        </div>
+      </div>
+      <p class="tk-how">At Stripe checkout, tap <b>Add promotion code</b> and paste it. Works on monthly and yearly plans.</p>
+      <p class="fine">Ends November 1 at 11:59 PM EDT. New subscriptions only, one per person.</p>
       <div class="setrow"><button class="gbtn" id="promoGo" type="button">See plans</button><button class="outline" data-close type="button">Maybe later</button></div>
     </div>
   </div>
@@ -2066,7 +2093,7 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
                 <section class="faq" aria-label="Questions">
                   <h2>Questions</h2>
                   <details><summary>What is Orbs AI?</summary><p>Orbs AI is an AI chat with nine helpers called orbs. Byte helps with tech, Chef Miso with cooking, Abyss with games and Roblox, Pixel with websites, Quill with stories, Nova with homework, Beat with music, Lingo with languages like English and Chinese, and Nebula with everything else.</p></details>
-                  <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you a little usage every day and every week, on Claude Sonnet. Light, Pro and Max give you 4x, 15x, or 50x the weekly usage of Free, plus more web searches, Orb Teams, and memory.</p></details>
+                  <details><summary>Is Orbs AI free?</summary><p>Yes. The free plan gives you a little usage every day and every week, on Claude Sonnet. Light, Pro and Max give you about 3.5x, 8x, or 20x the weekly usage of Free, plus more web searches, Orb Teams, and memory.</p></details>
                   <details><summary>What AI does Orbs use?</summary><p>Free and Light run on Claude Sonnet. Pro and Max run on Claude Opus, Anthropic's most capable model. Both move to the newest version automatically. Orbs is an independent project, not made by Anthropic.</p></details>
                   <details><summary>Is it safe for kids and teens?</summary><p>Orbs is for ages 13 and up. Teens always use Kids Mode, which gives kid-safe answers, checks every message and reply with an AI safety check, and blocks sharing personal info.</p></details>
                   <details><summary>Can Orbs search the web?</summary><p>Yes. Tap the globe and the orb can look up news, prices, scores, and other fresh info, and it shows the sites it used.</p></details>

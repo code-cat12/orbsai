@@ -32,10 +32,10 @@ test("budgets: admin panel beats Vercel beats defaults; 0 = unlimited", () => {
   assert.equal(budgets(null, { USAGE_BUDGETS: "not json" }).free.day, DEFAULT_BUDGETS.free.day);
 });
 test("default budgets are the owner's numbers, and paid plans never get less than Free", () => {
-  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 24, week: 150 });
-  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 90, week: 600 });
-  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 400, week: 2250 });
-  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 1100, week: 7500 });
+  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 24, week: 100 });
+  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 60, week: 350 });
+  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 200, week: 800 });
+  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 500, week: 2000 });
   for (const t of ["plus", "plusplus", "plusplusplus"]) {
     assert.ok(DEFAULT_BUDGETS[t].day >= DEFAULT_BUDGETS.free.day && DEFAULT_BUDGETS[t].week >= DEFAULT_BUDGETS.free.week, t);
   }
@@ -51,14 +51,14 @@ test("default budgets are the owner's numbers, and paid plans never get less tha
 test("allowance: free, paid, owner and owner testing a plan", () => {
   const env = { ADMIN_EMAILS: "boss@x.com" };
   const free = allowance({ sub: null, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(free.tier, "free"); assert.equal(free.day, 24); assert.equal(free.week, 150);
+  assert.equal(free.tier, "free"); assert.equal(free.day, 24); assert.equal(free.week, 100);
   const sub = { plan: "plusplus", status: "active", periodEnd: null };
   const pp = allowance({ sub, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(pp.day, 400); assert.equal(pp.week, 2250); assert.ok(pp.memory);
+  assert.equal(pp.day, 200); assert.equal(pp.week, 800); assert.ok(pp.memory);
   const owner = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true } });
   assert.equal(owner.day, 0); assert.equal(owner.week, 0); assert.ok(owner.admin);
   const t = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true }, viewAs: "plus" });
-  assert.equal(t.admin, false); assert.equal(t.day, 90); assert.match(t.dayKey, /:test-plus$/);
+  assert.equal(t.admin, false); assert.equal(t.day, 60); assert.match(t.dayKey, /:test-plus$/);
 });
 test("usage percentages and blocking at 100%", () => {
   const now = Date.parse("2026-10-06T21:47:00Z");
@@ -131,7 +131,7 @@ test("chat: Free gets Sonnet with a fixed effort (client model/effort ignored), 
   // 2000 in x $2/M + 500 out x $10/M = 0.4 + 0.5 = 0.9 cents
   assert.ok(Math.abs(billed[0] - 0.9) < 1e-9);
   const done = out.find((o) => o.done);
-  assert.equal(done.usage.dayPct, 3.8); assert.equal(done.usage.weekPct, 0.6);
+  assert.equal(done.usage.dayPct, 3.8); assert.equal(done.usage.weekPct, 0.9);
 });
 test("chat: plan picks the model (Plus = Sonnet, Plus Plus and up = Opus)", async () => {
   const sub = (plan) => async () => ({ plan, status: "active", interval: "month", periodEnd: null });
