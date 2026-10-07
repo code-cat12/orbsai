@@ -1,7 +1,7 @@
 // POST /api/chat — the only place your Claude API key is ever used.
 // It runs on Vercel's servers, so the key never reaches anyone's browser.
 import { checkMfa } from "./_mfa.js";
-import { admin, getKids, flag, getConfig, getUsage, searchesLeft, countSearches, record, getSub, getMemory, addMemory, setupProblem } from "./_admin.js";
+import { admin, getKids, flag, getConfig, getUsage, searchesLeft, countSearches, takePics, record, getSub, getMemory, addMemory, setupProblem } from "./_admin.js";
 import { makeChatHandler } from "./_core.js";
 
 // Usage lives in Firestore under usage/{uid}: what today's messages really cost (day/dayCents) and this week's (wkey/weekCents),
@@ -42,6 +42,7 @@ const handler = makeChatHandler({
   getConfig,
   searchesLeft,
   countSearches,
+  takePics,
   record,
   getSub,
   getMemory,

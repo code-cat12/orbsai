@@ -7,7 +7,9 @@ import { latestModels, HAIKU, modelForTier } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
 import { costCents, familyOf } from "./_price.js";
-import { imageAsk, vagueSubject, findImages, imageRules } from "./_images.js";
+import { imageAsk, vagueSubject, findImages, imageRules, shownSources } from "./_images.js";
+// Picture lookups are free, so each person gets a daily cap to stop spam
+export const PICS_PER_DAY = 40;
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -105,6 +107,7 @@ export async function makeTitle({ apiKey, fetchImpl = fetch, modelId, text }) {
     headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({ model: modelId, max_tokens: 24, messages: [{ role: "user", content:
       "Write a short title (2 to 6 words) for a chat that starts with the message inside <message> tags. " +
+      "Name the subject, not the action (\"Miso soup pictures\", not \"Requesting Image Examples\"); if there is no clear subject, use the helper's topic. " +
       "Use the same language as the message. Reply with only the title: no quotes, no emoji, no period at the end.\n\n" +
       `<message>\n${String(text).slice(0, 2000).replace(/<\/?message>/gi, "")}\n</message>` }] }),
   });
@@ -119,7 +122,9 @@ export const ASK_FIRST =
   "If a request is unclear or missing details you really need to give a good answer, ask one short clarifying question " +
   "instead of guessing. When a few choices would help, put them on the last line exactly like this: " +
   "[options: First choice | Second choice | Third choice] (2 to 4 short options, no other text on that line). " +
-  "Only ask when it truly matters; if the request is clear enough, just answer.";
+  "Only ask when it truly matters; if the request is clear enough, just answer. " +
+  "After a full answer, you may end with that same [options: ...] line holding 2 or 3 short follow-ups that fit your answer, written as the person would say them " +
+  "(for a recipe: \"Make it vegetarian\", \"Halve the recipe\"). Never generic topics, and skip it when no follow-up would really help.";
 
 // Formatting the page can show nicely (tables, code colors, math)
 export const FORMAT =
@@ -194,7 +199,7 @@ export function notesBlock(notes, max = NOTE_CHARS) {
 //       record(day, info) -> spending stats, fetchImpl (for tests), env
 export function makeChatHandler({
   verifyToken, getUsage = async () => null, bill = async () => null, siteUsed = async () => 0, getKids, flag = async () => {}, getConfig = async () => null,
-  searchesLeft = async () => 0, countSearches = async () => {}, record = async () => {}, getSub = async () => null,
+  searchesLeft = async () => 0, countSearches = async () => {}, takePics = async () => true, record = async () => {}, getSub = async () => null,
   getMemory = async () => [], addMemory = async () => [],
   fetchImpl = fetch, env = process.env,
 }) {
@@ -277,13 +282,14 @@ export function makeChatHandler({
     }
 
     // Asking to see pictures of something: look up real ones first (free, not counted as a web search; never in Kids Mode)
-    let picRules = "", picSrc = [];
+    let picRules = "", picFound = [];
     const picAsk = !kidsOn && cfg.webSearch !== false ? imageAsk(req.turns[req.turns.length - 1].content) : null;
     if (picAsk) {
       if (!picAsk.q) picAsk.q = vagueSubject(req.turns, req.orb);
-      const found = await findImages(picAsk.q, { fetchImpl, env }).catch(() => []);
-      picRules = imageRules(picAsk, found);
-      picSrc = found.slice(0, 4).map((r) => ({ u: r.page.slice(0, 500), t: r.title.slice(0, 200) }));
+      let ok = true;
+      try { ok = !!allow.admin || await takePics(user.uid, day, PICS_PER_DAY); } catch { ok = true; }
+      picFound = ok ? await findImages(picAsk.q, { fetchImpl, env }).catch(() => []) : [];
+      picRules = imageRules(picAsk, picFound, !ok);
     }
 
     let spent = 0; // cents, all Claude calls for this message added up
@@ -391,8 +397,10 @@ export function makeChatHandler({
       async start(controller) {
         const send = (o) => { try { controller.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch {} };
         if (searchNote && !picRules) send({ nosearch: searchNote });
-        if (picSrc.length) send({ src: picSrc });
-        const text = (t) => { wroteText = true; if (kidsOn) held += t; else send({ d: t }); };
+        // Spare pictures the page can swap in when one won't load: {pb:[{u: picture, p: page, t: title}]}
+        if (picFound.length) send({ pb: picFound.map((r) => ({ u: r.url.slice(0, 600), p: r.page.slice(0, 500), t: r.title.slice(0, 200) })) });
+        let replyAll = "";
+        const text = (t) => { wroteText = true; replyAll += t; if (kidsOn) held += t; else send({ d: t }); };
         // Orb team: helpers go one by one ({tm:{k, s:"go"|"ok"|"fail"|"skip", n:part}}), then the lead builds the final answer
         if (team.length) {
           const notes = [], t0 = Date.now();
@@ -475,6 +483,7 @@ export function makeChatHandler({
           else if (BLOCKED.has(label)) { failed = "kids_reply_blocked"; logFlag({ type: "reply_blocked", category: label }); }
           else send({ d: held });
         }
+        if (!failed && picFound.length) { const shown = shownSources(picFound, replyAll); if (shown.length) send({ src: shown }); }
         if (!failed && titleP) { const t = await titleP; if (t) send({ title: t }); }
         if (!failed && memP) { const added = await memP; if (added && added.length) send({ mem: added }); }
         // Bill it before saying "done", so the page gets the new percentages right away

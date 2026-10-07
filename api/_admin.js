@@ -97,6 +97,19 @@ export async function countSearches(uid, n, day) {
   });
 }
 
+// ---------- Picture lookups per person per day (pics/{uid}, server only): true when one more is allowed, and counts it ----------
+export async function takePics(uid, day, cap) {
+  const { db } = await admin();
+  const ref = db.doc(`pics/${uid}`);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const used = snap.exists && snap.get("day") === day ? snap.get("used") || 0 : 0;
+    if (used >= cap) return false;
+    tx.set(ref, { day, used: used + 1 });
+    return true;
+  });
+}
+
 // ---------- Spending stats per day (stats/{day}, server only) ----------
 export async function record(day, u) {
   const { db } = await admin();

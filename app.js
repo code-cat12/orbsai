@@ -162,17 +162,28 @@ function loadKatex(){
 }
 // Pictures: each group (up to 4) sits on a soft gradient stage as tilted, floating glass cards. Tap one to open it.
 const MAX_STAGE = 4;
-function pictureStages(root, final){
+// pool = spare pictures from the same search ([{u, p, t}]): a picture that won't load is swapped for an unused one
+function pictureStages(root, final, pool){
   const spans = [...root.querySelectorAll("span[data-img]")];
   if (!spans.length) return;
+  pool = Array.isArray(pool) ? pool : [];
+  const used = new Set(spans.map(sp => sp.dataset.img));
   const card = (sp) => {
-    const src = sp.dataset.img, alt = sp.dataset.alt || "";
-    const fig = el("figure", "imgcard" + (final ? "" : " loading"));
+    let src = sp.dataset.img, alt = sp.dataset.alt || "";
+    const fig = el("figure", "imgcard loading");
     if (!final || !/^https:\/\//i.test(src)) return fig;
     const a = document.createElement("a"); a.href = src; a.target = "_blank"; a.rel = "noopener noreferrer nofollow"; a.setAttribute("aria-label", alt ? "Open picture: " + alt : "Open picture");
-    const img = document.createElement("img"); img.src = src; img.alt = alt; img.loading = "lazy"; img.decoding = "async"; img.referrerPolicy = "no-referrer";
-    img.addEventListener("error", () => { const st = fig.parentNode; fig.remove(); if (st && !st.querySelector(".imgcard")) st.remove(); else if (st) st.dataset.n = st.children.length; });
-    img.addEventListener("load", () => fig.classList.add("in"));
+    const img = document.createElement("img"); img.alt = alt; img.loading = "lazy"; img.decoding = "async"; img.referrerPolicy = "no-referrer";
+    let tries = 0;
+    img.addEventListener("error", () => {
+      const next = tries++ < 3 && pool.find(x => !used.has(x.u));
+      if (next) { used.add(next.u); src = next.u; alt = next.t || alt; img.alt = alt; a.href = src; fig.title = alt; img.src = src; return; }
+      const st = fig.parentNode; fig.remove(); if (st && !st.querySelector(".imgcard")) st.remove(); else if (st) st.dataset.n = st.children.length;
+    });
+    img.addEventListener("load", () => { fig.classList.remove("loading"); fig.classList.add("in"); });
+    // Tap: open it big, with where it came from and "More like this"
+    a.addEventListener("click", e => { if (e.metaKey || e.ctrlKey || e.shiftKey) return; e.preventDefault(); const hit = pool.find(x => x.u === src); openPic(src, alt, hit ? hit.p : src); });
+    img.src = src;
     a.append(img); fig.append(a);
     if (alt) fig.title = alt;
     return fig;
@@ -197,8 +208,25 @@ function pictureStages(root, final){
     else if (!block.textContent.trim() && !block.querySelector("img, code, .math")) block.remove();
   }
 }
-function enhance(root, final){
-  pictureStages(root, final);
+function openPic(src, alt, page){
+  document.querySelector(".lightbox")?.remove();
+  const box = el("div", "lightbox"); box.setAttribute("role", "dialog"); box.setAttribute("aria-modal", "true"); box.setAttribute("aria-label", alt || "Picture");
+  const close = () => { box.remove(); document.removeEventListener("keydown", key); };
+  const key = e => { if (e.key === "Escape") close(); };
+  const x = el("button", "lbx", "×"); x.type = "button"; x.setAttribute("aria-label", "Close"); x.onclick = close;
+  const img = document.createElement("img"); img.src = src; img.alt = alt || ""; img.referrerPolicy = "no-referrer";
+  const bar = el("div", "lbbar");
+  if (alt) bar.append(el("span", "lbcap", alt));
+  const pg = safeUrl(page);
+  if (pg) { const s = el("a", "src", pg.hostname.replace(/^www\./, "")); s.href = pg.href; s.target = "_blank"; s.rel = "noopener noreferrer nofollow"; bar.append(s); }
+  if (alt && !busy) { const more = el("button", "opt", "More like this"); more.type = "button"; more.onclick = () => { close(); send("Show me more pictures of " + alt.slice(0, 80)); }; bar.append(more); }
+  box.append(x, img, bar);
+  box.addEventListener("click", e => { if (e.target === box) close(); });
+  document.addEventListener("keydown", key);
+  document.body.append(box); x.focus();
+}
+function enhance(root, final, pool){
+  pictureStages(root, final, pool);
   // Pictures sit under the reply bubble, not inside it
   if (root.classList.contains("msg")) {
     if (root.nextElementSibling?.classList.contains("imgout")) root.nextElementSibling.remove();
@@ -614,7 +642,7 @@ function bubble(role, turn, idx, isLast){
   }
   col.appendChild(meta);
   row.appendChild(col); log.appendChild(row);
-  if (role !== "user") enhance(m, true);
+  if (role !== "user") enhance(m, true, turn.pb);
   return row;
 }
 // The reply that's being written right now
@@ -870,7 +898,7 @@ async function send(text, regen, filesOverride){
   ctl = new AbortController();
   const ctx = conv.turns.slice(-30).map(t => ({ role:t.role, content:t.content }));
   while (ctx.length && ctx[0].role !== "user") ctx.shift();
-  let reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0, memSaved = [], teamSteps = [], leadAt = null;
+  let picPool = [], reply = "", thinking = "", thinkStart = 0, thinkSecs = 0, queries = [], sources = [], noSearch = null, raf = 0, memSaved = [], teamSteps = [], leadAt = null;
   const paint = () => {
     raf = 0;
     if (thinking) { live.think.hidden = false; live.think.querySelector(".thinktext").innerHTML = md(thinking); }
@@ -885,6 +913,7 @@ async function send(text, regen, filesOverride){
     if (sources.length) o.src = sources.slice(0, 10);
     if (memSaved.length) o.mem = memSaved;
     if (teamSteps.length) o.tn = teamSteps.filter(x => x.s !== "go");
+    if (picPool.length) o.pb = picPool;
     return o;
   };
   try {
@@ -923,6 +952,7 @@ async function send(text, regen, filesOverride){
           else if (typeof ev.t === "string") { if (!thinking) thinkStart = Date.now(); thinking += ev.t; later(); }
           else if (typeof ev.q === "string") { queries.push(ev.q); live.searched.hidden = false; live.searched.textContent = "🔎 Searching the web: " + queries.map(q => "“" + q + "”").join(", "); stickBottom(); }
           else if (Array.isArray(ev.src)) { for (const x of ev.src) if (x && typeof x.u === "string" && sources.length < 10 && !sources.some(y => y.u === x.u)) sources.push({ u: x.u, t: String(x.t || "") }); live.src.replaceChildren(sourcesBox(sources)); }
+          else if (Array.isArray(ev.pb)) picPool = cleanPics(ev.pb);
           else if (typeof ev.nosearch === "string") noSearch = ev.nosearch;
           else if (Array.isArray(ev.mem)) { memSaved = ev.mem.filter(x => typeof x === "string").slice(0, 3); live.src.after(memChip(memSaved)); }
           else if (ev.tm && typeof ev.tm === "object" && typeof ev.tm.k === "string") {
@@ -1344,6 +1374,11 @@ function renderUsage(){
     const r = on ? resetText(at, week) : !u ? "" : kids.owner ? "Unlimited for the owner" : "No limit right now";
     $(set + "More").textContent = r; $(dash + "Reset").textContent = r;
   }
+  // Ring around the profile picture: how much of today's (or this week's, if lower) usage is left
+  const av = $("avBtn"), used = unl ? 0 : Math.max(u.dayLimited ? u.dayPct : 0, u.weekLimited ? u.weekPct : 0), left = Math.max(0, Math.min(100, 100 - used));
+  av.classList.toggle("ring", !unl); av.style.setProperty("--left", left + "%");
+  av.classList.toggle("ringlow", !unl && left <= 25);
+  av.title = unl ? "Account and settings" : `Account and settings (${Math.round(left)}% of your usage left)`;
   $("useDayLbl").textContent = "of today's usage"; $("useWeekLbl").textContent = "of this week";
   const p = kids.plan, testing = kids.owner && kids.viewAs && kids.viewAs !== "owner";
   $("pPlan").replaceChildren(planIcon(myPlanId(), 18), testing ? `Testing ${p ? p.name : "Free"}` : p ? p.name : kids.owner ? "Owner" : "Free");
@@ -1389,6 +1424,7 @@ const FB = "https://www.gstatic.com/firebasejs/12.19.0/";
 let auth = null, db = null, A = null, F = null;
 let lastSent = {}, cloudT = null, loaded = false;
 function fitTurns(t){ t = t.slice(); while (t.length > 2 && JSON.stringify(t).length > 200000) t.shift(); return t; }
+function cleanPics(a){ return (Array.isArray(a) ? a : []).filter(x => x && typeof x.u === "string" && /^https:\/\/[^\s"'<>]+$/i.test(x.u)).slice(0, 8).map(x => ({ u: x.u.slice(0, 600), p: typeof x.p === "string" && /^https?:\/\//i.test(x.p) ? x.p.slice(0, 500) : x.u.slice(0, 600), t: String(x.t || "").slice(0, 200) })); }
 function cleanTurns(v){
   return Array.isArray(v) ? v.filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .map(m => { const o = { role:m.role, content:m.content };
@@ -1402,6 +1438,7 @@ function cleanTurns(v){
         if (Array.isArray(m.q)) o.q = m.q.filter(q => typeof q === "string").slice(0, 5).map(q => q.slice(0, 200));
         if (Array.isArray(m.mem)) o.mem = m.mem.filter(x => typeof x === "string").slice(0, 3).map(x => x.slice(0, 160));
         if (Array.isArray(m.tn)) o.tn = m.tn.filter(x => x && Object.hasOwn(BOTS, x.k) && ["ok","fail","skip"].includes(x.s)).slice(0, 4).map(x => ({ k: x.k, s: x.s, ...(typeof x.n === "string" ? { n: x.n.slice(0, 6000) } : {}) }));
+        if (Array.isArray(m.pb)) { const pb = cleanPics(m.pb); if (pb.length) o.pb = pb; }
         if (Array.isArray(m.src)) o.src = m.src.filter(x => x && typeof x.u === "string" && /^https?:\/\//i.test(x.u)).slice(0, 10).map(x => ({ u: x.u.slice(0, 500), t: String(x.t || "").slice(0, 200) }));
       }
       return o; }) : [];

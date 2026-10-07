@@ -172,3 +172,13 @@ test("vague picture asks use the chat or the orb's topic, never the word 'some'"
   assert.equal(vagueSubject([{ role: "user", content: "show me some images" }], "cook"), "delicious homemade food dishes");
   assert.equal(vagueSubject([{ role: "user", content: "pictures of tacos" }, { role: "assistant", content: "x" }, { role: "user", content: "more pics" }], "cook"), "tacos");
 });
+
+import { goodSource, shownSources } from "../api/_images.js";
+test("spam picture sites are dropped and only shown pictures get source chips", () => {
+  assert.equal(goodSource("https://moyanahodka.ru/x"), false);
+  assert.equal(goodSource("https://www.artofit.org/a"), false);
+  assert.equal(goodSource("https://www.justonecookbook.com/miso-soup/"), true);
+  const found = [{ url: "https://a.com/1.jpg", page: "https://a.com/p", title: "A" }, { url: "https://b.com/2.jpg", page: "https://b.com/p", title: "B" }];
+  assert.deepEqual(shownSources(found, "here ![A](https://a.com/1.jpg) yum"), [{ u: "https://a.com/p", t: "A" }]);
+  assert.deepEqual(shownSources(found, "no pictures"), []);
+});

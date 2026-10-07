@@ -27,6 +27,15 @@ export function vagueSubject(turns, orb) {
   if (last && last.length <= 60 && !imageAsk(last)) return last;
   return ORB_PICS[orb] || "beautiful nature landscapes";
 }
+// Sites that mostly copy other people's pictures (or spam), and endings that are rarely good picture sources for English chats
+const SPAM_HOST = /(^|\.)(artofit\.org|inspiredpencil\.com|hyperchoreography\.org|engames\.eu|yaf2017\.org|moyanahodka\.ru|pinimg\.com|lookaside\.fbsbx\.com|lookaside\.instagram\.com|x\.com|twimg\.com|tiktok\.com|wallpaperaccess\.com|wallpapercave\.com|i\.pinimg\.com)$/i;
+const SPAM_TLD = /\.(ru|su|cn|top|xyz|icu|buzz|cyou|monster|click|rest|bond|sbs|cfd|lol|quest|work|live|kz|by|ua)$/i;
+export function goodSource(u) { try { const h = new URL(u).hostname.replace(/^www\./, ""); return !SPAM_HOST.test(h) && !SPAM_TLD.test(h) && !/\d{3,}/.test(h); } catch { return false; } }
+// Only the pictures the orb really showed get source chips
+export function shownSources(found, reply) {
+  const s = String(reply || ""), seen = new Set();
+  return found.filter((r) => s.includes(r.url)).map((r) => ({ u: r.page.slice(0, 500), t: r.title.slice(0, 200) })).filter((x) => !seen.has(x.u) && seen.add(x.u)).slice(0, 4);
+}
 const okUrl = (u) => typeof u === "string" && /^https:\/\/[^\s"'<>()]+$/.test(u) && u.length < 600;
 const clean = (t) => String(t || "").replace(/^File:/, "").replace(/\.(jpe?g|png|webp|gif)$/i, "").replace(/[_[\]()*`]/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
 
@@ -66,14 +75,14 @@ async function webImages(q, { fetchImpl, env, ms }) {
           if (okUrl(j.murl)) out.push({ url: j.murl, title: clean(j.t) || q, page: okUrl(j.purl) ? j.purl : j.murl });
         } catch {}
       }
-      return out;
+      return out.filter((x) => goodSource(x.page) && goodSource(x.url));
     }
   } catch {} finally { clearTimeout(t); }
   return [];
 }
 export async function findImages(q, { fetchImpl = fetch, env = {}, max = 6, ms = 3500 } = {}) {
   const enc = encodeURIComponent(q);
-  const web = await webImages(q, { fetchImpl, env, ms });
+  const web = (await webImages(q, { fetchImpl, env, ms })).filter((x) => goodSource(x.page) && goodSource(x.url));
   if (web.length >= 3) return web.slice(0, max);
   const [ov, wm] = await Promise.all([
     timed(fetchImpl, `https://api.openverse.org/v1/images/?q=${enc}&page_size=8&mature=false`, ms),
@@ -92,7 +101,8 @@ export async function findImages(q, { fetchImpl = fetch, env = {}, max = 6, ms =
   }
   return out;
 }
-export function imageRules(ask, found) {
+export function imageRules(ask, found, capped = false) {
+  if (capped) return "The person asked to see pictures, but they've reached today's picture limit. Say so kindly in one short line (it resets tomorrow) and answer the rest. Never make up a picture address.";
   if (!found.length) return `The person asked to see pictures of "${ask.q}", but the picture search found nothing this time. Say so in one short line and answer the rest. Never make up a picture address.`;
   return `The person asked to see pictures of "${ask.q}". A picture search found these real ones online:\n` +
     found.map((r, i) => `${i + 1}. ![${r.title}](${r.url})`).join("\n") +
