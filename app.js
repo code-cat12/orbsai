@@ -1147,7 +1147,7 @@ $("hideBtn").onclick = () => { setSide(false); };
 $("openBtn").onclick = () => setSide(true);
 $("scrim").onclick = () => { setSide(false); };
 $("sideNew").onclick = () => { if (busy) return; dropIncog(null); active = null; teamDraft = { lead: null, helpers: [] }; teamOk = null; cur = null; webOn = false; incogNext = false; freshNext = true; status.textContent = ""; box.value = ""; renderHome(); if (mobile()) setSide(false); };
-function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); renderMemSet(); }).catch(() => {}); if (mobile()) setSide(false); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderUsage(); renderKids(); renderThinkSet(); renderMemSet(); }
+function openSet(){ if (user) kidsApi(user, { action:"status" }).then(() => { renderUsage(); renderKids(); renderPlan(); renderMemSet(); }).catch(() => {}); if (mobile()) setSide(false); renderPlan(); $("settings").hidden = false; $("setBtn").setAttribute("aria-expanded", "true"); wipeArmed(false); killArmed(false); $("setMsg").textContent = ""; renderAccount(); renderName(); renderUsage(); renderKids(); renderThinkSet(); renderMemSet(); }
 // ---------- Memory ----------
 function memChip(list){
   const d = el("div", "memchip"); d.append(el("span", null, "📝 Saved to memory: " + list.join(" · ")));
@@ -1409,6 +1409,21 @@ function renderProfile(){
   else { img.hidden = true; av.hidden = false; }
 }
 function renderAccount(){ $("acctTxt").textContent = user ? "Signed in as " + (user.email || "you") : "Not signed in"; }
+function renderName(){ const i = $("nameIn"); if (i && document.activeElement !== i) i.value = user ? (user.displayName || "") : ""; }
+$("nameForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const name = $("nameIn").value.replace(/\s+/g, " ").trim().slice(0, 40), msg = $("nameMsg"), btn = $("nameBtn");
+  if (!user || !auth || !auth.currentUser) { msg.textContent = "Sign in first to change your name."; return; }
+  if (!name) { msg.textContent = "Type a name first."; return; }
+  if (name === (user.displayName || "")) { msg.textContent = "That's already your name."; return; }
+  btn.disabled = true; msg.textContent = "Saving…";
+  try {
+    await A.updateProfile(auth.currentUser, { displayName: name });
+    user = auth.currentUser; renderProfile(); renderAccount(); renderName(); if (app.dataset.view === "home") renderHome();
+    msg.textContent = `Saved. Hi, ${name.split(" ")[0]}!`;
+  } catch { msg.textContent = "Couldn't save that. Check your connection and try again."; }
+  btn.disabled = false;
+};
 $("prof").onclick = openSet;
 $("prof").onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSet(); } };
 
@@ -1739,7 +1754,7 @@ async function enter(u){
   if (kids.banned) { showGate("banned"); return; }
   if (!kids.age) { showGate("age"); return; }
   if (kids.blocked) { showGate("blocked"); return; }
-  pending = null; user = u; renderProfile(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; renderHome();
+  pending = null; user = u; renderProfile(); renderName(); renderUsage(); renderKids(); renderThinkSet(); renderPlan(); renderMfa(); gate.hidden = true; renderHome();
   cloudSave(); // finishes moving any old-style chats
   checkAdmin(); afterBilling(); maybePromo();
 }
