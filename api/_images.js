@@ -1,5 +1,5 @@
 // Pictures from the web: when someone asks to see pictures of something, real ones are looked up first
-// (Google Images or Brave when a key is set in Vercel, otherwise Openverse and Wikimedia Commons, which are free) and handed to the orb, which shows the best ones.
+// (Google Images or Brave API when a key is set in Vercel, otherwise free Brave results, then free Bing results, then Openverse and Wikimedia Commons) and handed to the orb, which shows the best ones.
 const WORDS = "(?:pictures?|pics?|images?|photos?|photographs?)";
 const NUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, couple: 2, few: 3 };
 // What they want pictures of, and how many, or null when they're not asking for pictures
@@ -63,7 +63,12 @@ async function webImages(q, { fetchImpl, env, ms }) {
       return (j?.results || []).map((x) => ({ url: okUrl(x.thumbnail?.src) ? x.thumbnail.src : x.properties?.url, title: clean(x.title) || q, page: x.url }))
         .filter((x) => okUrl(x.url)).map((x) => ({ ...x, page: okUrl(x.page) ? x.page : x.url }));
     }
-    // Free, no key: Bing's public image results page (unofficial, so it can change; set FREE_WEB_IMAGES=off to disable)
+    // Free, no key: Brave's public image results page (unofficial, so it can change). Brave's own copy of each picture loads reliably.
+    if (env.FREE_WEB_IMAGES !== "off") {
+      const brave = await braveFree(q, { fetchImpl, signal: ac.signal });
+      if (brave.length >= 3) return brave;
+    }
+    // Backup, also free: Bing's public image results page (unofficial, so it can change; set FREE_WEB_IMAGES=off to disable)
     if (env.FREE_WEB_IMAGES !== "off") {
       const r = await fetchImpl(`https://www.bing.com/images/async?q=${encodeURIComponent(q)}&first=0&count=12&adlt=strict&mmasync=1`, { signal: ac.signal,
         headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "accept-language": "en-US" } });
@@ -79,6 +84,26 @@ async function webImages(q, { fetchImpl, env, ms }) {
     }
   } catch {} finally { clearTimeout(t); }
   return [];
+}
+const unq = (t) => { try { return JSON.parse(`"${t}"`); } catch { return t; } };
+export function parseBrave(html) {
+  const out = [];
+  const re = /\{title:"((?:[^"\\]|\\.)*)",url:"((?:[^"\\]|\\.)*)"[\s\S]{0,900}?thumbnail:\{src:"((?:[^"\\]|\\.)*)"[^}]{0,400}?original:"((?:[^"\\]|\\.)*)"/g;
+  for (const m of String(html).matchAll(re)) {
+    const page = unq(m[2]), thumb = unq(m[3]), orig = unq(m[4]);
+    const url = okUrl(thumb) ? thumb : orig;
+    if (okUrl(url)) out.push({ url, title: clean(unq(m[1])) || "", page: okUrl(page) ? page : url, orig: okUrl(orig) ? orig : null });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+async function braveFree(q, { fetchImpl, signal }) {
+  try {
+    const r = await fetchImpl(`https://search.brave.com/images?q=${encodeURIComponent(q)}&safesearch=strict`, { signal,
+      headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "accept-language": "en-US" } });
+    const html = r.ok ? await r.text() : "";
+    return parseBrave(html).map((x) => ({ url: x.url, title: x.title || q, page: x.page })).filter((x) => goodSource(x.page));
+  } catch { return []; }
 }
 export async function findImages(q, { fetchImpl = fetch, env = {}, max = 6, ms = 3500 } = {}) {
   const enc = encodeURIComponent(q);

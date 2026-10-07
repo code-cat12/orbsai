@@ -182,3 +182,9 @@ test("spam picture sites are dropped and only shown pictures get source chips", 
   assert.deepEqual(shownSources(found, "here ![A](https://a.com/1.jpg) yum"), [{ u: "https://a.com/p", t: "A" }]);
   assert.deepEqual(shownSources(found, "no pictures"), []);
 });
+
+import { parseBrave } from "../api/_images.js";
+test("free Brave picture results are read from the page", () => {
+  const html = '{title:"Miso soup",url:"https://a.com/miso",x:1,bo_debug:{},source:"a.com",thumbnail:{src:"https://imgs.search.brave.com/abc",alt:null,height:500,width:500,original:"https://a.com/m.jpg",resized:null}}';
+  assert.deepEqual(parseBrave(html), [{ url: "https://imgs.search.brave.com/abc", title: "Miso soup", page: "https://a.com/miso", orig: "https://a.com/m.jpg" }]);
+});
