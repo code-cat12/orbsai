@@ -61,7 +61,7 @@ Set `ADMIN_EMAILS` in Vercel, redeploy, then sign in to Orbs. **Admin** shows up
 
 ## Paid plans (Stripe)
 
-Plans live in `api/_plans.js` and their usage budgets in `api/_limits.js`. Free and Plus run on Claude Sonnet, Plus Plus and Plus Plus Plus on Claude Opus (`TIER_MODEL` in `api/_models.js`); plans differ in how much usage they get, web searches, Orb Teams (Plus and up), and memory (Plus Plus and up). Usage resets every day at midnight New York time and every Monday at midnight New York time.
+Plans live in `api/_plans.js` and their usage budgets in `api/_limits.js`. Free and Light run on Claude Sonnet, Pro and Max on Claude Opus (`TIER_MODEL` in `api/_models.js`); plans differ in how much usage they get, web searches, Orb Teams (Light and up), and memory (Pro and up). Usage resets every day at midnight New York time and every Monday at midnight New York time.
 
 Vercel variables:
 - `STRIPE_SECRET_KEY`: from Stripe → Developers → API keys (`sk_test_…` while testing, `sk_live_…` for real)
@@ -76,7 +76,7 @@ Webhook events: `checkout.session.completed`, `customer.subscription.created/upd
 Turn on the Customer portal (Settings → Billing → Customer portal) so people can cancel or switch plans.
 `/api/health` shows whether the Stripe keys are set and if you're in test or live mode.
 
-## Orb teams (Plus and up)
+## Orb teams (Light and up)
 
 Orb Teams is its own tab (Chat | Teams in the sidebar, and a card on Home). Tap up to 5 orbs (the first one is the lead). In a team chat you can also just say "add Beat", "remove Quill" or "make Pixel the lead" (free, no Claude call).
 Each helper does its own part, one after another (each sees a short version of the earlier parts), then the lead gets every part and builds the final answer.
@@ -93,13 +93,13 @@ Every message is measured in what it really cost: Claude Opus input, output, and
 | Plan | Model | Daily | Weekly | Most it can cost you per month |
 |---|---|---|---|---|
 | Free | Sonnet | 15¢ | 85¢ | about $3.68 |
-| Plus ($9.99) | Sonnet | 65¢ | $4.30 | about $18.63 |
-| Plus Plus ($19.99) | Opus | $1.00 | $6.50 | about $28.17 |
-| Plus Plus Plus ($49.99) | Opus | $3.50 | $23.00 | about $99.67 |
+| Light ($9.99) | Sonnet | 65¢ | $4.30 | about $18.63 |
+| Pro ($19.99) | Opus | $1.00 | $6.50 | about $28.17 |
+| Max ($49.99) | Opus | $3.50 | $23.00 | about $99.67 |
 
 The worst case is above the plan price on every paid plan, so this relies on most people using far less than their full budget.
 
-Defaults are set per plan in `DEFAULT_BUDGETS` (`api/_limits.js`): Free 15¢/85¢, Plus 65¢/$4.30, Plus Plus $1/$6.50, Plus Plus Plus $3.50/$23 (day/week). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
+Defaults are set per plan in `DEFAULT_BUDGETS` (`api/_limits.js`): Free 15¢/85¢, Light 65¢/$4.30, Pro $1/$6.50, Max $3.50/$23 (day/week). Budgets can be fractions of a cent (kept to 0.1¢; usage is stored as a float). A typical Opus message is about 2 to 6 cents, so Free is a few messages a day.
 - Before Claude is called, the server checks there's usage left (it blocks at 100%). After the reply, it bills the real cost in a Firestore transaction on `usage/{uid}` (`day`/`dayCents`, `wkey`/`weekCents`) and adds it to `usage/_site` (today's total for everyone).
 - Budgets: admin panel (config/site) wins, then `USAGE_BUDGETS` in Vercel (e.g. `{"plus":{"day":17.5,"week":52.5}}`), then the defaults above. 0 = unlimited. Decimals are allowed.
 - The owner (`ADMIN_EMAILS`) is unlimited. "Test as" in Settings uses that plan's budgets with separate counters.
@@ -107,7 +107,7 @@ Defaults are set per plan in `DEFAULT_BUDGETS` (`api/_limits.js`): Free 15¢/85�
 
 ## Model
 
-Replies use **Claude Sonnet** on Free and Plus and **Claude Opus** on Plus Plus and up, owner included (each starts on 5.5 and moves to the newest version by itself, about once an hour; see `api/_models.js`). There's no model or effort picker: replies use a fixed `medium` effort, and team helpers use `low`. Small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes) use Claude Haiku and don't count toward anyone's usage.
+Replies use **Claude Sonnet** on Free and Light and **Claude Opus** on Pro and up, owner included (each starts on 5.5 and moves to the newest version by itself, about once an hour; see `api/_models.js`). There's no model or effort picker: replies use a fixed `medium` effort, and team helpers use `low`. Small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes) use Claude Haiku and don't count toward anyone's usage.
 
 ## Kids Mode
 - After signing up, everyone answers "How old are you?" once. Under 13 can't use Orbs. 13 to 17 always have Kids Mode on. 18+ can turn it on with a parent PIN (Settings).

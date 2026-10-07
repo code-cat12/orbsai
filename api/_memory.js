@@ -1,4 +1,4 @@
-// Memory: Orbs remember useful things a person told them, across chats (Plus Plus and up).
+// Memory: Orbs remember useful things a person told them, across chats (Pro and up).
 // Saved in users/{uid}/data/memory as { items: [{ id, text, at }] }. People can see and delete them in Settings.
 export const MAX_ITEMS = 60, MAX_TEXT = 160;
 

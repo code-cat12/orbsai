@@ -4,9 +4,9 @@ export { weekKey };
 
 // "more" = how much usage compared to free (just for the page copy; the real numbers are the budgets)
 export const PLANS = {
-  plus:         { name: "Plus",           searches: 10 },
-  plusplus:     { name: "Plus Plus",      searches: 25, memory: true },
-  plusplusplus: { name: "Plus Plus Plus", searches: 50, memory: true },
+  plus:         { name: "Light",           searches: 10 },
+  plusplus:     { name: "Pro",      searches: 25, memory: true },
+  plusplusplus: { name: "Max", searches: 50, memory: true },
 };
 export const PLAN_ORDER = ["plus", "plusplus", "plusplusplus"];
 

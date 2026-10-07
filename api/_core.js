@@ -156,7 +156,7 @@ export function systemPrompt(orb, seasonMode = "auto") {
     .filter(Boolean).join(" ");
 }
 
-// ---------- Orb teams (Plus and up) ----------
+// ---------- Orb teams (Light and up) ----------
 // The helpers each do their own part, one after another, then the lead orb puts it all together.
 // Usage: every helper call and the lead's reply are billed at what they really cost, all together after the run.
 export const MAX_TEAM = 5;            // orbs in a team, lead included
@@ -225,11 +225,11 @@ export function makeChatHandler({
     if (kids.blocked) return json(403, { error: "blocked_age" });
     const kidsOn = kids.on;
 
-    // What this person's plan allows (free, Plus, Plus Plus, Plus Plus Plus)
+    // What this person's plan allows (free, Light, Pro, Max)
     let sub = null;
     try { sub = await getSub(user.uid); } catch { sub = null; }
     const allow = allowance({ sub, cfg, env, user, viewAs: rawKids && rawKids.viewAs });
-    // Orb teams come with Plus and up
+    // Orb teams come with Light and up
     const team = req.team;
     if (team.length && !allow.plan && !allow.admin) return json(403, { error: "plan_team", need: "plus", needName: PLANS.plus.name });
 
@@ -245,7 +245,7 @@ export function makeChatHandler({
       if (used >= allow.site) return json(429, { error: "site_busy", usage: publicUsage(before) });
     }
     const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
-    const live = allModels[modelForTier(allow.tier, allow.admin)]; // Free/Plus: newest Sonnet; Plus Plus and up: newest Opus
+    const live = allModels[modelForTier(allow.tier, allow.admin)]; // Free/Light: newest Sonnet; Pro and up: newest Opus
     const checkerId = allModels[HAIKU].id;      // Haiku does the quick background checks (never billed to the person)
     const logFlag = (info) => flag(user.uid, { orb: req.orb, ...info }).catch(() => {});
     let extraRules = "";
@@ -280,7 +280,7 @@ export function makeChatHandler({
       catch { return publicUsage(before); }
     };
 
-    // Memory (Plus Plus and up, never in Kids Mode): use what they told Orbs before, and save new things from this message
+    // Memory (Pro and up, never in Kids Mode): use what they told Orbs before, and save new things from this message
     const memOn = req.memory && allow.memory && !kidsOn;
     let memItems = [];
     if (memOn) { try { memItems = await getMemory(user.uid); } catch { memItems = []; } }

@@ -356,9 +356,9 @@ function renderDash(){
   $("dAll").hidden = !rec.length;
   // Orb Teams card
   const allowed = teamAllowed();
-  $("pTeamsTag").textContent = allowed ? "Ready" : "Plus";
+  $("pTeamsTag").textContent = allowed ? "Ready" : "Light";
   $("pTeamsTag").classList.toggle("on", allowed);
-  $("pTeamsGo").textContent = allowed ? "Start a team" : "Unlock with Plus";
+  $("pTeamsGo").textContent = allowed ? "Start a team" : "Unlock with Light";
   const st = $("pTeamsOrbs"); if (!st.childElementCount) for (const k of ["web", "write", "music", "game"]) { const g = el("span", "g"); g.style.setProperty("--c", `var(${BOTS[k].color})`); orbInto(g, k); st.append(g); }
   renderUsage();
 }
@@ -534,7 +534,7 @@ function renderChat(){
 // Incognito chats are never saved and vanish when you leave them
 function dropIncog(keep){ for (const id of Object.keys(convs)) if (convs[id].incog && id !== keep) delete convs[id]; }
 
-// ---------- Orb teams (Plus and up): helpers each do their part, then the lead orb builds the final result ----------
+// ---------- Orb teams (Light and up): helpers each do their part, then the lead orb builds the final result ----------
 const TEAM_MAX = 5;   // max orbs (lead included)
 // The Teams tab (like Chat and Code in the Claude app): its own home screen and its own list of chats
 let teamMode = false, teamDraft = { lead: null, helpers: [] }, teamOk = null, lastChatOrb = null;
@@ -710,7 +710,7 @@ async function send(text, regen, filesOverride){
   }
   const key = active, b = BOTS[key];
   const helpers = teamHelpers(curTeam());
-  if (helpers.length && !teamAllowed()) { status.textContent = "Orb Teams come with Plus and up."; openPlans(); return; }
+  if (helpers.length && !teamAllowed()) { status.textContent = "Orb Teams come with Light and up."; openPlans(); return; }
   // Out of usage: say when it comes back instead of sending (the server checks too)
   const out = usageOut();
   if (out) { limitHit = out; renderUsage(); status.textContent = ""; return; }
@@ -823,7 +823,7 @@ async function send(text, regen, filesOverride){
     tail?.remove();
     if (e && e.text) { conv.turns.push({ role:"assistant", content:e.text, t:Date.now(), ...extras() }); save(); }
     if (code === "cancelled") status.textContent = "Stopped.";
-    else if (code === "plan_team") { status.textContent = "Orb Teams come with Plus and up."; refreshStatus(); openPlans(); }
+    else if (code === "plan_team") { status.textContent = "Orb Teams come with Light and up."; refreshStatus(); openPlans(); }
     else if (code === "usage_day" || code === "usage_week") { limitHit = code === "usage_week" ? "week" : "day"; renderUsage(); status.textContent = ""; }
     else if (code === "refused") status.textContent = "The orb couldn't answer that one. Try asking a different way.";
     else if (code === "kids_personal_info" || code === "kids_blocked" || code === "kids_no_media" || code === "files_too_big") {
@@ -999,9 +999,9 @@ function memChip(list){
 function renderMemSet(){
   const allowed = !!kids.memory, on = allowed && opts.memory !== false;
   $("memSw").setAttribute("aria-checked", String(on)); $("memSw").disabled = !allowed; $("memManage").hidden = !allowed;
-  $("memTxt").textContent = !allowed ? (kids.on ? "Off in Kids Mode" : "🔒 Plus Plus") : on ? "On" : "Off";
+  $("memTxt").textContent = !allowed ? (kids.on ? "Off in Kids Mode" : "🔒 Pro") : on ? "On" : "Off";
   $("memHelp").textContent = allowed ? "Orbs remember things you tell them (like your name, hobbies, and projects) so you don't have to repeat yourself. You can see and delete everything in Manage."
-    : kids.on ? "Memory is turned off in Kids Mode to keep things private." : "Orbs can remember things you tell them across chats. Memory comes with Plus Plus and Plus Plus Plus.";
+    : kids.on ? "Memory is turned off in Kids Mode to keep things private." : "Orbs can remember things you tell them across chats. Memory comes with Pro and Max.";
 }
 $("memSw").onclick = () => { if (!kids.memory) { openPlans(); return; } opts = { ...opts, memory: opts.memory === false }; renderMemSet(); cloudSave(); };
 $("memManage").onclick = () => openMemory();
@@ -1874,8 +1874,8 @@ $("repSend").onclick = () => busyBtn($("repSend"), async () => {
 });
 
 // ---------- Paid plans (Stripe) ----------
-const PLAN_NAMES = { plus:"Plus", plusplus:"Plus Plus", plusplusplus:"Plus Plus Plus" };
-// Plan icons (plans/*.webp, PNG fallback): Free = plain black orb, Plus = 1 dot, Plus Plus = 2, Plus Plus Plus = 3
+const PLAN_NAMES = { plus:"Light", plusplus:"Pro", plusplusplus:"Max" };
+// Plan icons (plans/*.webp, PNG fallback): Free = plain black orb, Light = 1 dot, Pro = 2, Max = 3
 const PLAN_ICON_IDS = ["free", "plus", "plusplus", "plusplusplus"];
 function planIcon(id, px = 24, cls = "picon"){
   id = PLAN_ICON_IDS.includes(id) ? id : "free";
@@ -1888,7 +1888,7 @@ function planIcon(id, px = 24, cls = "picon"){
 // Which icon goes with the account right now (the owner shows the top plan; testing shows the plan being tested)
 function myPlanId(){ const p = kids.plan; return p ? p.id : kids.owner ? "plusplusplus" : "free"; }
 function nextPlanId(){ const i = PLAN_ICON_IDS.indexOf(myPlanId()); return PLAN_ICON_IDS[Math.min(i + 1, 3)]; }
-// Sale: code WELCOME7 = 7% off the first payment of Plus and Plus Plus until Nov 1, 2026 11:59 PM EDT (typed at Stripe checkout)
+// Sale: code WELCOME7 = 7% off the first payment of Light and Pro until Nov 1, 2026 11:59 PM EDT (typed at Stripe checkout)
 const PROMO_UNTIL = Date.parse("2026-11-02T03:59:59Z"), PROMO_PLANS = ["plus", "plusplus"];
 const promoOn = id => Date.now() < PROMO_UNTIL && (!id || PROMO_PLANS.includes(id));
 // Popups after sign-in, one after another: Halloween first, then the sale
@@ -1908,9 +1908,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Plus", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet", "5.1x the usage of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
-  { id:"plusplus", name:"Plus Plus", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "7.6x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Plus Plus Plus", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "27.1x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Light", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet", "5.1x the usage of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
+  { id:"plusplus", name:"Pro", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "7.6x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Max", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "27.1x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
