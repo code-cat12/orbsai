@@ -7,7 +7,7 @@ import { latestModels, HAIKU, modelForTier } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
 import { costCents, familyOf } from "./_price.js";
-import { imageAsk, findImages, imageRules } from "./_images.js";
+import { imageAsk, vagueSubject, findImages, imageRules } from "./_images.js";
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -280,6 +280,7 @@ export function makeChatHandler({
     let picRules = "", picSrc = [];
     const picAsk = !kidsOn && cfg.webSearch !== false ? imageAsk(req.turns[req.turns.length - 1].content) : null;
     if (picAsk) {
+      if (!picAsk.q) picAsk.q = vagueSubject(req.turns, req.orb);
       const found = await findImages(picAsk.q, { fetchImpl, env }).catch(() => []);
       picRules = imageRules(picAsk, found);
       picSrc = found.slice(0, 4).map((r) => ({ u: r.page.slice(0, 500), t: r.title.slice(0, 200) }));

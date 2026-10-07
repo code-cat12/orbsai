@@ -162,6 +162,13 @@ test("chat: site-wide daily cap", async () => {
 import { imageAsk } from "../api/_images.js";
 test("picture requests are spotted, other messages aren't", () => {
   assert.deepEqual(imageAsk("show 2 images of miso soup from the web"), { q: "miso soup", n: 2 });
-  assert.equal(imageAsk("what does a capybara look like?").q, "a capybara");
+  assert.equal(imageAsk("what does a capybara look like?").q, "capybara");
   assert.equal(imageAsk("how do I make miso soup"), null);
+});
+
+import { vagueSubject } from "../api/_images.js";
+test("vague picture asks use the chat or the orb's topic, never the word 'some'", () => {
+  assert.deepEqual(imageAsk("show me some images"), { q: "", n: 2, vague: true });
+  assert.equal(vagueSubject([{ role: "user", content: "show me some images" }], "cook"), "delicious homemade food dishes");
+  assert.equal(vagueSubject([{ role: "user", content: "pictures of tacos" }, { role: "assistant", content: "x" }, { role: "user", content: "more pics" }], "cook"), "tacos");
 });

@@ -9,12 +9,24 @@ export function imageAsk(text) {
   let subject = m && m[2], n = m && m[1] ? (NUM[m[1].toLowerCase()] || parseInt(m[1], 10) || 2) : 2;
   if (!subject) { const w = /\bwhat (?:does|do|did|would)\s+(.{2,60}?)\s+look like\b/i.exec(s); if (w) subject = w[1]; }
   if (!subject) { const x = new RegExp(`\\b(?:show|send|give|find|get)\\s+(?:me\\s+)?(?:some\\s+|a\\s+few\\s+|\\d+\\s+)?([^?!\\n]{2,60}?)\\s+${WORDS}\\b`, "i").exec(s); if (x) subject = x[1]; }
-  if (!subject) return null;
+  if (!subject) { if (new RegExp(`\\b(?:show|send|give|find|get|see)\\b[^?!\\n]{0,30}\\b${WORDS}\\b`, "i").test(s) || new RegExp(`^\\s*(?:more|other|another|some|any)?\\s*${WORDS}\\s*[?!.]*\\s*$`, "i").test(s)) return { q: "", n, vague: true }; return null; }
   subject = subject.replace(/\b(from|on|off)\s+(the\s+)?(web|internet|online|google)\b.*$/i, "").replace(/\b(please|pls|for me|online)\b/gi, "").replace(/[.,;:]+$/, "").replace(/\s+/g, " ").trim();
-  if (subject.length < 2 || /^(it|this|that|them|me|you)$/i.test(subject)) return null;
+  // "some images", "more pics", "pictures of it": no subject of their own, so the chat decides what to show
+  subject = subject.replace(/^(?:(?:some|any|a few|few|more|other|another|cool|nice|good|random|great|the|a|an|your|me)\s+)+/i, "").trim();
+  if (subject.length < 2 || /^(some|any|more|other|another|few|cool|nice|good|random|it|this|that|these|those|them|me|you|one|ones|something|stuff|things?)$/i.test(subject)) return { q: "", n, vague: true };
   return { q: subject.slice(0, 80), n: Math.max(1, Math.min(4, n)) };
 }
 
+// What a vague ask ("show me some images") should show: what the chat was last about, else the orb's own topic
+const ORB_PICS = { cook: "delicious homemade food dishes", tech: "cool tech gadgets", game: "video game scenery", web: "beautiful website design", write: "fantasy story illustration",
+  study: "science and nature", music: "musical instruments", lang: "famous landmarks around the world", spooks: "halloween party decorations", hex: "spooky haunted house", neb: "beautiful nature landscapes" };
+export function vagueSubject(turns, orb) {
+  const users = (turns || []).filter((t) => t.role === "user").map((t) => typeof t.content === "string" ? t.content : (t.content || []).map((c) => c.text || "").join(" "));
+  for (let i = users.length - 2; i >= 0; i--) { const a = imageAsk(users[i]); if (a && a.q) return a.q; }
+  const last = users.length > 1 ? users[users.length - 2].replace(/[?!.]+$/, "").trim() : "";
+  if (last && last.length <= 60 && !imageAsk(last)) return last;
+  return ORB_PICS[orb] || "beautiful nature landscapes";
+}
 const okUrl = (u) => typeof u === "string" && /^https:\/\/[^\s"'<>()]+$/.test(u) && u.length < 600;
 const clean = (t) => String(t || "").replace(/^File:/, "").replace(/\.(jpe?g|png|webp|gif)$/i, "").replace(/[_[\]()*`]/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
 
