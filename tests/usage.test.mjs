@@ -158,3 +158,10 @@ test("chat: site-wide daily cap", async () => {
   const res = await h(req({ orb: "neb", messages: [{ role: "user", content: "hi" }] }));
   assert.equal(res.status, 429); assert.equal((await res.json()).error, "site_busy");
 });
+
+import { imageAsk } from "../api/_images.js";
+test("picture requests are spotted, other messages aren't", () => {
+  assert.deepEqual(imageAsk("show 2 images of miso soup from the web"), { q: "miso soup", n: 2 });
+  assert.equal(imageAsk("what does a capybara look like?").q, "a capybara");
+  assert.equal(imageAsk("how do I make miso soup"), null);
+});

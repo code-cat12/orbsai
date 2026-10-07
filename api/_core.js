@@ -7,6 +7,7 @@ import { latestModels, HAIKU, modelForTier } from "./_models.js";
 import { KIDS_RULES, SELF_HARM_NOTE, hasPersonalInfo, classify, BLOCKED } from "./_safety.js";
 import { publicState } from "./_kids.js";
 import { costCents, familyOf } from "./_price.js";
+import { imageAsk, findImages, imageRules } from "./_images.js";
 
 const MAX_TURNS = 30;        // only the latest messages are sent to Claude
 const MAX_MSG_CHARS = 8000;  // one message can't be longer than this
@@ -275,6 +276,15 @@ export function makeChatHandler({
       }
     }
 
+    // Asking to see pictures of something: look up real ones first (free, not counted as a web search; never in Kids Mode)
+    let picRules = "", picSrc = [];
+    const picAsk = !kidsOn && cfg.webSearch !== false ? imageAsk(req.turns[req.turns.length - 1].content) : null;
+    if (picAsk) {
+      const found = await findImages(picAsk.q, { fetchImpl }).catch(() => []);
+      picRules = imageRules(picAsk, found);
+      picSrc = found.slice(0, 4).map((r) => ({ u: r.page.slice(0, 500), t: r.title.slice(0, 200) }));
+    }
+
     let spent = 0; // cents, all Claude calls for this message added up
     const charge = async () => {
       try { const doc = await bill(user.uid, spent, { ...limits, day }); return publicUsage(usageState(doc, limits)); }
@@ -314,7 +324,7 @@ export function makeChatHandler({
             ...(searchCap ? { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: searchCap }] } : {}),
             // Re-reading earlier messages from cache is much cheaper than sending them fresh each time
             cache_control: { type: "ephemeral" },
-            system: [systemPrompt(req.orb, cfg.halloween), team.length ? leadRules(req.orb, team) : "", memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", extraRules].filter(Boolean).join("\n\n"),
+            system: [systemPrompt(req.orb, cfg.halloween), team.length ? leadRules(req.orb, team) : "", memOn ? memoryRules(memItems) : "", searchCap ? WEB_RULES : "", kidsOn ? KIDS_RULES : "", picRules, extraRules].filter(Boolean).join("\n\n"),
             messages: req.turns.map((t, i) => (i === req.turns.length - 1 ? { role: t.role, content: withFiles(t.content + notesBlock(notes), req.files) } : t)),
             stream: true,
             metadata,
@@ -379,7 +389,8 @@ export function makeChatHandler({
     const stream = new ReadableStream({
       async start(controller) {
         const send = (o) => { try { controller.enqueue(enc.encode(JSON.stringify(o) + "\n")); } catch {} };
-        if (searchNote) send({ nosearch: searchNote });
+        if (searchNote && !picRules) send({ nosearch: searchNote });
+        if (picSrc.length) send({ src: picSrc });
         const text = (t) => { wroteText = true; if (kidsOn) held += t; else send({ d: t }); };
         // Orb team: helpers go one by one ({tm:{k, s:"go"|"ok"|"fail"|"skip", n:part}}), then the lead builds the final answer
         if (team.length) {
