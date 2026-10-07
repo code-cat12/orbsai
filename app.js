@@ -174,7 +174,7 @@ function pictureStages(root, final){
     img.addEventListener("error", () => { const st = fig.parentNode; fig.remove(); if (st && !st.querySelector(".imgcard")) st.remove(); else if (st) st.dataset.n = st.children.length; });
     img.addEventListener("load", () => fig.classList.add("in"));
     a.append(img); fig.append(a);
-    if (alt) fig.append(el("figcaption", null, alt));
+    if (alt) fig.title = alt;
     return fig;
   };
   // Group the pictures by the paragraph (or list item) they're in, then put each group on stages right after it
@@ -199,6 +199,13 @@ function pictureStages(root, final){
 }
 function enhance(root, final){
   pictureStages(root, final);
+  // Pictures sit under the reply bubble, not inside it
+  if (root.classList.contains("msg")) {
+    if (root.nextElementSibling?.classList.contains("imgout")) root.nextElementSibling.remove();
+    const stages = root.querySelectorAll(".imgstage");
+    if (stages.length) { const out = el("div", "imgout"); out.append(...stages); root.after(out); }
+    root.classList.toggle("noTxt", !root.textContent.trim() && !root.querySelector("img, pre, table, hr, .math"));
+  }
   for (const t of root.querySelectorAll("table")) if (!t.parentNode.classList.contains("tablewrap")) { const w = document.createElement("div"); w.className = "tablewrap"; t.replaceWith(w); w.appendChild(t); }
   for (const pre of root.querySelectorAll("pre")) {
     const code = pre.querySelector("code"); if (!code) continue;
@@ -440,6 +447,78 @@ function fmtTime(t){
   if (d.toDateString() === y.toDateString()) return "Yesterday " + time;
   return d.toLocaleDateString([], { month:"short", day:"numeric" }) + ", " + time;
 }
+// "Wed, Oct 7 · 4:01 PM" for the time dividers between messages
+function fmtStamp(t){
+  const d = new Date(t);
+  return d.toLocaleDateString([], { weekday:"short", month:"short", day:"numeric" }) + " · " + d.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" });
+}
+// Wide screens: the time of the message in the middle of the screen, big, in the left third
+function sideClock(){
+  const box = $("sideClock"); if (!box) return;
+  if (app.dataset.view !== "chat") { box.hidden = true; return; }
+  const rows = log.querySelectorAll(".row[data-t]");
+  if (!rows.length) { box.hidden = true; return; }
+  const mid = log.getBoundingClientRect().top + log.clientHeight * .5;
+  let best = rows[rows.length - 1], bd = Infinity;
+  for (const r of rows) { const b = r.getBoundingClientRect(), dd = Math.abs((b.top + b.bottom) / 2 - mid); if (dd < bd) { bd = dd; best = r; } }
+  const d = new Date(+best.dataset.t), now = new Date();
+  const day = d.toDateString() === now.toDateString() ? "Today" : d.toLocaleDateString([], { weekday:"short" });
+  const parts = [day, d.toLocaleDateString([], { month:"short", day:"numeric" }) + (d.getFullYear() !== now.getFullYear() ? ", " + d.getFullYear() : ""), d.toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })];
+  box.replaceChildren(...parts.map(x => el("span", null, x)));
+  box.hidden = false;
+}
+let clockRaf = 0;
+log.addEventListener("scroll", () => { if (!clockRaf) clockRaf = requestAnimationFrame(() => { clockRaf = 0; sideClock(); }); }, { passive: true });
+addEventListener("resize", () => sideClock());
+
+// Find in this chat: highlights every match in the messages, with up/down to step through them
+let findHits = [], findAt = -1;
+function clearFind(){
+  for (const m of log.querySelectorAll("mark.fhit")) { const t = document.createTextNode(m.textContent); m.replaceWith(t); t.parentNode && t.parentNode.normalize(); }
+  findHits = []; findAt = -1;
+}
+function runFind(q){
+  clearFind();
+  q = q.trim().toLowerCase();
+  if (q.length) {
+    for (const msg of log.querySelectorAll(".msg, .thinktext")) {
+      const walk = document.createTreeWalker(msg, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentNode.closest(".katex, .cbtn") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+      const nodes = []; while (walk.nextNode()) nodes.push(walk.currentNode);
+      for (let node of nodes) {
+        let i;
+        while (node && (i = node.data.toLowerCase().indexOf(q)) >= 0) {
+          const hit = node.splitText(i), rest = hit.splitText(q.length);
+          const mk = el("mark", "fhit"); hit.replaceWith(mk); mk.append(hit); findHits.push(mk); node = rest;
+        }
+      }
+    }
+  }
+  findAt = findHits.length ? findHits.length - 1 : -1;
+  showFind();
+}
+function showFind(){
+  for (const m of findHits) m.classList.remove("now");
+  const n = findHits.length, q = $("findIn").value.trim();
+  $("findCount").textContent = !q ? "" : n ? `${findAt + 1} of ${n}` : "No matches";
+  $("findUp").disabled = $("findDown").disabled = n < 2;
+  const cur = findHits[findAt]; if (!cur) return;
+  cur.classList.add("now");
+  const d = cur.closest("details"); if (d && !d.open) d.open = true;
+  cur.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+function stepFind(dir){ if (!findHits.length) return; findAt = (findAt + dir + findHits.length) % findHits.length; showFind(); }
+function openFind(){ if (app.dataset.view !== "chat") return; $("findBar").hidden = false; $("findIn").focus(); $("findIn").select(); if ($("findIn").value) runFind($("findIn").value); }
+function closeFind(){ if (!$("findBar")) return; $("findBar").hidden = true; clearFind(); $("findCount").textContent = ""; }
+let findT = 0;
+$("findIn").addEventListener("input", () => { clearTimeout(findT); findT = setTimeout(() => runFind($("findIn").value), 120); });
+$("findIn").addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); stepFind(e.shiftKey ? 1 : -1); }
+  else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+});
+$("findUp").onclick = () => stepFind(-1); $("findDown").onclick = () => stepFind(1); $("findX").onclick = closeFind;
+$("findTop").onclick = () => $("findBar").hidden ? openFind() : closeFind();
+addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "f" && app.dataset.view === "chat") { e.preventDefault(); openFind(); } });
+
 async function copyText(txt, btn){
   let ok = false;
   try { await navigator.clipboard.writeText(txt); ok = true; } catch(e) {
@@ -492,6 +571,7 @@ function sourcesBox(src){
 function bubble(role, turn, idx, isLast){
   const b = BOTS[active], conv = curConv();
   const row = el("div", "row " + (role === "user" ? "me" : "bot-row"));
+  if (turn.t) row.dataset.t = turn.t;
   row.style.setProperty("--c", `var(${b.color})`);
   const col = el("div", "col");
   const m = el("div", "msg");
@@ -570,9 +650,11 @@ function renderChat(){
   if (c.incog) log.appendChild(el("div", "incognote", "🕶️ Incognito chat. It won't be saved, and it disappears when you leave."));
   const turns = c.turns;
   turns.forEach((t, i) => {
+    if (t.t && (i === 0 || !turns[i - 1].t || t.t - turns[i - 1].t > 30 * 60000)) log.appendChild(el("div", "tdiv", fmtStamp(t.t)));
     bubble(t.role === "user" ? "user" : "assistant", t, i, i === turns.length - 1);
   });
   log.scrollTop = log.scrollHeight;
+  closeFind(); sideClock();
   updateSend(); snap(); renderSide(); renderIncog(); renderTeam();
 }
 

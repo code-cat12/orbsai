@@ -1085,30 +1085,63 @@ textarea{font:400 1rem/1.5 var(--body);min-height:26px}
 .msg pre[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;left:13px;font:500 .7rem var(--body);letter-spacing:.04em;text-transform:uppercase;color:#8b8a93}
 .tablewrap{margin:.6em -6px;border:1px solid var(--line);border-radius:14px;overflow:auto;background:var(--panel)}
 .tablewrap table{margin:0;border:0}
-/* Pictures in replies: tilted, floating glass cards on a soft gradient stage */
-.imgstage{position:relative;display:flex;justify-content:center;align-items:center;gap:0;margin:.8em -6px;padding:34px 18px 40px;min-height:180px;border-radius:24px;overflow:hidden;perspective:1100px;
-  background:radial-gradient(120% 90% at 20% 0%,rgba(122,200,255,.55),transparent 60%),radial-gradient(90% 80% at 100% 100%,rgba(184,150,255,.45),transparent 60%),linear-gradient(160deg,#cfe6fb,#e7e0fb 60%,#f6e6f2);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
-.imgcard{position:relative;margin:0;flex:0 1 auto;width:min(72%,340px);border-radius:18px;overflow:hidden;
-  background:rgba(255,255,255,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
-  box-shadow:0 28px 50px -18px rgba(25,40,80,.45),0 8px 18px -10px rgba(25,40,80,.3),inset 0 0 0 1px rgba(255,255,255,.7);
-  transform-style:preserve-3d;transform:rotateY(-16deg) rotateX(7deg) rotateZ(-2.5deg);opacity:0;
-  transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s,box-shadow .5s;animation:imgfloat 7s ease-in-out infinite}
+/* Pictures in replies: under the bubble, side by side, each tilted a little and floating (no overlap) */
+.row.bot-row .col:has(.imgout){flex:1 1 auto;width:100%}
+.imgout{width:100%;display:flex;flex-direction:column;gap:6px;margin:8px 0 2px}
+.imgstage{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:clamp(14px,3.5%,30px);padding:22px 6px 26px;perspective:1000px}
+.imgcard{position:relative;margin:0;flex:0 0 auto;width:min(62%,360px);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.5);
+  box-shadow:0 26px 44px -20px rgba(25,40,80,.5),0 6px 16px -8px rgba(25,40,80,.28),inset 0 0 0 1px rgba(255,255,255,.75);
+  transform:rotateY(-14deg) rotateX(6deg) rotate(-2.5deg);opacity:0;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .5s;animation:imgfloat 7s ease-in-out infinite}
 .imgcard.in,.imgcard.loading{opacity:1}
-.imgstage[data-n="2"] .imgcard{width:min(54%,300px)}.imgstage[data-n="3"] .imgcard{width:min(42%,260px)}.imgstage[data-n="4"] .imgcard{width:min(36%,230px)}
-.imgcard+.imgcard{margin-left:-9%}
-.imgcard:nth-child(1){z-index:4}.imgcard:nth-child(2){z-index:3;transform:rotateY(16deg) rotateX(6deg) rotateZ(2.5deg) translateY(26px);animation-delay:-2.3s}
-.imgcard:nth-child(3){z-index:2;transform:rotateY(-12deg) rotateX(5deg) rotateZ(-4deg) translateY(-14px);animation-delay:-4.1s}
-.imgcard:nth-child(4){z-index:1;transform:rotateY(14deg) rotateX(7deg) rotateZ(3deg) translateY(18px);animation-delay:-5.6s}
-.imgcard:hover,.imgcard:focus-within{z-index:9;transform:none;box-shadow:0 34px 60px -18px rgba(25,40,80,.5),inset 0 0 0 1px rgba(255,255,255,.8);animation-play-state:paused}
+.imgstage[data-n="2"] .imgcard{width:calc(46% - 12px)}
+.imgstage[data-n="3"] .imgcard{width:calc(31% - 12px)}
+.imgstage[data-n="4"] .imgcard{width:calc(23.5% - 14px)}
+.imgcard:nth-child(2){transform:rotateY(14deg) rotateX(5deg) rotate(2.5deg) translateY(22px);animation-delay:-2.3s}
+.imgcard:nth-child(3){transform:rotateY(-10deg) rotateX(6deg) rotate(-2deg) translateY(-10px);animation-delay:-4.1s}
+.imgcard:nth-child(4){transform:rotateY(12deg) rotateX(5deg) rotate(3deg) translateY(16px);animation-delay:-5.6s}
+.imgcard:hover,.imgcard:focus-within{transform:none;animation-play-state:paused}
 .imgcard a{display:block}
-.imgcard img{display:block;width:100%;height:auto;max-height:340px;object-fit:cover;background:rgba(255,255,255,.4)}
-.imgcard figcaption{padding:8px 12px 10px;font-size:.78rem;line-height:1.3;color:#2b3550;background:rgba(255,255,255,.55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.imgcard.loading{height:180px;background:linear-gradient(110deg,rgba(255,255,255,.45) 30%,rgba(255,255,255,.85) 50%,rgba(255,255,255,.45) 70%) 0 0/250% 100%;animation:imgshine 1.4s linear infinite}
+.imgcard img{display:block;width:100%;height:auto;max-height:360px;object-fit:cover}
+.imgcard.loading{height:170px;background:linear-gradient(110deg,rgba(255,255,255,.4) 30%,rgba(255,255,255,.85) 50%,rgba(255,255,255,.4) 70%) 0 0/250% 100%;animation:imgshine 1.4s linear infinite}
+.bot-row .msg.noTxt{display:none}
 @keyframes imgfloat{0%,100%{translate:0 0}50%{translate:0 -8px}}
 @keyframes imgshine{to{background-position:-250% 0}}
-@media (max-width:560px){.imgstage{padding:26px 10px 32px}.imgcard{width:min(80%,300px)}.imgcard+.imgcard{margin-left:-22%}}
+@media (max-width:560px){.imgstage{gap:14px}.imgstage[data-n="3"] .imgcard,.imgstage[data-n="4"] .imgcard{width:calc(46% - 8px)}}
 @media (prefers-reduced-motion:reduce){.imgcard{animation:none}}
+
+/* Orb name on top uses the title font */
+#topName{font-family:var(--display);font-weight:400;font-size:1.32em;letter-spacing:-.01em;line-height:1.05}
+
+@media (max-width:480px){.hbar .hl,.hbar .hr{gap:0!important}.hbar .icon-btn{width:34px!important;height:34px!important}.hbar .icon-btn svg{width:19px;height:19px}.hbar .avbtn{margin-left:2px}}
+/* Find in this chat */
+.findbar{display:flex;align-items:center;gap:6px;margin:6px auto 0;padding:5px 6px 5px 12px;width:min(100%,560px);box-sizing:border-box;border-radius:999px;
+  background:var(--glass-strong,var(--panel));border:1px solid var(--glass-border,var(--line));box-shadow:var(--sh-1);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);z-index:4}
+.findbar[hidden]{display:none}
+.findbar > svg{width:17px;height:17px;flex:none;opacity:.6}
+.findbar input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:16px;color:var(--ink);outline:none;padding:6px 2px}
+.findbar input::-webkit-search-cancel-button{display:none}
+.findbar .fcount{font-size:.82rem;color:var(--muted,#667);white-space:nowrap;font-variant-numeric:tabular-nums}
+.findbar .icon-btn{width:34px;height:34px}
+.findbar .icon-btn:disabled{opacity:.35}
+mark.fhit{background:rgba(255,214,64,.55);color:inherit;border-radius:3px;padding:0 1px}
+mark.fhit.now{background:#ffb020;box-shadow:0 0 0 2px rgba(255,176,32,.45)}
+.app[data-view="home"] .findbar,.app[data-view="home"] .findbtn,.app[data-view="home"] .sideclock{display:none}
+body:not(:has(.app[data-view="chat"])) .findbtn{display:none}
+
+/* Time between messages (phones and tablets): a small centered stamp when there's a gap */
+.tdiv{align-self:center;margin:14px 0 4px;font-family:var(--display);font-size:1.02rem;color:var(--muted,#667);letter-spacing:.01em}
+.sideclock{display:none}
+
+/* Wide screens: chat in the middle third, the time big in the left third, right third empty */
+@media (min-width:1100px){
+  .app[data-view="chat"]{max-width:none;position:relative}
+  .app[data-view="chat"] #log > *{width:min(100%,max(460px,34%));margin-inline:auto;box-sizing:border-box}
+  .app[data-view="chat"] #log > .tdiv{display:none}
+  .app[data-view="chat"] .composer-wrap > *{width:min(100%,max(460px,34%));max-width:none;margin-inline:auto}
+  .app[data-view="chat"] .sideclock:not([hidden]){display:flex;flex-direction:column;position:absolute;left:0;top:50%;width:33%;transform:translateY(-58%);padding-left:clamp(24px,4vw,72px);box-sizing:border-box;pointer-events:none;
+    font-family:var(--display);font-size:clamp(2.6rem,4.3vw,4.6rem);line-height:1.02;letter-spacing:-.02em;color:var(--ink);opacity:.92}
+  .app[data-view="chat"] .sideclock span{transition:opacity .25s}
+}
 .msg table th,.msg table td{border:0;border-bottom:1px solid var(--line2);padding:8px 12px;text-align:left}
 .msg table th{background:var(--me);font-weight:600;font-size:.86rem}
 .msg table tr:last-child td{border-bottom:0}
@@ -1487,6 +1520,7 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
   <div class="hr">
     <button class="icon-btn star" id="pinTop" type="button" aria-label="Pin this orb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9L3.5 9.7l5.9-.8z"/></svg></button><button class="icon-btn delb" id="delTop" type="button" aria-label="Delete this chat" title="Delete this chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
     <button class="icon-btn incogbtn" id="incogBtn" type="button" aria-pressed="false" aria-label="Incognito chat" title="Incognito chat (not saved)" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h18"/><path d="M5 11l2-6h10l2 6"/><circle cx="7.5" cy="16" r="2.8"/><circle cx="16.5" cy="16" r="2.8"/><path d="M10.3 16h3.4"/></svg></button>
+    <button class="icon-btn findbtn" id="findTop" type="button" aria-label="Find in this chat" title="Find in this chat (Ctrl F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v6"/><path d="M5 5.5v10A2.5 2.5 0 0 0 7.5 18H11"/><path d="M8.5 8h7M8.5 11.5h4"/><circle cx="16.5" cy="16.5" r="3"/><path d="M18.7 18.7 21 21"/></svg></button>
     <button class="icon-btn" id="searchTop" type="button" aria-label="Search chats" title="Search chats (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
     <button class="avbtn" id="avBtn" type="button" aria-label="Account and settings" title="Account and settings"><img id="avImg" alt="" hidden><span id="avTxt">?</span></button><span class="avplan" id="avPlan" aria-hidden="true" hidden></span>
     <span hidden><button id="backBtn" type="button" disabled></button><button id="fwdBtn" type="button" disabled></button></span>
@@ -1540,6 +1574,15 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
   </div>
   <p class="inote" id="incogNote" hidden>🕶️ This chat won't be saved and won't show up in your chats.</p>
 
+  <div class="findbar" id="findBar" role="search" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <input id="findIn" type="search" placeholder="Find in this chat" aria-label="Find in this chat" autocomplete="off" enterkeyhint="search">
+    <span class="fcount" id="findCount" aria-live="polite"></span>
+    <button class="icon-btn" id="findUp" type="button" aria-label="Previous match" title="Previous (Enter)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
+    <button class="icon-btn" id="findDown" type="button" aria-label="Next match" title="Next (Shift Enter)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+    <button class="icon-btn" id="findX" type="button" aria-label="Close find"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="sideclock" id="sideClock" aria-hidden="true" hidden></div>
   <main id="log" aria-live="polite"></main>
 
   <div class="composer-wrap">
