@@ -1385,7 +1385,7 @@ body{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.orb3d-fb i,.orb3d::after{animation:none}}
 
 /* ---------- Landing: same sky and glass, the 3D orb replaces the old video ---------- */
-.lv{--text:var(--t-ink);--muted:var(--t-muted);--stat:var(--t-ink);--panel:var(--glass);--field:var(--glass-strong);--ink:var(--t-ink);--line:var(--t-line);--accent:#5b5bd6;
+.lv{--bg:var(--t-bg);--text:var(--t-ink);--muted:var(--t-muted);--stat:var(--t-ink);--panel:var(--glass);--field:var(--glass-strong);--ink:var(--t-ink);--line:var(--t-line);--accent:#5b5bd6;
   --border:var(--glass-border);--c-neb:#18181b;--neb-eye:#fff;--c-tech:#1f6fff;--c-cook:#ff6b1a;--c-game:#00b060;--c-web:#8b3dff;--c-write:#ffb300;--c-study:#00b3a4;--c-music:#ff2e88;--c-lang:#ff3b30;--c-spooks:#ff7a00;--c-hex:#4fa8ff;
   background:transparent;color:var(--t-ink)}
 :root[data-sky="dark"] .lv{--accent:#a5a3ff;--c-neb:#f4f4f7;--neb-eye:#111}
@@ -1501,6 +1501,37 @@ body:has(#gate:not([hidden])) .shell{visibility:hidden}   /* the glass landing/s
 @media (min-width:901px) and (max-height:850px){.lv-orb{width:min(34vh,340px);height:min(34vh,340px)}}
 @media (max-width:900px){.lv{--lede-max:100%}.lv-orb{width:min(17vh,150px,50vw);height:min(17vh,150px,50vw)}}
 .lv-scene-hero .lv-stats{padding-top:6px}
+/* Phones: the hero used to be pinned to the bottom, so on shorter screens its top (orb, badge, even the headline) slid
+   under the header and could not be scrolled to. Now it starts under the header and the page scrolls if it doesn't fit. */
+@media (max-width:900px){
+  .lv-scene-hero .lv-hero{flex:1 0 auto;min-height:auto;justify-content:flex-start;padding-top:6px;padding-bottom:22px}
+  .lv-scene-hero .lv-orb{margin-top:auto}
+  .lv-scene-hero .lv-stats{display:grid;grid-template-columns:auto;justify-content:center;justify-items:start;gap:12px;padding:4px 24px max(52px,env(safe-area-inset-bottom))}
+  .lv-scene-hero .lv-stats .lv-stat{justify-self:start;gap:12px;font-size:15px;line-height:1.35}
+  .lv-scene-hero .lv-stat .lv-ic:not(.lv-ic-wide){margin:0 9px}
+}
+/* Short phone screens (browser bars showing): drop the little 3D orb and tighten the spacing so it all fits */
+@media (max-width:900px) and (max-height:840px){
+  .lv-scene-hero .lv-orb{display:none}
+  .lv-scene-hero .lv-copy{margin-top:auto}
+  .lv-scene-hero .lv-badge{margin-bottom:12px}
+  .lv{--h1:32px}
+  .lv-scene-hero .lv-lede{margin-top:10px;font-size:15.5px;line-height:1.42}
+  .lv-scene-hero .lv-actions{margin-top:16px;gap:8px}
+  .lv-scene-hero .lv-big{height:46px}
+  .lv-scene-hero .lv-stats{gap:9px}
+  .lv-scene-hero .lv-stats .lv-stat{font-size:14.5px}
+}
+@media (max-width:900px) and (max-height:620px){
+  .lv{--h1:29px}
+  .lv-scene-hero .lv-badge{margin-bottom:8px;padding:6px 13px}
+  .lv-scene-hero .lv-lede{font-size:14.5px;line-height:1.38}
+  .lv-scene-hero .lv-actions{margin-top:12px}
+  .lv-scene-hero .lv-big{height:42px}
+  .lv-scene-hero .lv-hero{padding-bottom:14px}
+  .lv-scene-hero .lv-stats{gap:6px}
+  .lv-scene-hero .lv-stats .lv-stat{font-size:13.5px}
+}
 
 /* Delete chat (top bar): stays icon-sized and turns red; the "tap again" note pops out underneath so it never covers other icons */
 #delTop{position:relative}
