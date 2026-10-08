@@ -2084,8 +2084,9 @@ function nextPopup(){ if (!popupQ.length || POPUPS.some(id => !$(id).hidden)) re
 async function maybePromo(){
   await seasonP;
   popupQ = [];
+  // At most ONE popup per visit (two in a row felt spammy). Whatever isn't shown waits for the next visit.
   if (seasonOn && !seenOnce("orbs-hw" + new Date().getFullYear())) { popupQ.push("hwModal"); orbInto($("hwSpooks"), "spooks"); orbInto($("hwHex"), "hex"); }
-  if (promoOn() && kids.billing && !kids.plan && !seenOnce("orbs-promo7")) popupQ.push("promoModal");
+  else if (promoOn() && kids.billing && !kids.plan && !seenOnce("orbs-promo7")) popupQ.push("promoModal");
   setTimeout(nextPopup, 1200);
 }
 $("hwGoSpooks").onclick = () => { closeLegal(); pick("spooks"); };
