@@ -53,7 +53,7 @@ export function makeKidsHandler({ verifyToken, getKids, setKids, getConfig = asy
       const limits = { day: a.day, week: a.week, dayKey: a.dayKey, weekKey: a.weekKey };
       let doc = null; try { doc = await getUsage(user.uid); } catch {}
       const usage = publicUsage(usageState(doc, limits, now()));
-      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, usage,
+      return json(200, { ...publicState(k, env), banned: !!k.banned, web: !(cfg && cfg.webSearch === false), webPerDay: a.searches, freeWebPerDay: cfg && Number.isInteger(cfg.searchesPerUser) ? cfg.searchesPerUser : 5, usage,
         plan: publicPlan(shownSub), billing: !!env.STRIPE_SECRET_KEY, owner, viewAs, memory: a.memory && !publicState(k, env).on });
     }
 

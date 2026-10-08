@@ -2153,7 +2153,7 @@ function renderPlans(){
   const cur = kids.plan ? kids.plan.id : null, on = !!kids.billing;
   // Free
   const free = el("div", "pcard" + (!cur ? " cur" : "")); free.style.setProperty("--pc", "#6e6b64");
-  const fl = el("ul"); ["15 messages a day", "Claude Haiku, fast and simple", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
+  const fl = el("ul"); ["15 messages a day", "Claude Haiku, fast and simple", `${Number.isInteger(kids.freeWebPerDay) ? kids.freeWebPerDay : 5} web searches a day`].forEach(t => fl.append(el("li", null, t)));   // the Free plan's number, not the viewer's (the owner gets 1,000)
   const fb = el("button", "outline", !cur ? "Current plan" : "Included"); fb.type = "button"; fb.disabled = true;
   const fh = el("h3"); fh.append(planIcon("free", 40), el("span", null, "Free"));
   free.append(fh, el("div", "price", "$0"), fl, fb); grid.append(free);
