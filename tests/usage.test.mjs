@@ -32,7 +32,7 @@ test("budgets: admin panel beats Vercel beats defaults; 0 = unlimited", () => {
   assert.equal(budgets(null, { USAGE_BUDGETS: "not json" }).free.day, DEFAULT_BUDGETS.free.day);
 });
 test("default budgets are the owner's numbers, and paid plans never get less than Free", () => {
-  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 1.5, week: 6 });
+  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 1.5, week: 5.5 });
   assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 70, week: 340 });
   assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 280, week: 1200 });
   assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 480, week: 2200 });
@@ -51,7 +51,7 @@ test("default budgets are the owner's numbers, and paid plans never get less tha
 test("allowance: free, paid, owner and owner testing a plan", () => {
   const env = { ADMIN_EMAILS: "boss@x.com" };
   const free = allowance({ sub: null, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(free.tier, "free"); assert.equal(free.day, 1.5); assert.equal(free.week, 6);
+  assert.equal(free.tier, "free"); assert.equal(free.day, 1.5); assert.equal(free.week, 5.5);
   const sub = { plan: "plusplus", status: "active", periodEnd: null };
   const pp = allowance({ sub, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
   assert.equal(pp.day, 280); assert.equal(pp.week, 1200); assert.ok(pp.memory);

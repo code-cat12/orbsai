@@ -2097,7 +2097,7 @@ $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText
 const PLAN_INFO = [
   { id:"plus", name:"Light", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet, a smarter model", "3x the messages of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
   { id:"plusplus", name:"Pro", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "5x the messages of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Max", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "9x the messages of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Max", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "10x the messages of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
@@ -2128,7 +2128,7 @@ function renderPlan(){
   $("viewBox").hidden = !kids.owner;
   for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.v === (kids.viewAs || "owner")));
   $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
-    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "15 messages a day on Claude Haiku. Upgrade for 3x to 9x the messages, smarter models, Orb Teams, memory, and more web searches." : "";
+    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "15 messages a day on Claude Haiku. Upgrade for 3x to 10x the messages, smarter models, Orb Teams, memory, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
   $("promoNav").hidden = !user || !on || !promoOn() || !!(p && !p.test);
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
