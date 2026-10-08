@@ -1,6 +1,6 @@
 // Keeps Orbs on the newest Claude model in each family it uses:
-//   - Opus writes replies on Pro and Max; Sonnet on Free and Light (each starts on 5.5 and moves up by itself).
-//   - Haiku does the small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes).
+//   - Opus writes replies on Pro and Max, Sonnet on Light, Haiku on Free (each moves up to the newest version by itself).
+//   - Haiku also does the small background jobs nobody sees (Kids Mode safety checks, chat titles, memory notes).
 // Version rule (internal only): every newer Claude release bumps the version by .01, then a new generation after .07.
 
 export const FAMILIES = [
@@ -9,8 +9,8 @@ export const FAMILIES = [
   { family: "sonnet", start: [5, 5], startStep: 1, fallback: { id: "claude-sonnet-5-5",        label: "Claude Sonnet 5.5", effort: true } },
 ];
 export const HAIKU = 0, OPUS = 1, SONNET = 2;
-// Which model writes replies for each plan: Free and Light get Sonnet, Pro and Max get Opus (owner too).
-export const TIER_MODEL = { free: SONNET, plus: SONNET, plusplus: OPUS, plusplusplus: OPUS };
+// Which model writes replies for each plan: Free gets Haiku, Light gets Sonnet, Pro and Max get Opus (owner too).
+export const TIER_MODEL = { free: HAIKU, plus: SONNET, plusplus: OPUS, plusplusplus: OPUS };
 export function modelForTier(tier, admin) { return admin ? OPUS : (TIER_MODEL[tier] ?? SONNET); } // positions in FAMILIES / in what latestModels() returns
 const STEPS_PER_GEN = 7;
 

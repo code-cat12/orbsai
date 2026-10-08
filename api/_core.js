@@ -252,7 +252,7 @@ export function makeChatHandler({
       if (used >= allow.site) return json(429, { error: "site_busy", usage: publicUsage(before) });
     }
     const allModels = await latestModels({ apiKey: env.ANTHROPIC_API_KEY, fetchImpl });
-    const live = allModels[modelForTier(allow.tier, allow.admin)]; // Free/Light: newest Sonnet; Pro and up: newest Opus
+    const live = allModels[modelForTier(allow.tier, allow.admin)]; // Free: newest Haiku; Light: newest Sonnet; Pro and up: newest Opus
     const checkerId = allModels[HAIKU].id;      // Haiku does the quick background checks (never billed to the person)
     const logFlag = (info) => flag(user.uid, { orb: req.orb, ...info }).catch(() => {});
     let extraRules = "";

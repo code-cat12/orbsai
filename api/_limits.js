@@ -38,22 +38,21 @@ export function resetTimes(now = Date.now()) {
 }
 
 // ---------- Budgets (in cents of real Claude cost) ----------
-// Set by the owner (2026-10-07, second version): generous, but a normal user (about 30% of their limit) makes money on every plan.
-// About 12 / 30 / 45 / 110 typical messages a day and 50 / 175 / 230 / 535 a week (Sonnet ~2¢ a reply, Opus ~4¢).
-// Weekly budgets are about 3.5x / 9x / 21x of Free's. Free and Light run on Sonnet, Pro and Max on Opus.
-// Third version (owner, 2026-10-07 night): Pro 45 Opus a day / 230 a week, Max 110 a day / 535 a week.
-// Most one person can cost a month (weekly x 4.33): Free $4.33, Light $15.17, Pro $39.87, Max $92.73.
+// Set by the owner (2026-10-08): Free runs on Haiku 5.5 (about 0.1c a reply), Light on Sonnet (~2c), Pro and Max on Opus (~4c).
+// Messages a day / a week: Free 15 / 60, Light 35 / 170, Pro 70 / 300, Max 120 / 550.
+// So paid plans get about 3x / 5x / 9x Free's weekly messages, on a smarter model at each step.
+// Most one person can cost a month (weekly x 4.33): Free ~$0.26, Light ~$14.73, Pro ~$52, Max ~$95.
 // Budgets can have fractions of a cent (kept to 0.1 cent); usage itself is stored as a float (0.001 cent).
-//   Free:            24¢ a day,  $1 a week
-//   Light ($9.99):   60¢ a day,  $3.50 a week   (3.5x Free's weekly budget)
-//   Pro ($19.99):    $1.80 a day, $9.20 a week  (9x)
-//   Max ($49.99):    $4.40 a day, $21.40 a week (21x)
+//   Free:            1.5c a day,  6c a week
+//   Light ($9.99):   70c a day,   $3.40 a week
+//   Pro ($19.99):    $2.80 a day, $12 a week
+//   Max ($49.99):    $4.80 a day, $22 a week
 export const tenths = (v) => Math.round(Number(v) * 10) / 10;
 export const DEFAULT_BUDGETS = {
-  free:         { day: 24,  week: 100 },
-  plus:         { day: 60,  week: 350 },
-  plusplus:     { day: 180, week: 920 },
-  plusplusplus: { day: 440, week: 2140 },
+  free:         { day: 1.5, week: 6 },
+  plus:         { day: 70,  week: 340 },
+  plusplus:     { day: 280, week: 1200 },
+  plusplusplus: { day: 480, week: 2200 },
 };
 export const TIERS = Object.keys(DEFAULT_BUDGETS);
 export const DEFAULT_SITE_CENTS = 0; // all of Orbs together per day; 0 = no site-wide cap

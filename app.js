@@ -2095,9 +2095,9 @@ $("promoNav").onclick = () => openLegal("promoModal");
 $("promoGo").onclick = () => { closeLegal(); openPlans(); };
 $("promoCopy").onclick = async () => { try { await navigator.clipboard.writeText("WELCOME7"); $("promoCopy").textContent = "Copied!"; } catch(_) { $("promoCopy").textContent = "Copy failed"; } setTimeout(() => { $("promoCopy").textContent = "Copy"; }, 2000); };
 const PLAN_INFO = [
-  { id:"plus", name:"Light", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet", "3.5x the usage of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
-  { id:"plusplus", name:"Pro", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "9x the usage of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
-  { id:"plusplusplus", name:"Max", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "21x the usage of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
+  { id:"plus", name:"Light", color:"#4f7bff", month:9.99, year:99.99, perks:["Claude Sonnet, a smarter model", "3x the messages of Free", "10 web searches a day", "Orb Teams: up to 5 orbs work together"], soon:[] },
+  { id:"plusplus", name:"Pro", color:"#9b5cff", month:19.99, year:199.99, pop:true, perks:["Claude Opus, the smartest model", "5x the messages of Free", "25 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together"], soon:["Custom orbs"] },
+  { id:"plusplusplus", name:"Max", color:"#ff5fb8", month:49.99, year:499.99, perks:["Claude Opus, the smartest model", "9x the messages of Free", "50 web searches a day", "Memory: orbs remember you", "Orb Teams: up to 5 orbs work together", "New features first"], soon:["Custom orbs"] },
 ];
 // Landing pricing cards (same plans as the Upgrade window)
 (function landingPlans(){
@@ -2111,7 +2111,7 @@ const PLAN_INFO = [
     const h = el("h3"); h.append(planIcon(id || "free", 40), el("span", null, name));
     c.append(h, pr); if (deal) c.append(deal); c.append(ul, b); grid.append(c);
   };
-  card("Free", "#6e6b64", "$0", "", ["A little usage every day and week", "Claude Sonnet", "A few web searches a day"]);
+  card("Free", "#6e6b64", "$0", "", ["15 messages a day", "Claude Haiku, fast and simple", "A few web searches a day"]);
   for (const pl of PLAN_INFO) card(pl.name, pl.color, "$" + pl.month, " / month", [...pl.perks, ...pl.soon.map(t => t + " (coming soon)"), "or $" + pl.year + " a year"], pl.pop, pl.id);
 })();
 let planInterval = "month";
@@ -2128,7 +2128,7 @@ function renderPlan(){
   $("viewBox").hidden = !kids.owner;
   for (const b of document.querySelectorAll("#viewSeg button")) b.setAttribute("aria-pressed", String(b.dataset.v === (kids.viewAs || "owner")));
   $("planMore").textContent = testing ? "You're seeing Orbs like someone on this plan. Switch back to Owner below when you're done." : p ? (p.cancelAtPeriodEnd ? `Cancelled. You keep ${p.name} until ${fmtDate(p.periodEnd)}.` : p.status === "past_due" ? "Your last payment didn't go through. Update your card in Manage so you don't lose your plan." : `Renews ${fmtDate(p.periodEnd)}.`)
-    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "A little usage every day and week. Upgrade for 1.75x to 6.25x more usage, Orb Teams, memory, and more web searches." : "";
+    : kids.owner ? "You get unlimited usage and as many web searches as the site allows. You can still test buying a plan." : on ? "15 messages a day on Claude Haiku. Upgrade for 3x to 9x the messages, smarter models, Orb Teams, memory, and more web searches." : "";
   $("planBtn").hidden = !on && !p; $("planBtn").textContent = p ? "Manage" : "Upgrade";
   $("promoNav").hidden = !user || !on || !promoOn() || !!(p && !p.test);
   $("upNav").hidden = !user || !on; $("upNavTxt").textContent = testing ? "Testing 🧪" : p ? `Orbs ${p.name}` : kids.owner ? "Owner 👑" : "Upgrade";
@@ -2153,7 +2153,7 @@ function renderPlans(){
   const cur = kids.plan ? kids.plan.id : null, on = !!kids.billing;
   // Free
   const free = el("div", "pcard" + (!cur ? " cur" : "")); free.style.setProperty("--pc", "#6e6b64");
-  const fl = el("ul"); ["A little usage every day and week", "Claude Sonnet", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
+  const fl = el("ul"); ["15 messages a day", "Claude Haiku, fast and simple", !cur && Number.isInteger(kids.webPerDay) ? `${kids.webPerDay} web searches a day` : "A few web searches a day"].forEach(t => fl.append(el("li", null, t)));
   const fb = el("button", "outline", !cur ? "Current plan" : "Included"); fb.type = "button"; fb.disabled = true;
   const fh = el("h3"); fh.append(planIcon("free", 40), el("span", null, "Free"));
   free.append(fh, el("div", "price", "$0"), fl, fb); grid.append(free);

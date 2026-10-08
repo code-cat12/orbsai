@@ -32,10 +32,10 @@ test("budgets: admin panel beats Vercel beats defaults; 0 = unlimited", () => {
   assert.equal(budgets(null, { USAGE_BUDGETS: "not json" }).free.day, DEFAULT_BUDGETS.free.day);
 });
 test("default budgets are the owner's numbers, and paid plans never get less than Free", () => {
-  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 24, week: 100 });
-  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 60, week: 350 });
-  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 180, week: 920 });
-  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 440, week: 2140 });
+  assert.deepEqual(DEFAULT_BUDGETS.free, { day: 1.5, week: 6 });
+  assert.deepEqual(DEFAULT_BUDGETS.plus, { day: 70, week: 340 });
+  assert.deepEqual(DEFAULT_BUDGETS.plusplus, { day: 280, week: 1200 });
+  assert.deepEqual(DEFAULT_BUDGETS.plusplusplus, { day: 480, week: 2200 });
   for (const t of ["plus", "plusplus", "plusplusplus"]) {
     assert.ok(DEFAULT_BUDGETS[t].day >= DEFAULT_BUDGETS.free.day && DEFAULT_BUDGETS[t].week >= DEFAULT_BUDGETS.free.week, t);
   }
@@ -51,14 +51,14 @@ test("default budgets are the owner's numbers, and paid plans never get less tha
 test("allowance: free, paid, owner and owner testing a plan", () => {
   const env = { ADMIN_EMAILS: "boss@x.com" };
   const free = allowance({ sub: null, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(free.tier, "free"); assert.equal(free.day, 24); assert.equal(free.week, 100);
+  assert.equal(free.tier, "free"); assert.equal(free.day, 1.5); assert.equal(free.week, 6);
   const sub = { plan: "plusplus", status: "active", periodEnd: null };
   const pp = allowance({ sub, cfg: null, env, user: { email: "a@x.com", email_verified: true } });
-  assert.equal(pp.day, 180); assert.equal(pp.week, 920); assert.ok(pp.memory);
+  assert.equal(pp.day, 280); assert.equal(pp.week, 1200); assert.ok(pp.memory);
   const owner = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true } });
   assert.equal(owner.day, 0); assert.equal(owner.week, 0); assert.ok(owner.admin);
   const t = allowance({ sub: null, cfg: null, env, user: { email: "boss@x.com", email_verified: true }, viewAs: "plus" });
-  assert.equal(t.admin, false); assert.equal(t.day, 60); assert.match(t.dayKey, /:test-plus$/);
+  assert.equal(t.admin, false); assert.equal(t.day, 70); assert.match(t.dayKey, /:test-plus$/);
 });
 test("usage percentages and blocking at 100%", () => {
   const now = Date.parse("2026-10-06T21:47:00Z");
@@ -90,7 +90,7 @@ function sse(events) { return events.map((e) => "data: " + JSON.stringify(e) + "
 function fakeFetch(calls) {
   return async (url, opts) => {
     calls.push({ url, body: opts && opts.body ? JSON.parse(opts.body) : null });
-    if (String(url).includes("/v1/models")) return new Response(JSON.stringify({ data: [{ id: "claude-opus-5-5" }, { id: "claude-sonnet-5-5" }, { id: "claude-haiku-4-5-20251001" }] }), { status: 200 });
+    if (String(url).includes("/v1/models")) return new Response(JSON.stringify({ data: [{ id: "claude-opus-5-5" }, { id: "claude-sonnet-5-5" }, { id: "claude-haiku-4-5-20251001" }, { id: "claude-haiku-5-5" }] }), { status: 200 });
     const body = sse([
       { type: "message_start", message: { usage: { input_tokens: 2000, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } },
       { type: "content_block_start", index: 0, content_block: { type: "text" } },
@@ -119,19 +119,18 @@ function billedHandler(calls, billed, over = {}) {
     ...over,
   }));
 }
-test("chat: Free gets Sonnet with a fixed effort (client model/effort ignored), billed at real cost", async () => {
+test("chat: Free gets the newest Haiku (client model/effort ignored), billed at real Haiku 5.5 cost", async () => {
   const calls = [], billed = [];
   const h = billedHandler(calls, billed);
   const res = await h(req({ orb: "neb", model: 3, effort: 4, messages: [{ role: "user", content: "hi" }] }));
   assert.equal(res.status, 200);
   const out = await lines(res);
   const msg = calls.find((c) => c.url.endsWith("/v1/messages") && c.body.stream);
-  assert.equal(msg.body.model, "claude-sonnet-5-5");
-  assert.equal(msg.body.output_config.effort, "medium");
-  // 2000 in x $2/M + 500 out x $10/M = 0.4 + 0.5 = 0.9 cents
-  assert.ok(Math.abs(billed[0] - 0.9) < 1e-9);
+  assert.equal(msg.body.model, "claude-haiku-5-5");
+  // 2000 in x $0.10/M + 500 out x $0.50/M = 0.02 + 0.025 = 0.045 cents
+  assert.ok(Math.abs(billed[0] - 0.045) < 1e-9, String(billed[0]));
   const done = out.find((o) => o.done);
-  assert.equal(done.usage.dayPct, 3.8); assert.equal(done.usage.weekPct, 0.9);
+  assert.equal(done.usage.dayPct, 3); assert.equal(done.usage.weekPct, 0.8);
 });
 test("chat: plan picks the model (Plus = Sonnet, Plus Plus and up = Opus)", async () => {
   const sub = (plan) => async () => ({ plan, status: "active", interval: "month", periodEnd: null });
